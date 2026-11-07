@@ -228,3 +228,21 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Why:** keep the to-do list true.
 **Verify:** read `todo/shared.md`; GitLab > Settings > Repository > Protected branches.
 
+## 2026-11-07 — #18 A clear start for every agent (proposal 007, owner approved)
+**What:** After `sidebar-tdd task 003` in a Claude Project chat the agent tried to clone, searched work items, listed the missing `ext/ahm/map`, and opened no merge request. Fixes: `tools/prompts/_common.md` now starts with "Start here" (command format, `task 003` = `tasks/003-*.md`, repository map, old documents are old, cloud chat uses the GitLab tools only and CI is the test run, tool cheat sheet, finish with the next command); the `-tdd` role opens a Draft merge request and the `-dev` role removes the Draft mark when CI is green; `gatekeeper` refuses a Draft; new `tools/prompts/project-instructions.md` (text for the Claude Project); `architect.md` rewritten from the owner's original brief; `DOMAINS.md` and `tasks/README.md` updated; `proposals/007-agent-start.md`. The 12 `<domain>-tdd` and `<domain>-dev` role files are rewritten.
+**Why:** one command must be enough, and the owner must see a merge request per task from the start.
+**Verify:** CI of the merge request. Then: `sidebar-tdd: task 003` opens the Draft merge request on the branch `sidebar/publish-state` without exploring.
+**Follow-ups (owner only):** paste `tools/prompts/project-instructions.md` into the Claude Project and delete the old documents and the old architect brief there; the old text still describes `ext/ahm/map/`, GitHub and cloning and was the likely cause of the confusion (inferred, not seen).
+
+## 2026-11-07 — #19 Lean delivery (proposal 008, owner approved)
+**What:** the `-tdd` agent opens no merge request (the Draft flow of #18 is dropped); only `-dev` opens it. `.gitlab-ci.yml`: job `tests` runs only when code, tests, config, `context/`, `tools/*`, `*.php` or `*.json` change; documents (every `.md` file) skip it. `tools/prompts/_common.md`: agents test git once and clone when it works (local tests, small outputs), rule 11 (small tool output), the two role flows now live there; the 12 domain role files are short; `gatekeeper` has no Draft check; `project-instructions.md` updated; `DOMAINS.md`; proposals 007 (note) and 008.
+**Why:** CI minutes and tokens. Red tests on a merge request waste a pipeline; a documents-only change ran the full PHP and JS tests with browser.
+**Verify:** CI of this merge request (it changes `.gitlab-ci.yml`, so the tests still run once). Then a documents-only merge request must show only the job `domain`. `sidebar-dev: task 003` opens the merge request on `sidebar/publish-state`.
+**Follow-ups:** the path list in `.gitlab-ci.yml` must grow with a new top-level code folder. Optional next step: split `tests` into PHP and JS jobs with their own path lists, and cache the npm and Playwright installs. Owner decides where `-tdd` and `-dev` run: Claude Code on his computer (git works) or a Project chat (GitLab tools; this plan has no option to allow gitlab.com).
+
+## 2026-11-07 — #20 Tokens: no git probe in the chat, one commit per step, one chat per task
+**What:** `tools/prompts/_common.md` (Start here, point 4; rule 11) and `tools/prompts/project-instructions.md`: in a Claude chat the agent no longer tests git (gitlab.com is blocked and cannot be allowed on this plan, checked on the settings screen); Claude Code on the owner's computer keeps git. New token rules: all file changes of a step in one `add_commit`; one chat per task. Checked: `.gitlab-ci.yml` of this branch already lists neither `README.md` nor `INTERFACES.md` for the job `tests`; no change needed. Documents only; no code, test or interface change.
+**Why:** the failed `git ls-remote` was a wasted call in every chat session; long chats re-send every old tool result.
+**Verify:** CI of this merge request shows only the job `domain` (documents only). The owner pastes the new text of `project-instructions.md` into the Project.
+**Follow-ups (owner only):** run the `-tdd` and `-dev` agents in Claude Code with a local clone (the biggest token saving); in the GitLab connector switch off the tools the agents do not use.
+

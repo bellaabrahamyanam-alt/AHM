@@ -24,6 +24,27 @@ domain:
 
 tests:
   stage: test
+  # Runs only when something the tests check or read changed. Documents skip it: changes/, todo/, proposals/, requests/, tasks/,
+  # tools/prompts/, .claude/, .gitlab/merge_request_templates/ and every *.md file (no test reads the text of a document).
+  # A new top-level folder with code or config must be added to this list.
+  rules:
+    - changes:
+        - 'app/**/*'
+        - 'controller/**/*'
+        - 'service/**/*'
+        - 'config/**/*'
+        - 'event/**/*'
+        - 'language/**/*'
+        - 'styles/**/*'
+        - 'data/**/*'
+        - 'dev/**/*'
+        - 'tests/**/*'
+        - 'context/**/*'
+        - 'tools/*'
+        - '.gitlab/CODEOWNERS'
+        - '.gitlab-ci.yml'
+        - '*.php'
+        - '*.json'
   before_script:
     - apt-get update -qq
     - apt-get install -y -qq php-cli php-mbstring

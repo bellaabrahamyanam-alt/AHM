@@ -32,7 +32,7 @@ test('domains: every entry of tools/domains.json points at something that exists
 });
 
 test('domains: CODEOWNERS is exactly what tools/check-domain.js --codeowners makes', () => {
-  const file = path.join(ROOT, '.github', 'CODEOWNERS'); // GitHub reads it here
+  const file = path.join(ROOT, '.gitlab', 'CODEOWNERS'); // GitLab reads it here
   if (!fs.existsSync(file)) return console.log('    (no repository root here: skipped)');
   eq(cd.codeowners(), fs.readFileSync(file, 'utf8'));
 });

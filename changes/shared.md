@@ -223,3 +223,8 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI ran on GitLab and passed: after the owner verified the account identity, pipeline 3039964592 on head 85b566c9 of MR !1 finished with jobs `domain` and `tests` both `success`. (Before that, GitLab refused every CI job: "Identity verification is required in order to run CI jobs".) MR !1 was merged into `master`.
 **Follow-ups (owner only):** protect `master` and set the merge request options (`DOMAINS.md`, "Git workflow"; today every developer may push to `master`); connect GitLab to Claude for the cloud sessions; archive the GitHub repository and revoke every GitHub token that was pasted in a chat.
 
+## 2026-11-07 — #17 Owner setup check: `master` is protected
+**What:** `todo/shared.md`: the item "protect `master`" is done. Checked through the GitLab API: branch `master` is protected, `developers_can_push` is false, `developers_can_merge` is true (before MR !1 it was true for push). Docs only; no code, test or interface change (proposal 006).
+**Why:** keep the to-do list true. Not verifiable with the GitLab tools, so left open: the merge request options, archiving the GitHub repository, revoking its tokens (owner only).
+**Verify:** read `todo/shared.md`; GitLab > Settings > Repository > Protected branches.
+

@@ -297,6 +297,7 @@ async function show(id) {
   if (curTab !== "explore") tab("explore"); // the list lives in the Explore tab
   stopEditPlace();
   cur = p;
+  AHM.state.set('selected', p.id);
   const l = $("#lang").value;
   const scope = lyScope(id, true),
     inLang = (by[id] || []).filter((n) => !l || n.lang === l);
@@ -343,6 +344,7 @@ async function show(id) {
 function closeDetail() {
   stopEditPlace();
   cur = null;
+  AHM.state.set('selected', null);
   update(); // folds the details and removes the highlight of the row
   history.replaceState(null, "", location.pathname + location.search);
 }
@@ -569,6 +571,7 @@ $("#dSave").onclick = async () => {
 function editPlace(p) {
   stopEditPlace();
   cur = p;
+  AHM.state.set('selected', p.id);
   placeDetail();
   $("#detail").innerHTML =
     '<div class="inline-body"><h2>Edit place</h2>' +

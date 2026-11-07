@@ -240,3 +240,9 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of this merge request (it changes `.gitlab-ci.yml`, so the tests still run once). Then a documents-only merge request must show only the job `domain`. `sidebar-dev: task 003` opens the merge request on `sidebar/publish-state`.
 **Follow-ups:** the path list in `.gitlab-ci.yml` must grow with a new top-level code folder. Optional next step: split `tests` into PHP and JS jobs with their own path lists, and cache the npm and Playwright installs. Owner decides where `-tdd` and `-dev` run: Claude Code on his computer (git works) or a Project chat (GitLab tools; this plan has no option to allow gitlab.com).
 
+## 2026-11-07 — #20 Tokens: no git probe in the chat, one commit per step, one chat per task
+**What:** `tools/prompts/_common.md` (Start here, point 4; rule 11) and `tools/prompts/project-instructions.md`: in a Claude chat the agent no longer tests git (gitlab.com is blocked and cannot be allowed on this plan, checked on the settings screen); Claude Code on the owner's computer keeps git. New token rules: all file changes of a step in one `add_commit`; one chat per task. Checked: `.gitlab-ci.yml` of this branch already lists neither `README.md` nor `INTERFACES.md` for the job `tests`; no change needed. Documents only; no code, test or interface change.
+**Why:** the failed `git ls-remote` was a wasted call in every chat session; long chats re-send every old tool result.
+**Verify:** CI of this merge request shows only the job `domain` (documents only). The owner pastes the new text of `project-instructions.md` into the Project.
+**Follow-ups (owner only):** run the `-tdd` and `-dev` agents in Claude Code with a local clone (the biggest token saving); in the GitLab connector switch off the tools the agents do not use.
+

@@ -8,6 +8,6 @@
 - [ ] `todo/<domain>.md` updated if an item was done
 
 ## Checks
-- [ ] CI is green (`domain` and `tests`)
+- [ ] The pipeline is green (`domain` and `tests`)
 - [ ] No interface or shared file changed without the owner's approved proposal (`proposals/`)
 - [ ] Test-first tasks: the first commit has the failing tests (`test: ...`), the next the code (`feat: ...` / `fix: ...`)

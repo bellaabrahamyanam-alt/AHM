@@ -14,3 +14,22 @@ One entry per change, newest last: date, what, why, files, how to verify, open f
 
 ### Verify
 `node tests/js/run.js` (all green); `boundaries.test.js` now also forbids `$` and DOM names in core.
+
+---
+
+## 2026-11-08 — #2 layer rules use the shared state (task 002)
+
+### What
+- `core/layer-rules.js`: `lyState` is now `AHM.state.get('layers')` instead of an object literal. It keeps the fields `only, hide, open, editing, staged, noteAll`; all names are unchanged (I-3 unchanged).
+
+### Why
+The layer state is shared between domains and lives in `AHM.state` (task 001, INTERFACES.md I-6).
+
+### Files
+`app/js/core/layer-rules.js`, `changes/core.md`.
+
+### Verify
+`node tests/js/run.js` (all green, no test changed); `node tools/check-domain.js core <diff>` passes.
+
+### Follow-ups
+None. `search.js` and the sidebar code are out of scope.

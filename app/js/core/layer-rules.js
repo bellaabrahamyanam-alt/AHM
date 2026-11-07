@@ -4,14 +4,9 @@
 // "only" = show only places that are in at least one of these layers (OR); "hide" = hide places in any of these layers (NOT IN).
 // Prefix `ly` = layers, `cat` = categories.
 
-const lyState = {
-  only: new Set(),
-  hide: new Set(),
-  open: null, // id of the layer whose details are shown
-  editing: null, // id of the layer whose places are being chosen
-  staged: null, // while editing: Set of place ids that will be the members
-  noteAll: false, // "show all notes" was chosen for the place shown now
-};
+// Fields (owned by AHM.state): only, hide, open (id of the layer whose details are shown), editing (id of the layer whose places
+// are being chosen), staged (while editing: Set of place ids that will be the members), noteAll ("show all notes" for the place shown now).
+const lyState = AHM.state.get('layers');
 let lyMembers = {}; // layer id -> Set of place ids
 const lyById = (id) => layers.find((l) => l.id === id);
 const nameIn = (list, l) => (list.find((n) => n.lang === l) || list.find((n) => n.lang === 'en') || list[0]).name;

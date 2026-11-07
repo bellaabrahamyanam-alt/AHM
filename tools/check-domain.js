@@ -65,7 +65,7 @@ function codeowners() {
   const h = (d) => own[d] || own.default || '@ahm-' + (d === 'shared' ? 'owner' : d);
   const out = [
     '# Made by `node tools/check-domain.js --codeowners` from tools/domains.json. Do not edit by hand; change domains.json (shared domain).',
-    '# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .github/CODEOWNERS at the repository root.',
+    '# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .gitlab/CODEOWNERS (GitLab reads it there).',
     '',
   ];
   for (const d of DOMAINS) {

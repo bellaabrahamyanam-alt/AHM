@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Pull-request check (DOMAINS.md, "Git workflow"). Usage: node tools/ci-check-pr.js <branch> <base-ref>
+// Merge-request check (DOMAINS.md, "Git workflow"; run by the `domain` job of .gitlab-ci.yml). Usage: node tools/ci-check-pr.js <branch> <base-ref>
 // The branch is named <domain>[+<domain>]/<task>, for example map/highlight or shared+state/scaffold. Every file the branch changed
 // (git diff <base-ref>...HEAD) must belong to one of the named domains or be a record/request/proposal allowed by check-domain.js.
-// `main` itself and branches named like release/... are not checked here.
+// `master` itself and branches named like release/... are not checked here.
 const { execFileSync } = require('child_process');
 const cd = require('./check-domain');
 
@@ -24,5 +24,5 @@ function main(branch, base) {
   console.log(`ok: every changed file is in the domain ${b.domains.join(' + ')}`);
   return 0;
 }
-if (require.main === module) process.exit(main(process.argv[2], process.argv[3] || 'origin/main'));
+if (require.main === module) process.exit(main(process.argv[2], process.argv[3] || 'origin/master'));
 module.exports = { domainsOfBranch };

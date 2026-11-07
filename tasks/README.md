@@ -1,6 +1,6 @@
 # Task specs (written by the architect)
 
-One file per task. A task = one branch `<domain>/<task>` = one pull request. Order matters: do not start a task before the ones it depends on are merged.
+One file per task. A task = one branch `<domain>/<task>` = one merge request. Order matters: do not start a task before the ones it depends on are merged.
 Each spec: goal, domain, depends on, interface touched, acceptance criteria, out of scope. Agents are called by name (`.claude/agents/`: `<domain>-tdd`, `<domain>-dev`, `gatekeeper`) with the spec file as the task; shared rules are in `tools/prompts/_common.md`.
 
 | # | Task | Branch | Depends on |

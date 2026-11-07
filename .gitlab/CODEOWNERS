@@ -1,0 +1,105 @@
+# Made by `node tools/check-domain.js --codeowners` from tools/domains.json. Do not edit by hand; change domains.json (shared domain).
+# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .gitlab/CODEOWNERS (GitLab reads it there).
+
+# sidebar
+/app/js/sidebar/ @bellaabrahamyan.am
+/app/css/sidebar.css @bellaabrahamyan.am
+/tests/js/layers.test.js @bellaabrahamyan.am
+/changes/sidebar.md @bellaabrahamyan.am
+/todo/sidebar.md @bellaabrahamyan.am
+/diffs/sidebar/ @bellaabrahamyan.am
+
+# map
+/app/js/map/ @bellaabrahamyan.am
+/app/css/map.css @bellaabrahamyan.am
+/changes/map.md @bellaabrahamyan.am
+/todo/map.md @bellaabrahamyan.am
+/diffs/map/ @bellaabrahamyan.am
+
+# core
+/app/js/core/ @bellaabrahamyan.am
+/tests/js/dates.test.js @bellaabrahamyan.am
+/tests/js/data.test.js @bellaabrahamyan.am
+/tests/js/search.test.js @bellaabrahamyan.am
+/tests/fixtures/dates-vectors.json @bellaabrahamyan.am
+/changes/core.md @bellaabrahamyan.am
+/todo/core.md @bellaabrahamyan.am
+/diffs/core/ @bellaabrahamyan.am
+
+# state
+/app/js/state/ @bellaabrahamyan.am
+/tests/js/state.test.js @bellaabrahamyan.am
+/changes/state.md @bellaabrahamyan.am
+/todo/state.md @bellaabrahamyan.am
+/diffs/state/ @bellaabrahamyan.am
+
+# campaigns
+/app/features/campaigns/ @bellaabrahamyan.am
+/tests/js/campaigns.test.js @bellaabrahamyan.am
+/changes/campaigns.md @bellaabrahamyan.am
+/todo/campaigns.md @bellaabrahamyan.am
+/diffs/campaigns/ @bellaabrahamyan.am
+
+# data
+/data/ @bellaabrahamyan.am
+/service/ @bellaabrahamyan.am
+/controller/ @bellaabrahamyan.am
+/config/ @bellaabrahamyan.am
+/event/ @bellaabrahamyan.am
+/language/ @bellaabrahamyan.am
+/styles/ @bellaabrahamyan.am
+/dev/ @bellaabrahamyan.am
+/ext.php @bellaabrahamyan.am
+/composer.json @bellaabrahamyan.am
+/tests/php/ @bellaabrahamyan.am
+/tests/data/ @bellaabrahamyan.am
+/tests/js/parity.test.js @bellaabrahamyan.am
+/tests/fixtures/rules.json @bellaabrahamyan.am
+/changes/data.md @bellaabrahamyan.am
+/todo/data.md @bellaabrahamyan.am
+/diffs/data/ @bellaabrahamyan.am
+
+# shared
+/README.md @bellaabrahamyan.am
+/AGENTS.md @bellaabrahamyan.am
+/DOMAINS.md @bellaabrahamyan.am
+/INTERFACES.md @bellaabrahamyan.am
+/AGENT_CHANGES.md @bellaabrahamyan.am
+/TODO.md @bellaabrahamyan.am
+/tools/ @bellaabrahamyan.am
+/requests/ @bellaabrahamyan.am
+/proposals/ @bellaabrahamyan.am
+/tasks/ @bellaabrahamyan.am
+/app/index.html @bellaabrahamyan.am
+/app/js/config.js @bellaabrahamyan.am
+/app/js/ahm.js @bellaabrahamyan.am
+/app/js/features.js @bellaabrahamyan.am
+/app/css/base.css @bellaabrahamyan.am
+/app/package.json @bellaabrahamyan.am
+/app/bun.lock @bellaabrahamyan.am
+/app/editorconfig @bellaabrahamyan.am
+/app/prettierignore @bellaabrahamyan.am
+/app/prettierrc.json @bellaabrahamyan.am
+/app/tsconfig.json @bellaabrahamyan.am
+/app/tsserver.js @bellaabrahamyan.am
+/tests/README.md @bellaabrahamyan.am
+/tests/js/lib/ @bellaabrahamyan.am
+/tests/js/run.js @bellaabrahamyan.am
+/tests/js/lint.test.js @bellaabrahamyan.am
+/tests/js/browser.test.js @bellaabrahamyan.am
+/tests/js/contract.test.js @bellaabrahamyan.am
+/tests/js/domains.test.js @bellaabrahamyan.am
+/tests/js/boundaries.test.js @bellaabrahamyan.am
+/tests/js/features.test.js @bellaabrahamyan.am
+/context/ @bellaabrahamyan.am
+/tests/js/context.test.js @bellaabrahamyan.am
+/tests/js/ci.test.js @bellaabrahamyan.am
+/changes/shared.md @bellaabrahamyan.am
+/todo/shared.md @bellaabrahamyan.am
+/diffs/shared/ @bellaabrahamyan.am
+
+# repository root
+/.gitlab/ @bellaabrahamyan.am
+/.gitlab-ci.yml @bellaabrahamyan.am
+/.claude/ @bellaabrahamyan.am
+/.gitignore @bellaabrahamyan.am

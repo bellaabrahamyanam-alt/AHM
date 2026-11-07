@@ -103,3 +103,13 @@ test('search: layer filter "only" is OR over layers, "hide" is NOT IN, both comb
   eq(['p2'], p.ids(), 'layer + text');
   p.X('lyState.only.clear(); lyState.hide.clear()');
 });
+
+test('layer rules: lyState is the "layers" object of the state manager (task 002)', () => {
+  const p = page();
+  ok(p.X('lyState === AHM.state.get("layers")'), 'same object, not a private copy');
+  eq(['editing', 'hide', 'noteAll', 'only', 'open', 'staged'], p.X('Object.keys(lyState)').slice().sort(), 'fields unchanged');
+  // a change made through the state manager is seen by the layer rules at once
+  p.X('AHM.state.get("layers").only.add("zz")');
+  ok(p.X('lyState.only.has("zz")'));
+  p.X('lyState.only.clear()');
+});

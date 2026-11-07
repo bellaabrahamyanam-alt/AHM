@@ -1,6 +1,6 @@
 # Proposal 009: the map domain owns `tests/js/map.test.js`
 
-Status: proposed (waiting for the owner to write `Status: approved`)
+Status: approved (the owner, 2026-11-08, in the chat, when asked: "I give my approve")
 From: shared (architect). Merge request: branch `shared/map-test-file` (!8).
 
 ## Why

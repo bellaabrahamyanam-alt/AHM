@@ -1,0 +1,12 @@
+# Hand-formatted on purpose (sectioned, compact rules, shared with the forum style).
+app/css/
+
+# Generated or user data: never reformat.
+data/
+
+# phpBB template syntax, not plain HTML.
+styles/
+
+# Tools and tests.
+node_modules/
+dev/archive/

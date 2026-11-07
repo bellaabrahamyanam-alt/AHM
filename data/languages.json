@@ -1,0 +1,35 @@
+{
+ "version": 1,
+ "languages": [
+  {
+   "code": "en",
+   "name": "English",
+   "native": "English"
+  },
+  {
+   "code": "hy",
+   "name": "Armenian",
+   "native": "Հայերեն"
+  },
+  {
+   "code": "ru",
+   "name": "Russian",
+   "native": "Русский"
+  },
+  {
+   "code": "tr",
+   "name": "Turkish",
+   "native": "Türkçe"
+  },
+  {
+   "code": "la",
+   "name": "Latin",
+   "native": "Latina"
+  },
+  {
+   "code": "xur",
+   "name": "Urartian",
+   "native": ""
+  }
+ ]
+}

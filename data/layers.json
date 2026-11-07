@@ -1,0 +1,37 @@
+{
+ "version": 1,
+ "layers": [
+  {
+   "id": "61330b3e-cccf-5a3b-806d-fc81db5f6058",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Urartian fortresses"
+    }
+   ],
+   "descriptions": [
+    {
+     "lang": "en",
+     "text": "Example layer: fortresses of the data set that belong to the kingdom of Urartu. A layer is a subset of the general layer; its places stay on the main map as well."
+    }
+   ],
+   "category": "bb406eeb-45e0-54e3-92c3-bd4107da2019",
+   "color": "#9a3b2e",
+   "date_from": null,
+   "date_to": null,
+   "members": [
+    {
+     "place": "8ae77c2d-6563-59e6-a340-b0c9dab9e3c0"
+    },
+    {
+     "place": "5fc6aeac-af61-5222-b88e-6e964b665068"
+    },
+    {
+     "place": "3d33ec36-e8bb-55e3-9533-6e1a38e839d6"
+    }
+   ],
+   "created": "2026-11-04T00:00:00Z",
+   "updated": "2026-11-04T00:00:00Z"
+  }
+ ]
+}

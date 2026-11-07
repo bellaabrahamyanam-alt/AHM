@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Armenian Highlands Map</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+    />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/sidebar.css" />
+    <link rel="stylesheet" href="css/map.css" />
+  </head>
+  <body>
+    <!-- region:sidebar -->
+    <aside id="side">
+      <header>
+        <button id="collapse" class="icon-btn" title="Hide panel" aria-label="Hide panel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 15-3-3 3-3"/></svg></button>
+      </header>
+      <div id="pick"></div>
+      <nav class="tabs">
+        <button data-tab="explore" class="on">Explore</button>
+        <button data-tab="layers">Layers</button>
+        <button data-tab="more">More</button>
+      </nav>
+      <div class="stack">
+      <div class="body">
+        <section id="tab-explore">
+          <details class="filters">
+            <summary>
+              Filters
+              <span id="fcount"></span>
+            </summary>
+            <div class="label">Type</div>
+            <div id="typeChips" class="chips"></div>
+            <div class="label">Language</div>
+            <select id="lang"></select>
+            <div class="label">Period</div>
+            <div class="sn">From</div>
+            <div id="fFrom"></div>
+            <div class="sn">To</div>
+            <div id="fTo"></div>
+            <small class="sn"
+              >Shows places that existed in the period. Places with no known
+              dates are hidden while a period is set.</small
+            >
+          </details>
+          <div id="activeBar" class="chips"><span id="fActive"></span><span id="lyActive"></span></div>
+          <div class="searchbar">
+            <div data-searchfield="q" data-placeholder="Search places, names, notes… (Enter: other places)"></div>
+            <button id="reset" title="Clear search and filters">Reset</button>
+          </div>
+          <div class="bar">
+            <span id="count"></span>
+            <span>
+              <button id="fit" title="Zoom the map to the results">
+                Fit map
+              </button>
+              <select id="sort">
+                <option value="name">A–Z</option>
+                <option value="date">By date</option>
+              </select>
+            </span>
+          </div>
+          <ul id="list"></ul>
+          <ul id="detailHome" hidden><li id="detail" class="place-open" hidden></li><li id="lyDetail" class="place-open" hidden></li></ul>
+          <div id="geo"></div>
+        </section>
+        <section id="tab-more" hidden>
+        <!-- region:map -->
+        <details class="fold" id="more-maps"><summary>Maps &amp; base map</summary><div class="fold-body">
+          <div class="sn">Base map</div>
+          <select id="basemap"></select>
+          <div id="status" class="sn"></div>
+          <div class="label">Show on map</div>
+          <div id="groups"></div>
+          <div class="label">Historical maps</div>
+          <div id="ovList" class="sn">No historical maps yet.</div>
+          <div id="ovAdmin"></div>
+          <div id="ovEditPanel"></div>
+          <input type="file" id="ovFile" accept="image/*" hidden />
+        </div></details>
+        <!-- /region:map -->
+        <details class="fold" id="more-route"><summary>Directions</summary><div class="fold-body">
+          <div class="rp">
+            <span class="dot a"></span>
+            <div>
+              <div class="label">From</div>
+              <div id="rFrom"></div>
+            </div>
+          </div>
+          <div class="rp">
+            <span class="dot b"></span>
+            <div>
+              <div class="label">To</div>
+              <div id="rTo"></div>
+            </div>
+          </div>
+          <div id="rInfo"></div>
+          <div>
+            <button id="rSwap">Swap</button>
+            <button id="rClear">Clear</button>
+          </div>
+          <p class="sn">
+            Click a place or any point on the map, then choose “Directions
+            from/to here”. Car routes only.
+          </p>
+          <p class="sn">
+            Routes:
+            <a href="https://project-osrm.org" target="_blank" rel="noopener"
+              >OSRM</a
+            >
+            demo server · ©
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noopener"
+            >
+              OpenStreetMap contributors
+            </a>
+            (ODbL).
+          </p>
+        </div></details><details class="fold" id="more-lang"><summary>Languages</summary><div class="fold-body">
+          <p class="sn">
+            Every name and every note uses one of these languages. If a
+            language is missing, ask an administrator to add it.
+          </p>
+          <ul id="langList" class="langs"></ul>
+          <div id="langAdmin"></div>
+        </div></details><details class="fold" id="more-cat"><summary>Categories</summary><div class="fold-body">
+          <p class="sn">Categories group the layers (Layers tab).</p>
+          <ul id="catList" class="langs"></ul>
+          <div id="catAdmin"></div>
+        </div></details></section>
+        <section id="tab-layers" hidden>
+          <div id="lyListView">
+            <p class="sn">
+              A layer is a subset of the main map, for example one campaign.
+              Every place stays on the main map. <b>Only</b> shows just the
+              places of the layer, <b>Hide</b> removes them.
+            </p>
+            <div class="label">Search layers</div>
+            <div data-searchfield="lyQ" data-placeholder="Search layers…"></div>
+            <select id="lyCat" aria-label="Category"></select>
+            <div class="bar"><span id="lyCount"></span></div>
+            <ul id="lyList"></ul>
+            <details class="fold" id="ly-add" open><summary>Add layer</summary><div class="fold-body">
+              <button id="lyNew" class="wide">Add layer</button>
+            </div></details>
+          </div>
+        </section>
+        
+        
+      </div>
+      </div>
+      <div
+        id="resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panel"
+        tabindex="0"
+        title="Drag to resize (double-click to reset)"
+      ></div>
+    </aside>
+    <button id="expand" class="icon-btn" title="Show panel" aria-label="Show panel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m14 9 3 3-3 3"/></svg></button>
+    <!-- /region:sidebar -->
+    <!-- region:map -->
+    <div id="map"></div>
+    <!-- /region:map -->
+    <!-- region:sidebar -->
+    <dialog id="dlg">
+      <b id="dTitle"></b>
+      <div id="dPlace"><div id="dPlaceForm"></div></div>
+      <div id="dLayersPlace"></div>
+      <hr />
+      <b id="dNoteHead">Note (optional for a new place)</b>
+      <select id="nLang" aria-label="Language"></select>
+      <small class="sn"
+        >Language missing? Ask an administrator to add it (Languages
+        tab).</small
+      >
+      <div id="dLayersNote"></div>
+      <div class="label">Note date (optional)</div>
+      <div id="nDate"></div>
+      <input id="nTitle" placeholder="title" />
+      <textarea id="nText" rows="5" placeholder="text"></textarea>
+      <div class="row">
+        <button id="dSave" class="primary">Save</button>
+        <button id="dCancel">Cancel</button>
+      </div>
+      <div id="dErr" class="sn"></div>
+    </dialog>
+    <dialog id="lyDlg">
+      <b id="lyTitle"></b>
+      <div id="lyForm" class="pf"></div>
+      <div class="row">
+        <button id="lySave" class="primary">Save</button>
+        <button id="lyCancel">Cancel</button>
+      </div>
+      <div id="lyErr2" class="sn"></div>
+    </dialog>
+    <!-- /region:sidebar -->
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/ahm.js"></script>
+    <script src="js/state/state.js"></script>
+    <script src="js/core/data.js"></script>
+    <script src="js/core/dates.js"></script>
+    <script src="js/core/layer-rules.js"></script>
+    <script src="js/core/search.js"></script>
+    <script src="js/core/providers.js"></script>
+    <script src="js/sidebar/datefield.js"></script>
+    <script src="js/sidebar/searchfield.js"></script>
+    <script src="js/sidebar/period.js"></script>
+    <script src="js/sidebar/placeform.js"></script>
+    <script src="js/map/typeicons.js"></script>
+    <script src="js/map/map.js"></script>
+    <script src="js/map/overlays.js"></script>
+    <script src="js/sidebar/layers.js"></script>
+    <script src="js/sidebar/ui.js"></script>
+    <script src="js/features.js"></script>
+  </body>
+</html>

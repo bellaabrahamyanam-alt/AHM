@@ -1,0 +1,24 @@
+parameters:
+    # Guests can always view. Who may add places and notes: 'members' (every logged-in user, admins included) or 'admins' only.
+    # Purge the forum cache after changing.
+    ahm.map.editors: members
+
+services:
+    ahm.map.controller:
+        class: ahm\map\controller\main
+        arguments:
+            - '@auth'
+            - '@controller.helper'
+            - '@request'
+            - '@user'
+            - '@path_helper'
+            - '%core.root_path%'
+            - '%ahm.map.editors%'
+
+    ahm.map.listener:
+        class: ahm\map\event\listener
+        arguments:
+            - '@controller.helper'
+            - '@template'
+        tags:
+            - { name: event.listener }

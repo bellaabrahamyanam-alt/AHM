@@ -1,0 +1,59 @@
+const { test, ok, eq } = require('./lib/harness');
+const { start } = require('./lib/devserver');
+const path = require('path');
+const table = require('../fixtures/rules.json').cases;
+const URLS = { save: '/api/save', layer: '/api/layer/save', category: '/api/category/save', language: '/api/language/save' };
+
+test('parity table: the Node dev server gives the verdict the table says (PHP is checked against the same table)', async () => {
+  const s = await start();
+  try {
+    // the dev server converts old data when it starts; wait for the first request to be served
+    await fetch(s.base + '/data/places.geojson');
+    const P = s.data('places.geojson').features.map((f) => f.properties.id);
+    const L0 = s.data('layers.json').layers[0].id;
+    const C0 = s.data('categories.json').categories[0].id;
+    const expand = (b) =>
+      JSON.parse(JSON.stringify(b).replace(/@P(\d+)/g, (_, n) => P[+n]).replace(/@L0/g, L0).replace(/@C0/g, C0));
+    ok(table.length >= 50);
+    for (const c of table) {
+      const r = await s.post(URLS[c.via], expand(c.body));
+      if (c.expect === 'ok') eq(200, r.status, `${c.name}: ${JSON.stringify(r.json)}`);
+      else ok(r.status === 400 && new RegExp(c.expect, 'i').test(r.json.error || ''), `${c.name}: wanted 400 /${c.expect}/, got ${r.status} ${JSON.stringify(r.json)}`);
+    }
+  } finally {
+    await s.stop();
+  }
+});
+
+test('dev server: a write answers 400 for broken JSON and 405 or 400 for a GET, never crashes', async () => {
+  const s = await start();
+  try {
+    const bad = await fetch(s.base + '/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'garbage' });
+    eq(400, bad.status);
+    for (const body of ['null', '"text"', '[1,2]', '42']) {
+      const r = await fetch(s.base + '/api/layer/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      eq(400, r.status, 'body ' + body);
+    }
+    const get = await fetch(s.base + '/api/save');
+    ok([400, 404, 405].includes(get.status), 'GET answered ' + get.status);
+    const again = await fetch(s.base + '/data/places.geojson');
+    eq(200, again.status, 'still alive');
+  } finally {
+    await s.stop();
+  }
+});
+
+test('dev server: two saves in the same second keep both archive copies', async () => {
+  const s = await start();
+  try {
+    await fetch(s.base + '/data/places.geojson');
+    const body = { place: { lat: 40, lon: 44, type: 'village', names: [{ lang: 'en', name: 'A' }] } };
+    for (let i = 0; i < 3; i++) eq(200, (await s.post('/api/save', body)).status);
+    const fs = require('fs');
+    const arch = path.join(s.root, 'dev', 'archive');
+    const copies = fs.readdirSync(arch).filter((f) => /^places-\d{14}(-\d+)?\.geojson$/.test(f) && !f.includes('before-dates'));
+    ok(copies.length >= 3, 'three saves, three copies: ' + copies.length);
+  } finally {
+    await s.stop();
+  }
+});

@@ -1,0 +1,74 @@
+/* Map (map domain): map canvas, popup, type symbols, historical-map (overlay) controls. Hand-formatted. */
+#map {
+  flex: 1;
+  min-width: 0;
+}
+/* ---- type symbols: same shapes and colours as on the map ---- */
+.ti {
+  width: 14px;
+  height: 14px;
+  vertical-align: -3px;
+  margin-right: 3px;
+}
+
+/* ---- historical map images (overlays): list for everyone, edit panel + drag handles for administrators ---- */
+.ov {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--li-row-border-bottom-color);
+}
+.ov .row {
+  align-items: center;
+  margin-top: 3px;
+}
+.ovpanel {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-color: var(--a);
+}
+.ovpanel .row {
+  margin: 3px 0;
+}
+.ovpanel input[type="number"] {
+  width: 70px;
+}
+.ovh {
+  width: 16px;
+  height: 16px;
+  background: var(--handle-corner);
+  border: 2px solid var(--handle-border);
+  border-radius: 3px;
+  box-shadow: var(--handle-shadow);
+  cursor: move;
+}
+.ovh.center {
+  width: 22px;
+  height: 22px;
+  background: var(--handle-center);
+  border-radius: 50%;
+}
+
+/* ---- map popup ---- */
+.maplibregl-popup-content {
+  background: var(--base-bg);
+  color: var(--html-body-color);
+  padding: 8px 12px;
+  border-radius: var(--radius-m);
+  box-shadow: var(--dropdown-shadow);
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--base-bg);
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--base-bg);
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--base-bg);
+}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--base-bg);
+}
+

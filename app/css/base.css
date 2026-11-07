@@ -1,0 +1,98 @@
+/* Base (shared domain): palette, tokens, page reset, links. Linked first. */
+/* ---------------------------------------------------------------------------
+   Sidebar design: follows the "paper-and-pencil" phpBB style.
+   The variables below have the SAME NAMES and VALUES as in
+   paper-and-pencil/theme/colours.css, so the sidebar always matches the forum.
+   If this page is ever rendered inside the style (its stylesheet loaded),
+   this :root block can simply be deleted.
+   One known difference: the forum style has --select-bg: inherit; here it is a
+   literal colour so <select> stays visible on the cream panel.
+   --------------------------------------------------------------------------- */
+:root {
+  --base-bg: #f4f0d9;
+  --base-fg-hover: #3a94c5;
+  --base-href-color: #115098;
+  --html-body-bg-color: var(--base-bg);
+  --html-body-color: #5c6a72;
+  --content-color: #333c43;
+  --a: var(--base-href-color);
+  --a-hover: var(--base-fg-hover);
+  --header: var(--base-href-color);
+  --carter-color: var(--a);
+  --textare-color: var(--content-color);
+  --bg1-bg-color: #edeada;
+  --bg2-bg-color: #f8f5e4;
+  --panel-container-panel-bg-color: #f8f5e4;
+  --li-row-hover: #f6f8e4;
+  --li-row-border-bottom-color: #edeada;
+  --page-btn-bg-focus: #e9e9e9;
+  --page-btn-fg-focus: var(--base-href-color);
+  --btn-bg-hover: #e9e9e9;
+  --btn-fg-hover: var(--base-fg-hover);
+  --btn-icon-color: var(--base-href-color);
+  --select-bg: #e9e9e9;
+  --select-border-color: #edeada;
+  --tab-bg-hover: var(--bg2-bg-color);
+  --tab-color-hover: var(--base-fg-hover);
+  --dropdown-contents-background: var(--page-btn-bg-focus);
+  /* literal colours the style uses in common.css / colours.css */
+  --inputbox-bg: #ffffff;
+  --inputbox-border: #b4bac0;
+  --inputbox-border-hover: #11a3ea;
+  --inputbox-color: #333333;
+  --border-color: #cccccc;
+  --muted-color: #666666;
+  --posthilit-bg: #f3bfcc;
+  --posthilit-color: #bc2a4d;
+  --error-color: #bc2a4d;
+  --dropdown-shadow: 1px 3px 5px rgba(0, 0, 0, 0.2);
+  --font: Verdana, Helvetica, Arial, sans-serif;
+  --font-head: "Trebuchet MS", Arial, Helvetica, sans-serif;
+  --font-btn: "Open Sans", "Droid Sans", Verdana, Arial, Helvetica;
+}
+
+/* ---------------------------------------------------------------------------
+   Map-only tokens. NOT part of the forum style: keep this block even if the
+   one above is deleted. Change a value here and every rule below follows.
+   --------------------------------------------------------------------------- */
+:root {
+  /* shape and spacing */
+  --radius-s: 4px;
+  --radius-m: 7px;
+  --radius-pill: 14px;
+  --gap: 4px;
+  /* route markers (A = start, B = destination) */
+  --route-a: #2a8f4f;
+  --route-b: #1d6fd1;
+  /* handles used to fit an image overlay to the map */
+  --handle-corner: var(--error-color);
+  --handle-center: var(--a);
+  --handle-border: #ffffff;
+  --handle-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  /* misc */
+  --label-color: #425067;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  color-scheme: light;
+}
+body {
+  margin: 0;
+  display: flex;
+  height: 100vh;
+  font: 12px/1.4 var(--font);
+  color: var(--html-body-color);
+  background: var(--html-body-bg-color);
+}
+a {
+  color: var(--a);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--a-hover);
+  text-decoration: underline;
+}
+

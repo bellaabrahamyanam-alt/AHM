@@ -1,0 +1,117 @@
+// The place form: names, type, dates (or height for a mountain) and position.
+// Used twice: in the "new place" dialog and in the sidebar when an existing place is edited.
+const PLACE_TYPES = [
+  'city',
+  'town',
+  'village',
+  'settlement',
+  'fortress',
+  'temple',
+  'tomb',
+  'inscription_site',
+  'monument',
+  'mountain',
+  'lake',
+  'river',
+  'region',
+];
+const MAX_HEIGHT_M = 9000;
+
+/** <option>s of the language dictionary (sorted by name). A code that is not in the dictionary is kept visible, not lost. */
+const langOptions = (cur) => {
+  const list = languages.slice().sort((a, b) => a.name.localeCompare(b.name));
+  return (
+    (!cur || list.some((l) => l.code === cur) ? '' : `<option value="${esc(cur)}" selected>${esc(cur)} (not in the list)</option>`) +
+    list.map((l) => `<option value="${esc(l.code)}"${l.code === cur ? ' selected' : ''}>${esc(l.name)} (${esc(l.code)})</option>`).join('')
+  );
+};
+const LANG_HINT = 'Language missing? Ask an administrator to add it (Languages tab).';
+const pfRow = (n) =>
+  `<div class="row pf-name"><select class="nl" aria-label="Language" title="${LANG_HINT}">${langOptions(n.lang)}</select>` +
+  `<input class="nn" value="${esc(n.name)}" placeholder="name" aria-label="Name">` +
+  `<button type="button" class="pf-up" title="Move up: the first name of a language is the one shown on the map">↑</button>` +
+  `<button type="button" class="pf-del" title="Remove this name">✕</button></div>`;
+
+/** p: { names, type, date_from, date_to, height_m, lat, lon } (dates are date objects or null) */
+function placeFormHTML(p) {
+  const names = p.names && p.names.length ? p.names : [{ lang: 'en', name: '' }],
+    mountain = p.type === 'mountain';
+  return (
+    `<div class="pf"><div class="label">Names</div><div class="pf-names">${names.map((n) => pfRow(n)).join('')}</div>` +
+    `<button type="button" class="pf-add">+ Add another name</button>` +
+    `<div class="sn">A place can have several names, even in one language (Ararat and Masis). The first name of each language is shown on the map. ${LANG_HINT}</div>` +
+    `<div class="label">Type</div><select class="pf-type">${PLACE_TYPES.map(
+      (t) => `<option value="${t}"${t === p.type ? ' selected' : ''}>${typeLabel(t)}</option>`
+    ).join('')}</select>` +
+    `<div class="pf-when"${mountain ? ' hidden' : ''}><div class="label">Dates (optional)</div>` +
+    `<div class="sn">Leave “Unknown” when you do not know a date. Choose “Approximate” or “Range” when you only know roughly.</div>` +
+    `<div class="pf-sub">Began / founded</div>${dfHTML('pf-from', p.date_from)}` +
+    `<div class="pf-sub">Ended / abandoned</div>${dfHTML('pf-to', p.date_to)}</div>` +
+    `<div class="pf-height"${mountain ? '' : ' hidden'}><div class="label">Height (optional)</div>` +
+    `<input class="pf-h" type="number" min="0" max="${MAX_HEIGHT_M}" step="1" value="${p.height_m ?? ''}" placeholder="metres above sea level" aria-label="Height in metres"></div>` +
+    `<div class="label">Position (latitude, longitude)</div><div class="row">` +
+    `<input class="pf-lat" type="number" step="any" value="${p.lat}"><input class="pf-lon" type="number" step="any" value="${p.lon}"></div></div>`
+  );
+}
+
+/** Makes the add / move up / remove buttons, the type switch and the date fields inside root work. Call once per container. */
+function placeFormWire(root) {
+  dfWire(root);
+  root.addEventListener('change', (e) => {
+    if (!e.target.matches('.pf-type')) return;
+    const mountain = e.target.value === 'mountain'; // a mountain has a height instead of dates
+    root.querySelector('.pf-when').hidden = mountain;
+    root.querySelector('.pf-height').hidden = !mountain;
+  });
+  root.addEventListener('click', (e) => {
+    const b = e.target.closest('.pf-add, .pf-del, .pf-up');
+    if (!b) return;
+    const box = root.querySelector('.pf-names');
+    if (b.classList.contains('pf-add')) {
+      const last = box.lastElementChild;
+      box.insertAdjacentHTML('beforeend', pfRow({ lang: last ? last.querySelector('.nl').value : 'en', name: '' }));
+      box.lastElementChild.querySelector('.nn').focus();
+      return;
+    }
+    const row = b.closest('.pf-name');
+    if (b.classList.contains('pf-del')) {
+      if (box.children.length > 1) row.remove();
+      else row.querySelector('.nn').value = '';
+    } else if (row.previousElementSibling) box.insertBefore(row, row.previousElementSibling);
+  });
+}
+
+/** Reads and checks the form inside root. Returns the fields the server expects, or throws a readable error. */
+function readPlaceForm(root) {
+  const q = (s) => root.querySelector(s);
+  const names = [...root.querySelectorAll('.pf-name')]
+    .map((r) => ({ lang: r.querySelector('.nl').value, name: r.querySelector('.nn').value.trim() }))
+    .filter((n) => n.name);
+  if (!names.length) throw Error('Give the place at least one name.');
+  names.forEach((n) => {
+    if (!languages.some((l) => l.code === n.lang))
+      throw Error(`The language “${n.lang || '?'}” is not in the list. Ask an administrator to add it.`);
+  });
+  const type = q('.pf-type').value,
+    mountain = type === 'mountain';
+  let from = null,
+    to = null,
+    height = null;
+  if (mountain) {
+    const h = q('.pf-h').value.trim();
+    if (h !== '') {
+      height = Number(h);
+      if (!Number.isInteger(height) || height < 0 || height > MAX_HEIGHT_M)
+        throw Error(`Height must be a whole number of metres from 0 to ${MAX_HEIGHT_M}.`);
+    }
+  } else {
+    from = dfRead(q('.pf-from'), 'Began');
+    to = dfRead(q('.pf-to'), 'Ended');
+    dateOrderCheck(from, to);
+  }
+  const lat = parseFloat(q('.pf-lat').value),
+    lon = parseFloat(q('.pf-lon').value);
+  if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180))
+    throw Error('Latitude must be between −90 and 90, longitude between −180 and 180.');
+  return { lat, lon, type, names, date_from: from, date_to: to, height_m: height };
+}

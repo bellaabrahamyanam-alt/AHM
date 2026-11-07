@@ -1,0 +1,350 @@
+{
+ "type": "FeatureCollection",
+ "version": 1,
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     43.3406,
+     38.5007
+    ]
+   },
+   "properties": {
+    "id": "8ae77c2d-6563-59e6-a340-b0c9dab9e3c0",
+    "label": "Tushpa",
+    "type": "fortress",
+    "date_from": -840,
+    "date_to": -590,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Տուշպա"
+     },
+     {
+      "lang": "en",
+      "name": "Tushpa"
+     },
+     {
+      "lang": "tr",
+      "name": "Van Kalesi"
+     },
+     {
+      "lang": "xur",
+      "name": "Tušpa"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     44.5367,
+     40.1317
+    ]
+   },
+   "properties": {
+    "id": "5fc6aeac-af61-5222-b88e-6e964b665068",
+    "label": "Erebuni",
+    "type": "fortress",
+    "date_from": -782,
+    "date_to": -600,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Էրեբունի"
+     },
+     {
+      "lang": "en",
+      "name": "Erebuni"
+     },
+     {
+      "lang": "ru",
+      "name": "Эребуни"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     44.4636,
+     40.1608
+    ]
+   },
+   "properties": {
+    "id": "3d33ec36-e8bb-55e3-9533-6e1a38e839d6",
+    "label": "Teishebaini",
+    "type": "fortress",
+    "date_from": -660,
+    "date_to": -590,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Թեյշեբաինի"
+     },
+     {
+      "lang": "hy",
+      "name": "Կարմիր բլուր"
+     },
+     {
+      "lang": "en",
+      "name": "Teishebaini"
+     },
+     {
+      "lang": "ru",
+      "name": "Тейшебаини"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     44.7306,
+     40.1119
+    ]
+   },
+   "properties": {
+    "id": "e7d52492-2313-5972-a766-3f1ef6a47a5d",
+    "label": "Garni",
+    "type": "temple",
+    "date_from": -800,
+    "date_to": null,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Գառնի"
+     },
+     {
+      "lang": "en",
+      "name": "Garni"
+     },
+     {
+      "lang": "ru",
+      "name": "Гарни"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     44.59,
+     39.93
+    ]
+   },
+   "properties": {
+    "id": "fbd76ed4-dd83-51f2-8e70-182eec3d55d9",
+    "label": "Dvin",
+    "type": "settlement",
+    "date_from": 335,
+    "date_to": 1236,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Դվին"
+     },
+     {
+      "lang": "en",
+      "name": "Dvin"
+     },
+     {
+      "lang": "ru",
+      "name": "Двин"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     44.58,
+     39.88
+    ]
+   },
+   "properties": {
+    "id": "8f159ae7-818c-543f-8829-13ef8f254f21",
+    "label": "Artashat",
+    "type": "city",
+    "date_from": -176,
+    "date_to": 370,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Արտաշատ"
+     },
+     {
+      "lang": "en",
+      "name": "Artashat"
+     },
+     {
+      "lang": "la",
+      "name": "Artaxata"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     43.5719,
+     40.5075
+    ]
+   },
+   "properties": {
+    "id": "f1aec2d0-dde4-57b5-8138-af2bb2cee639",
+    "label": "Ani",
+    "type": "city",
+    "date_from": 961,
+    "date_to": 1319,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Անի"
+     },
+     {
+      "lang": "en",
+      "name": "Ani"
+     },
+     {
+      "lang": "tr",
+      "name": "Ani"
+     },
+     {
+      "lang": "ru",
+      "name": "Ани"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     43.4089,
+     38.4891
+    ]
+   },
+   "properties": {
+    "id": "93942234-034a-534c-9aee-a50bf661136a",
+    "label": "Van",
+    "type": "city",
+    "date_from": -840,
+    "date_to": null,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Վան"
+     },
+     {
+      "lang": "en",
+      "name": "Van"
+     },
+     {
+      "lang": "tr",
+      "name": "Van"
+     },
+     {
+      "lang": "ru",
+      "name": "Ван"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     43.0975,
+     40.6013
+    ]
+   },
+   "properties": {
+    "id": "5ee8887b-9bb4-5f25-b884-99dd058908e9",
+    "label": "Kars",
+    "type": "city",
+    "date_from": 963,
+    "date_to": null,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Կարս"
+     },
+     {
+      "lang": "en",
+      "name": "Kars"
+     },
+     {
+      "lang": "tr",
+      "name": "Kars"
+     },
+     {
+      "lang": "ru",
+      "name": "Карс"
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     44.2913,
+     40.1728
+    ]
+   },
+   "properties": {
+    "id": "6c56e7aa-81b9-5043-846d-53b90e0cd1ca",
+    "label": "Vagharshapat",
+    "type": "city",
+    "date_from": 120,
+    "date_to": null,
+    "approx": true,
+    "names": [
+     {
+      "lang": "hy",
+      "name": "Վաղարշապատ"
+     },
+     {
+      "lang": "hy",
+      "name": "Էջմիածին"
+     },
+     {
+      "lang": "en",
+      "name": "Vagharshapat"
+     },
+     {
+      "lang": "ru",
+      "name": "Вагаршапат"
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,979 @@
+{
+ "about": "Rule table shared by tests/php/ParityTest.php and tests/js/parity.test.js: the PHP store and the Node dev server must give the same verdict (ok / refused with a message matching `expect`). @P<n> = n-th place of the sample, @L0 = the sample layer, @C0 = its first category. Run in order on a fresh copy of the migrated sample.",
+ "cases": [
+  {
+   "name": "place: minimal",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "place: mountain with height",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "mountain",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "height_m": 5137
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "place: with dates",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "town",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "y",
+      "ts": "1000-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     },
+     "date_to": {
+      "fmt": "y",
+      "ts": "1500-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "place: bad coordinates",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 91,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "bad coordinates"
+  },
+  {
+   "name": "place: bad type",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "spaceport",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "bad type"
+  },
+  {
+   "name": "place: no names",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": []
+    }
+   },
+   "expect": "at least one name"
+  },
+  {
+   "name": "place: language outside the dictionary",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "zz",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "not in the list"
+  },
+  {
+   "name": "place: mountain too high",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "mountain",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "height_m": 9001
+    }
+   },
+   "expect": "height must be a whole number"
+  },
+  {
+   "name": "place: mountain fractional height",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "mountain",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "height_m": 12.5
+    }
+   },
+   "expect": "height must be a whole number"
+  },
+  {
+   "name": "place: time stamp does not match its format",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "town",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "y",
+      "ts": "1500-05-05T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "time stamp does not match"
+  },
+  {
+   "name": "place: begin after end",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "town",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "y",
+      "ts": "1600-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     },
+     "date_to": {
+      "fmt": "y",
+      "ts": "1500-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "after"
+  },
+  {
+   "name": "place: range end before start",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "town",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "y",
+      "ts": "1500-01-01T00:00:00Z",
+      "mode": "range",
+      "ts_to": "1400-01-01T00:00:00Z"
+     }
+    }
+   },
+   "expect": "must be after its start"
+  },
+  {
+   "name": "place: only a range has an end",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "town",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "y",
+      "ts": "1500-01-01T00:00:00Z",
+      "mode": "approx",
+      "ts_to": "1501-01-01T00:00:00Z"
+     }
+    }
+   },
+   "expect": "only a range has an end"
+  },
+  {
+   "name": "place: unknown date format",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "town",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "zz",
+      "ts": "1500-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "unknown date format"
+  },
+  {
+   "name": "note: new",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "en",
+     "title": "T",
+     "text": "body"
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "note: with a date",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "en",
+     "title": "T2",
+     "text": "body",
+     "date": {
+      "fmt": "y",
+      "ts": "1500-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "note: no title",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "en",
+     "title": "",
+     "text": "x"
+    }
+   },
+   "expect": "needs a language, a title and a text"
+  },
+  {
+   "name": "note: no text",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "en",
+     "title": "t",
+     "text": " "
+    }
+   },
+   "expect": "needs a language, a title and a text"
+  },
+  {
+   "name": "note: language outside the dictionary",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "zz",
+     "title": "t",
+     "text": "x"
+    }
+   },
+   "expect": "not in the list"
+  },
+  {
+   "name": "note: on an unknown place",
+   "via": "save",
+   "body": {
+    "place_id": "11111111-1111-4111-8111-111111111111",
+    "note": {
+     "lang": "en",
+     "title": "t",
+     "text": "x"
+    }
+   },
+   "expect": "unknown place"
+  },
+  {
+   "name": "note: edit an unknown note",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "id": "11111111-1111-4111-8111-111111111111",
+     "lang": "en",
+     "title": "t",
+     "text": "x"
+    }
+   },
+   "expect": "unknown note"
+  },
+  {
+   "name": "note: bad date",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "en",
+     "title": "t",
+     "text": "x",
+     "date": {
+      "fmt": "y",
+      "ts": "bad",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "does not match"
+  },
+  {
+   "name": "place_update: unknown id",
+   "via": "save",
+   "body": {
+    "place_update": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "id": "11111111-1111-4111-8111-111111111111"
+    }
+   },
+   "expect": "unknown place"
+  },
+  {
+   "name": "place_update: bad type",
+   "via": "save",
+   "body": {
+    "place_update": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "nope",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "id": "@P0"
+    }
+   },
+   "expect": "bad type"
+  },
+  {
+   "name": "place_update: ok",
+   "via": "save",
+   "body": {
+    "place_update": {
+     "lat": 40.2,
+     "lon": 44.6,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "Moved"
+      }
+     ],
+     "id": "@P1"
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "new place joining an unknown layer",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    },
+    "layer_ids": [
+     "22222222-2222-4222-8222-222222222222"
+    ]
+   },
+   "expect": "unknown layer"
+  },
+  {
+   "name": "new place: layer_ids not a list",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    },
+    "layer_ids": "x"
+   },
+   "expect": "list"
+  },
+  {
+   "name": "new place joining the sample layer",
+   "via": "save",
+   "body": {
+    "place": {
+     "lat": 40.1,
+     "lon": 44.5,
+     "type": "village",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    },
+    "layer_ids": [
+     "@L0"
+    ]
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "note tagged with a layer the place is not in",
+   "via": "save",
+   "body": {
+    "place_id": "@P5",
+    "note": {
+     "lang": "en",
+     "title": "t",
+     "text": "x",
+     "layers": [
+      "@L0"
+     ]
+    }
+   },
+   "expect": "not in the layer"
+  },
+  {
+   "name": "note tagged with an unknown layer",
+   "via": "save",
+   "body": {
+    "place_id": "@P0",
+    "note": {
+     "lang": "en",
+     "title": "t",
+     "text": "x",
+     "layers": [
+      "22222222-2222-4222-8222-222222222222"
+     ]
+    }
+   },
+   "expect": "unknown layer"
+  },
+  {
+   "name": "layer: names only",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "layer: everything",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "en",
+       "name": "Full"
+      }
+     ],
+     "descriptions": [
+      {
+       "lang": "en",
+       "text": "d"
+      }
+     ],
+     "category": "@C0",
+     "color": "#AABBCC",
+     "date_from": {
+      "fmt": "y",
+      "ts": "0100-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     },
+     "date_to": {
+      "fmt": "y",
+      "ts": "0200-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "layer: no names",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": []
+    }
+   },
+   "expect": "at least one name"
+  },
+  {
+   "name": "layer: language outside the dictionary",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "zz",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "not in the list"
+  },
+  {
+   "name": "layer: bad colour",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "color": "red"
+    }
+   },
+   "expect": "colour"
+  },
+  {
+   "name": "layer: unknown category",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "category": "22222222-2222-4222-8222-222222222222"
+    }
+   },
+   "expect": "unknown category"
+  },
+  {
+   "name": "layer: two descriptions in one language",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "descriptions": [
+      {
+       "lang": "en",
+       "text": "a"
+      },
+      {
+       "lang": "en",
+       "text": "b"
+      }
+     ]
+    }
+   },
+   "expect": "one description per language"
+  },
+  {
+   "name": "layer: from after to",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ],
+     "date_from": {
+      "fmt": "y",
+      "ts": "2000-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     },
+     "date_to": {
+      "fmt": "y",
+      "ts": "1000-01-01T00:00:00Z",
+      "mode": "exact",
+      "ts_to": null
+     }
+    }
+   },
+   "expect": "after"
+  },
+  {
+   "name": "layer: update an unknown layer",
+   "via": "layer",
+   "body": {
+    "layer": {
+     "id": "22222222-2222-4222-8222-222222222222",
+     "names": [
+      {
+       "lang": "en",
+       "name": "x"
+      }
+     ]
+    }
+   },
+   "expect": "unknown layer"
+  },
+  {
+   "name": "members: add an unknown place",
+   "via": "layer",
+   "body": {
+    "layer_members": {
+     "id": "@L0",
+     "add": [
+      "33333333-3333-4333-8333-333333333333"
+     ]
+    }
+   },
+   "expect": "unknown place"
+  },
+  {
+   "name": "members: unknown layer",
+   "via": "layer",
+   "body": {
+    "layer_members": {
+     "id": "22222222-2222-4222-8222-222222222222",
+     "add": [
+      "@P0"
+     ]
+    }
+   },
+   "expect": "unknown layer"
+  },
+  {
+   "name": "members: add is not a list",
+   "via": "layer",
+   "body": {
+    "layer_members": {
+     "id": "@L0",
+     "add": "x"
+    }
+   },
+   "expect": "list"
+  },
+  {
+   "name": "members: add and remove",
+   "via": "layer",
+   "body": {
+    "layer_members": {
+     "id": "@L0",
+     "add": [
+      "@P6"
+     ],
+     "remove": [
+      "@P6"
+     ]
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "layer note: new",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "@L0",
+     "note": {
+      "lang": "en",
+      "title": "About",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "layer note: language outside the dictionary",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "@L0",
+     "note": {
+      "lang": "zz",
+      "title": "t",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "not in the list"
+  },
+  {
+   "name": "layer note: no title",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "@L0",
+     "note": {
+      "lang": "en",
+      "title": "",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "needs a language"
+  },
+  {
+   "name": "layer note: unknown note id",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "@L0",
+     "note": {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "lang": "en",
+      "title": "t",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "unknown note"
+  },
+  {
+   "name": "layer note: unknown layer",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "22222222-2222-4222-8222-222222222222",
+     "note": {
+      "lang": "en",
+      "title": "t",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "unknown layer"
+  },
+  {
+   "name": "layer_save: empty body",
+   "via": "layer",
+   "body": {},
+   "expect": "nothing to save"
+  },
+  {
+   "name": "category: new",
+   "via": "category",
+   "body": {
+    "names": [
+     {
+      "lang": "en",
+      "name": "Dynasty"
+     }
+    ]
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "category: rename",
+   "via": "category",
+   "body": {
+    "id": "@C0",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Renamed"
+     }
+    ]
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "category: no names",
+   "via": "category",
+   "body": {
+    "names": []
+   },
+   "expect": "at least one name"
+  },
+  {
+   "name": "category: language outside the dictionary",
+   "via": "category",
+   "body": {
+    "names": [
+     {
+      "lang": "zz",
+      "name": "x"
+     }
+    ]
+   },
+   "expect": "not in the list"
+  },
+  {
+   "name": "category: unknown id",
+   "via": "category",
+   "body": {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "names": [
+     {
+      "lang": "en",
+      "name": "x"
+     }
+    ]
+   },
+   "expect": "unknown category"
+  },
+  {
+   "name": "language: new",
+   "via": "language",
+   "body": {
+    "code": "XCL",
+    "name": "Classical Armenian",
+    "native": "Գրաբար"
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "language: duplicate",
+   "via": "language",
+   "body": {
+    "code": "xcl",
+    "name": "Again"
+   },
+   "expect": "already"
+  },
+  {
+   "name": "language: bad code",
+   "via": "language",
+   "body": {
+    "code": "x1",
+    "name": "X"
+   },
+   "expect": "2-8 letters"
+  },
+  {
+   "name": "language: no name",
+   "via": "language",
+   "body": {
+    "code": "abc",
+    "name": " "
+   },
+   "expect": "needs a name"
+  }
+ ]
+}

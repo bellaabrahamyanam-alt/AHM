@@ -1,0 +1,874 @@
+/* Sidebar (sidebar domain): panel, tabs, lists, forms, details, folds, dialogs. Hand-formatted. */
+/* ---- panel ---- */
+aside {
+  position: relative;
+  width: var(--side-w, 380px);
+  display: flex;
+  flex-direction: column;
+  background: var(--base-bg);
+  border-right: 1px solid var(--li-row-border-bottom-color);
+  box-shadow: var(--dropdown-shadow);
+  transition: margin 0.2s;
+  z-index: 2;
+}
+body.collapsed aside {
+  margin-left: calc(-1 * var(--side-w, 380px));
+}
+header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 14px 6px;
+}
+h2 {
+  font: normal 20px var(--font-head);
+  color: var(--content-color);
+  margin: 0.4em 0 0.2em;
+}
+h3 {
+  font: bold 14px var(--font-head);
+  color: var(--header);
+  margin: 0 0 2px;
+}
+b {
+  color: var(--content-color);
+}
+.stack {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 14px 16px;
+  line-height: 1.45;
+}
+.searchbar {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0 8px;
+}
+.searchbar input {
+  flex: 1;
+}
+
+/* ---- form controls (inputbox / select / button, as in forms.css + buttons.css) ---- */
+input,
+select,
+textarea {
+  width: 100%;
+  margin: 3px 0;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--inputbox-color);
+  background: var(--inputbox-bg);
+  border: 1px solid var(--inputbox-border);
+  border-radius: var(--radius-s);
+  caret-color: var(--carter-color);
+}
+input:hover,
+input:focus,
+select:hover,
+select:focus,
+textarea:hover,
+textarea:focus {
+  border-color: var(--inputbox-border-hover);
+  outline: 0;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-color);
+  opacity: 0.8;
+}
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: transparent;
+}
+select {
+  background: var(--select-bg);
+  border-color: var(--select-border-color);
+  cursor: pointer;
+}
+select:hover,
+select:focus {
+  border-color: var(--inputbox-border-hover);
+}
+textarea {
+  background: var(--bg1-bg-color);
+  color: var(--textare-color);
+  border-color: var(--select-border-color);
+  border-radius: var(--radius-m);
+}
+input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--a);
+}
+input[type="range"] {
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--a);
+}
+button {
+  font: 600 13px/1.4 var(--font-btn);
+  color: var(--a);
+  background: var(--page-btn-bg-focus);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  padding: 4px 12px;
+  min-height: 30px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover,
+button:focus {
+  color: var(--btn-fg-hover);
+  background: var(--btn-bg-hover);
+  outline: 0;
+}
+button:focus-visible {
+  border-color: var(--inputbox-border-hover);
+}
+.row {
+  display: flex;
+  gap: var(--gap);
+}
+.row > * {
+  min-width: 0;
+}
+.row select {
+  flex: 2;
+}
+.row input {
+  flex: 1;
+}
+.sn {
+  color: var(--muted-color);
+  font-size: 12px;
+}
+small {
+  display: block;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  margin: 10px 0;
+}
+#dErr,
+#ovErr,
+#pfErr {
+  color: var(--error-color);
+}
+
+/* ---- date field (unknown / exact / approximate / range, in a chosen format) ---- */
+.df {
+  margin: 2px 0 6px;
+}
+.df-g {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap);
+}
+.df-g input {
+  flex: 1 1 52px;
+  min-width: 48px;
+}
+.df-g select {
+  flex: 1 1 70px;
+  min-width: 0;
+}
+.df.bad input,
+.df.bad select {
+  border-color: var(--error-color);
+}
+.pf-sub {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--muted-color);
+}
+.pf-name select {
+  flex: 0 0 120px;
+}
+.pf-name .nn {
+  flex: 1;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* ---- languages tab ---- */
+.langs {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.langs li.tr {
+  padding: 2px 0;
+  border: 0;
+  cursor: default;
+}
+.langs li.tr:hover {
+  background: none;
+}
+/* table-like rows without lines: [button] [code] [English name] [native name] */
+.tr {
+  display: grid;
+  grid-template-columns: 32px 4.5em 1fr 1fr;
+  gap: 0 8px;
+  align-items: center;
+}
+.tr > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tr-cat {
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1.4fr);
+}
+.langs li.cat-edit {
+  padding: 4px 0 8px;
+  border: 0;
+  cursor: default;
+}
+.langs li.cat-edit:hover {
+  background: none;
+}
+button.wide {
+  width: 100%;
+}
+.tr .tc-code {
+  color: var(--muted-color);
+}
+.tc-btn {
+  display: flex;
+  justify-content: center;
+}
+.tc-mode {
+  display: inline-flex;
+  color: var(--muted-color);
+}
+.tr-edit input {
+  margin: 0;
+}
+.btn-pair {
+  display: flex;
+  gap: var(--gap);
+  margin: 8px 0 4px;
+}
+.btn-pair button {
+  flex: 1 1 0;
+}
+
+/* ---- tabs (cp.css tabs: rounded top, active uses the panel colour) ---- */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--li-row-border-bottom-color);
+  margin: 4px 14px 6px;
+}
+.tabs button {
+  flex: 1;
+  padding: 8px 8px;
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--content-color);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 5px 5px 0 0;
+}
+.tabs button:hover {
+  background: var(--tab-bg-hover);
+  color: var(--tab-color-hover);
+}
+.tabs .on,
+.tabs .on:hover {
+  background: var(--panel-container-panel-bg-color);
+  color: var(--header);
+  border-bottom-color: var(--a);
+}
+.tabs .on:hover {
+  color: var(--a-hover);
+}
+
+/* ---- labels = small h3 (uppercase, bottom rule) ---- */
+.label {
+  font: bold 10px var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--header);
+  border-bottom: 1px solid var(--li-row-border-bottom-color);
+  padding-bottom: 2px;
+  margin: 16px 0 6px;
+}
+.rp .label {
+  border: 0;
+  margin: 0;
+}
+
+/* ---- cards: one rule for every boxed block (panel bg2, 7px radius like .panel / .forabg) ---- */
+.filters,
+#pick,
+#detail .note,
+.ovpanel {
+  background: var(--bg2-bg-color);
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: var(--radius-m);
+}
+.filters {
+  padding: 6px 10px 8px;
+  margin-bottom: 8px;
+}
+summary {
+  cursor: pointer;
+  font: bold 13px var(--font-head);
+  color: var(--header);
+}
+summary:hover {
+  color: var(--a-hover);
+}
+#pick {
+  position: relative;
+  margin: 0 12px 6px;
+  padding: 8px 10px;
+}
+#pick:empty {
+  display: none;
+}
+.x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: none;
+  padding: 0 6px;
+}
+
+/* ---- chips (like .pagination links; active = link colour) ---- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+.chip {
+  font: 600 12px var(--font-btn);
+  border-radius: var(--radius-pill);
+  padding: 3px 11px;
+  min-height: 0;
+}
+.chip span {
+  color: var(--muted-color);
+  margin-left: 2px;
+  font-weight: normal;
+}
+.chip.on {
+  background: var(--a);
+  color: #fff;
+}
+.chip.on:hover {
+  background: var(--a-hover);
+}
+.chip.on span {
+  color: #fff;
+}
+
+/* ---- results list (li.row: separators + hover colour) ---- */
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0;
+  color: var(--content-color);
+}
+.bar select {
+  width: auto;
+}
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+li {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--li-row-border-bottom-color);
+  cursor: pointer;
+  color: var(--html-body-color);
+}
+li:first-child {
+  border-top: 1px solid var(--li-row-border-bottom-color);
+}
+li:hover {
+  background: var(--li-row-hover);
+}
+li b {
+  color: var(--a);
+}
+li:hover b {
+  color: var(--a-hover);
+}
+li .t {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.badge {
+  font-size: 10px;
+  background: var(--bg1-bg-color);
+  color: var(--muted-color);
+  border-radius: 10px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+mark {
+  background: var(--posthilit-bg);
+  color: var(--posthilit-color);
+  border-radius: 2px;
+}
+li.empty {
+  cursor: default;
+  color: var(--muted-color);
+}
+li.empty:hover {
+  background: none;
+}
+
+/* ---- place details ---- */
+#detail .note {
+  margin: 10px 0;
+  padding: 8px 10px;
+  background: var(--bg1-bg-color);
+  border-color: var(--select-border-color);
+}
+#detail .note p {
+  margin: 4px 0;
+}
+.note .mini {
+  float: right;
+  padding: 0 8px;
+  font-size: 12px;
+  margin: 0 0 4px 6px;
+}
+#detail p {
+  line-height: 1.3em;
+}
+
+/* ---- directions / layers ---- */
+.rp {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.dot.a {
+  background: var(--route-a);
+}
+.dot.b {
+  background: var(--route-b);
+}
+#rSwap {
+  margin-right: var(--gap);
+}
+#rInfo {
+  margin: 8px 0;
+  font-weight: bold;
+  color: var(--content-color);
+}
+#groups label {
+  display: block;
+  padding: 3px 0;
+  color: var(--label-color);
+}
+
+/* ---- show/hide handle + resizer ---- */
+/* an icon-only button: a panel with a chevron (points left to hide, right to show; turned for the bottom sheet on phones) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted-color);
+}
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  color: var(--a);
+}
+#expand {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  box-shadow: var(--dropdown-shadow);
+}
+body.collapsed #expand {
+  display: block;
+}
+#resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+#resizer:hover,
+#resizer:focus,
+body.resizing #resizer {
+  /* a neutral grey edge, not the link blue */
+  background: var(--muted-color);
+  opacity: 0.25;
+  outline: 0;
+}
+body.resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+body.resizing aside {
+  transition: none;
+}
+
+/* ---- dialog (add place / note) ---- */
+dialog {
+  width: min(420px, 92vw);
+  padding: 14px;
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: var(--radius-m);
+  background: var(--base-bg);
+  color: var(--html-body-color);
+  box-shadow: var(--dropdown-shadow);
+}
+dialog::backdrop {
+  background: rgba(51, 60, 67, 0.45);
+}
+dialog > b {
+  font: bold 15px var(--font-head);
+  color: var(--header);
+}
+
+/* ---- search box with a clear (✕) button inside; invalid date filter ---- */
+.field {
+  position: relative;
+  flex: 1;
+}
+.field input {
+  padding-right: 24px;
+}
+input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}
+.clear {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0 5px;
+  background: none;
+  color: var(--muted-color);
+}
+.clear:hover,
+.clear:focus {
+  background: none;
+  color: var(--a-hover);
+}
+.bad {
+  border-color: var(--error-color);
+}
+
+/* ---- place form (new-place dialog and the sidebar editor): several names, type, dates, position ---- */
+.pf .row {
+  margin: 2px 0;
+  align-items: center;
+}
+.pf .nl {
+  flex: 0 0 130px;
+  width: 130px;
+}
+.pf-add {
+  margin: 3px 0;
+}
+.pf-up,
+.pf-del {
+  flex: none;
+  padding: 0 6px;
+}
+.pf select {
+  width: 100%;
+}
+
+@media (max-width: 700px) {
+  body {
+    flex-direction: column-reverse;
+  }
+  aside {
+    width: 100%;
+    height: var(--side-h, 52vh);
+    border-right: 0;
+    border-top: 1px solid var(--li-row-border-bottom-color);
+  }
+  body.collapsed aside {
+    margin-left: 0;
+    margin-bottom: calc(-1 * var(--side-h, 52vh));
+  }
+  #expand {
+    top: auto;
+    bottom: 10px;
+  }
+  #collapse svg,
+  #expand svg {
+    transform: rotate(-90deg);
+  }
+  #resizer {
+    top: -4px;
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: row-resize;
+  }
+  body.resizing {
+    cursor: row-resize;
+  }
+}
+
+/* ---- layers tab (layers.js) ---- */
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--li-row-border-bottom-color);
+}
+.swatch[data-none] {
+  background: transparent;
+}
+.ly-btns {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+.ly-btns button,
+#lyDetail .row button.on,
+.chip.on[data-lyact] {
+  font-size: 12px;
+}
+.ly-btns button.on,
+#lyDetail .row button.on {
+  background: var(--a);
+  color: #fff;
+}
+#lyActive .sn {
+  margin: 2px 0;
+}
+.ly-members {
+  margin-bottom: 6px;
+}
+.ly-note {
+  background: var(--bg2-bg-color);
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: var(--radius-m);
+  padding: 6px 10px;
+  margin: 6px 0;
+}
+.ly-note .mini {
+  float: right;
+}
+.ly-edit {
+  background: var(--bg2-bg-color);
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: var(--radius-m);
+  padding: 6px 10px 8px;
+  margin: 8px 0;
+}
+#lyPick {
+  max-height: 220px;
+  overflow: auto;
+  margin: 6px 0;
+}
+#lyPick li {
+  cursor: default;
+  padding: 3px 6px;
+}
+.ly-check {
+  display: block;
+  margin: 2px 0;
+}
+.ly-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ly-chip button {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.ly-desc textarea {
+  flex: 1 1 100%;
+}
+#lyDlg {
+  max-width: min(560px, 94vw);
+}
+#catList li {
+  cursor: default;
+}
+#catList li.tr {
+  border: 0;
+}
+
+/* ---- sidebar v2: three tabs, sheets over the list, folds, one button language ---- */
+/* Buttons: default = secondary; .primary = the one main action of a view; .danger = destructive; .back = navigation. */
+button.primary {
+  background: var(--a);
+  color: #fff;
+}
+button.primary:hover,
+button.primary:focus {
+  background: var(--a-hover);
+  color: #fff;
+}
+button.danger {
+  color: var(--error-color);
+}
+button.back {
+  background: none;
+  padding-left: 0;
+}
+button.back:hover {
+  background: none;
+  text-decoration: underline;
+}
+/* A sheet (place or layer details) covers the list; the list underneath keeps its scroll position. */
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--base-bg);
+}
+.sheet[hidden] {
+  display: none;
+}
+.sheet-head {
+  flex: none;
+  padding: 2px 14px 0;
+  border-bottom: 1px solid var(--li-row-border-bottom-color);
+}
+.sheet-body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 14px 16px;
+  line-height: 1.45;
+}
+.sheet-actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg2-bg-color);
+  border-top: 1px solid var(--li-row-border-bottom-color);
+}
+.err-line {
+  flex: 1 1 100%;
+  min-height: 0;
+  color: var(--error-color);
+}
+.err-line:empty {
+  display: none;
+}
+.sheet-err {
+  padding: 0 14px 8px;
+}
+/* Folds in the More tab */
+.fold {
+  background: var(--bg2-bg-color);
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: var(--radius-m);
+  margin: 8px 0;
+}
+.fold > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font: bold 14px var(--font-head);
+  color: var(--header);
+}
+.fold-body {
+  padding: 0 12px 12px;
+}
+.fold-body > .sn:first-child {
+  margin-top: 0;
+}
+/* Active filters: always visible under the filters line */
+#activeBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+#activeBar:empty,
+#activeBar:not(:has(.chip)) {
+  display: none;
+}
+#fActive,
+#lyActive {
+  display: contents;
+}
+.filters > summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 600;
+}
+.filters {
+  padding: 4px 12px 8px;
+  margin-bottom: 8px;
+}
+.bar {
+  margin: 8px 0;
+}
+.ly-quick {
+  margin: 10px 0 0;
+}
+dialog {
+  padding: 16px;
+}
+
+/* ---- place details open inside the list, under the place ---- */
+li.place-open,
+li.place-open:hover {
+  padding: 0 8px 10px;
+  cursor: default;
+  background: none;
+  border-top: 0;
+}
+li.on {
+  background: var(--li-row-hover);
+  border-bottom-color: transparent;
+}
+.inline-body {
+  line-height: 1.45;
+}
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+

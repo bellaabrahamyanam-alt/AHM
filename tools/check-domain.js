@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+// Domain checks (DOMAINS.md). Usage:
+//   node tools/check-domain.js <domain>[,<domain>…] <diff-file>   reject a diff that touches files outside the declared domain(s)
+//   node tools/check-domain.js --owner <path>                     print the domain that owns a path (path from the repository root)
+//   node tools/check-domain.js --codeowners                       print the CODEOWNERS text made from tools/domains.json
+// A diff may also (a) add records of its own domain (changes/<domain>.md, todo/<domain>.md, diffs/<domain>/…),
+// (b) add a NEW file requests/<domain>-to-<other>-….md, (c) add a NEW file proposals/….md. Nothing else outside the domain.
+const fs = require('fs');
+const path = require('path');
+const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'domains.json'), 'utf8'));
+const DOMAINS = Object.keys(cfg.domains);
+const under = (p, entry) => (entry.endsWith('/') ? p.startsWith(entry) : p === entry);
+
+/** The domain that owns a repository-relative path, or null when nobody does, or 'ignored'. */
+function ownerOf(p) {
+  p = p.replace(/^\.\//, '');
+  for (const [d, list] of Object.entries(cfg.outside)) if (d !== '_comment' && list.some((e) => under(p, e))) return d;
+  if (!p.startsWith(cfg.root)) return null;
+  const r = p.slice(cfg.root.length);
+  if (cfg.ignored.some((e) => under(r, e))) return 'ignored';
+  for (const d of DOMAINS) {
+    if (cfg.domains[d].some((e) => under(r, e))) return d;
+    if (r === `changes/${d}.md` || r === `todo/${d}.md`) return d;
+  }
+  return null;
+}
+/** diffs/<domain>/… belongs to that domain (the repository-root diffs folder is otherwise shared). */
+function ownerOfPath(p) {
+  const m = p.replace(/^\.\//, '').match(/^diffs\/([a-z]+)\//);
+  return m && DOMAINS.includes(m[1]) ? m[1] : ownerOf(p);
+}
+/** Files named by a unified diff: [{ path, isNew, isGone }] (new = the old side is /dev/null; gone = the new side is /dev/null). */
+function diffFiles(text) {
+  const out = [];
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith('--- ')) continue;
+    const a = lines[i].slice(4).split('\t')[0],
+      b = (lines[i + 1] || '').startsWith('+++ ') ? lines[i + 1].slice(4).split('\t')[0] : null;
+    if (b === null) continue;
+    const strip = (x) => x.replace(/^[ab]\//, '');
+    const p = b === '/dev/null' ? strip(a) : strip(b);
+    out.push({ path: p, isNew: a === '/dev/null', isGone: b === '/dev/null' });
+  }
+  return out;
+}
+/** Problems of a diff for the declared domains (empty = fine). */
+function check(domains, text) {
+  const bad = [];
+  for (const f of diffFiles(text)) {
+    const owner = ownerOfPath(f.path);
+    const rel = f.path.startsWith(cfg.root) ? f.path.slice(cfg.root.length) : f.path;
+    if (owner === 'ignored') continue;
+    if (f.isGone && !owner) continue; // deleting a path that no domain owns (any more) is clean-up, not a cross-domain change
+    if (owner && domains.includes(owner)) continue;
+    if (f.isNew && domains.some((d) => new RegExp(`^requests/${d}-to-[a-z]+-[^/]+\\.md$`).test(rel))) continue;
+    if (f.isNew && /^proposals\/[^/]+\.md$/.test(rel)) continue;
+    bad.push(`${f.path}: owned by ${owner || 'nobody (not in tools/domains.json)'}, not by ${domains.join(' or ')}`);
+  }
+  return bad;
+}
+/** CODEOWNERS text from domains.json (handles: "owners" there). */
+function codeowners() {
+  const own = cfg.owners || {};
+  const h = (d) => own[d] || own.default || '@ahm-' + (d === 'shared' ? 'owner' : d);
+  const out = [
+    '# Made by `node tools/check-domain.js --codeowners` from tools/domains.json. Do not edit by hand; change domains.json (shared domain).',
+    '# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .github/CODEOWNERS at the repository root.',
+    '',
+  ];
+  for (const d of DOMAINS) {
+    out.push(`# ${d}`);
+    for (const e of cfg.domains[d]) out.push(`/${cfg.root}${e} ${h(d)}`);
+    out.push(`/${cfg.root}changes/${d}.md ${h(d)}`, `/${cfg.root}todo/${d}.md ${h(d)}`, `/diffs/${d}/ ${h(d)}`, '');
+  }
+  out.push('# repository root', ...cfg.outside.shared.map((e) => `/${e} ${h('shared')}`), '');
+  return out.join('\n');
+}
+module.exports = { ownerOf: ownerOfPath, diffFiles, check, codeowners, DOMAINS, cfg };
+
+if (require.main === module) {
+  const [a, b] = process.argv.slice(2);
+  if (a === '--owner') console.log(ownerOfPath(b) || 'nobody');
+  else if (a === '--codeowners') process.stdout.write(codeowners());
+  else if (a && b) {
+    const domains = a.split(',');
+    const unknown = domains.filter((d) => !DOMAINS.includes(d));
+    if (unknown.length) (console.error('unknown domain: ' + unknown.join(',') + ' (known: ' + DOMAINS.join(', ') + ')'), process.exit(2));
+    const bad = check(domains, fs.readFileSync(b, 'utf8'));
+    if (bad.length) (console.error('REJECTED: the diff touches files outside the declared domain:\n  ' + bad.join('\n  ')), process.exit(1));
+    console.log('ok: every file of the diff is in the domain ' + domains.join(' + '));
+  } else (console.error('usage: see the top of this file'), process.exit(2));
+}

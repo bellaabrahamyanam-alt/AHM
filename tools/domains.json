@@ -1,0 +1,99 @@
+{
+  "_comment": "Who owns which path (DOMAINS.md). Paths are relative to the repository root. An entry ending in / is a folder (everything below it); any other entry is one file. A path matches the FIRST domain whose list contains it. Every file must have an owner (tests/js/domains.test.js). Each domain also owns changes/<domain>.md, todo/<domain>.md and diffs/<domain>/ (added by tools/check-domain.js, not listed here).",
+  "owners": {
+    "_comment": "GitHub handles for .github/CODEOWNERS. default = the human owner; add a domain name as key to give that domain its own person or team.",
+    "default": "@bellaabrahamyanam-alt"
+  },
+  "root": "",
+  "domains": {
+    "sidebar": [
+      "app/js/sidebar/",
+      "app/css/sidebar.css",
+      "tests/js/layers.test.js"
+    ],
+    "map": [
+      "app/js/map/",
+      "app/css/map.css"
+    ],
+    "core": [
+      "app/js/core/",
+      "tests/js/dates.test.js",
+      "tests/js/data.test.js",
+      "tests/js/search.test.js",
+      "tests/fixtures/dates-vectors.json"
+    ],
+    "state": [
+      "app/js/state/",
+      "tests/js/state.test.js"
+    ],
+    "campaigns": [
+      "app/features/campaigns/",
+      "tests/js/campaigns.test.js"
+    ],
+    "data": [
+      "data/",
+      "service/",
+      "controller/",
+      "config/",
+      "event/",
+      "language/",
+      "styles/",
+      "dev/",
+      "ext.php",
+      "composer.json",
+      "tests/php/",
+      "tests/data/",
+      "tests/js/parity.test.js",
+      "tests/fixtures/rules.json"
+    ],
+    "shared": [
+      "README.md",
+      "AGENTS.md",
+      "DOMAINS.md",
+      "INTERFACES.md",
+      "AGENT_CHANGES.md",
+      "TODO.md",
+      "tools/",
+      "requests/",
+      "proposals/",
+      "tasks/",
+      "app/index.html",
+      "app/js/config.js",
+      "app/js/ahm.js",
+      "app/js/features.js",
+      "app/css/base.css",
+      "app/package.json",
+      "app/bun.lock",
+      "app/editorconfig",
+      "app/prettierignore",
+      "app/prettierrc.json",
+      "app/tsconfig.json",
+      "app/tsserver.js",
+      "tests/README.md",
+      "tests/js/lib/",
+      "tests/js/run.js",
+      "tests/js/lint.test.js",
+      "tests/js/browser.test.js",
+      "tests/js/contract.test.js",
+      "tests/js/domains.test.js",
+      "tests/js/boundaries.test.js",
+      "tests/js/features.test.js",
+      "context/",
+      "tests/js/context.test.js",
+      "tests/js/ci.test.js"
+    ]
+  },
+  "outside": {
+    "_comment": "Paths that are not part of the extension code but are owned by shared.",
+    "shared": [
+      ".github/",
+      ".claude/",
+      ".gitignore"
+    ]
+  },
+  "ignored": [
+    ".git/",
+    "app/node_modules/",
+    "dev/archive/"
+  ]
+}

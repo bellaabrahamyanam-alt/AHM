@@ -1,0 +1,165 @@
+{
+ "version": 1,
+ "notes": [
+  {
+   "id": "f91dd615-1cf0-5386-bfff-fcbe612c8688",
+   "place": "3d33ec36-e8bb-55e3-9533-6e1a38e839d6",
+   "lang": "en",
+   "title": "Fortress-city",
+   "year": -660,
+   "text": "Urartian fortress-city of the 7th century BCE, built under Rusa II and excavated at the Karmir Blur hill."
+  },
+  {
+   "id": "76c418bc-e40a-5489-9457-ab0754a33b68",
+   "place": "3d33ec36-e8bb-55e3-9533-6e1a38e839d6",
+   "lang": "ru",
+   "title": "Разрушение",
+   "year": -600,
+   "text": "Крепость-город на холме Кармир-блур была разрушена в конце VII — начале VI в. до н. э."
+  },
+  {
+   "id": "415a35aa-818a-5ebe-8c10-5e7501d72ec7",
+   "place": "5ee8887b-9bb4-5f25-b884-99dd058908e9",
+   "lang": "en",
+   "title": "Kingdom of Kars",
+   "year": 963,
+   "text": "Became the capital of the Bagratid Kingdom of Kars under Abas I in 963 CE."
+  },
+  {
+   "id": "09013da6-cad3-53a7-b1cc-501f47f43260",
+   "place": "5ee8887b-9bb4-5f25-b884-99dd058908e9",
+   "lang": "ru",
+   "title": "Переход к Византии",
+   "year": 1064,
+   "text": "В 1064 году Карс был передан Византии."
+  },
+  {
+   "id": "8c11792e-fe1f-588e-97af-d8ea7d90f297",
+   "place": "5fc6aeac-af61-5222-b88e-6e964b665068",
+   "lang": "en",
+   "title": "Foundation",
+   "year": -782,
+   "text": "Founded in 782 BCE by the Urartian king Argishti I, as recorded in a cuneiform inscription found on site."
+  },
+  {
+   "id": "5509ab93-fe18-5dfb-8b97-1f24fedfc220",
+   "place": "5fc6aeac-af61-5222-b88e-6e964b665068",
+   "lang": "ru",
+   "title": "Предшественник Еревана",
+   "year": -782,
+   "text": "Крепость Эребуни основана царём Аргишти I; её считают предшественницей Еревана."
+  },
+  {
+   "id": "024e521b-fa1e-5eb8-9525-087d7047c12a",
+   "place": "6c56e7aa-81b9-5043-846d-53b90e0cd1ca",
+   "lang": "en",
+   "title": "Cathedral",
+   "year": 301,
+   "text": "Tradition dates the founding of the cathedral of Etchmiadzin to 301 CE, after Armenia's conversion."
+  },
+  {
+   "id": "14209fb5-4550-5330-bfb7-2c4b7fc1ebb3",
+   "place": "6c56e7aa-81b9-5043-846d-53b90e0cd1ca",
+   "lang": "hy",
+   "title": "Հիմնադրում",
+   "year": 120,
+   "text": "Վաղարշապատը հիմնադրվել է մ.թ. II դարում։"
+  },
+  {
+   "id": "885c1158-0ca5-512e-ad95-2e9a4febd5d4",
+   "place": "8ae77c2d-6563-59e6-a340-b0c9dab9e3c0",
+   "lang": "en",
+   "title": "Capital of Urartu",
+   "year": -840,
+   "text": "Founded as the capital of the kingdom of Urartu in the mid-9th century BCE, on a limestone ridge beside Lake Van."
+  },
+  {
+   "id": "463a006f-cfda-5255-be77-7adbc9c9eb66",
+   "place": "8ae77c2d-6563-59e6-a340-b0c9dab9e3c0",
+   "lang": "hy",
+   "title": "Մայրաքաղաք",
+   "year": -840,
+   "text": "Ուրարտուի թագավորության մայրաքաղաքը Վանա լճի ափին։"
+  },
+  {
+   "id": "c1bfa6db-65a3-57b4-88fa-42cb8d4758dc",
+   "place": "8f159ae7-818c-543f-8829-13ef8f254f21",
+   "lang": "en",
+   "title": "Foundation",
+   "year": -176,
+   "text": "Founded around 176 BCE by King Artaxias I as a new capital of the Artaxiad kingdom."
+  },
+  {
+   "id": "603e3653-657d-58a5-85aa-124dd32480dd",
+   "place": "8f159ae7-818c-543f-8829-13ef8f254f21",
+   "lang": "ru",
+   "title": "Предание о Ганнибале",
+   "year": -176,
+   "text": "По преданию, план Арташата связывают с именем Ганнибала."
+  },
+  {
+   "id": "c2959b73-49ec-5972-8170-b16f5a31e8a9",
+   "place": "93942234-034a-534c-9aee-a50bf661136a",
+   "lang": "en",
+   "title": "Location",
+   "year": -840,
+   "text": "Van lies on the eastern shore of Lake Van, below the Urartian citadel of Tushpa."
+  },
+  {
+   "id": "00d517e7-c396-5fb2-a5d6-ce035b0bee3b",
+   "place": "93942234-034a-534c-9aee-a50bf661136a",
+   "lang": "tr",
+   "title": "Tarihî kent",
+   "year": -840,
+   "text": "Van, Van Gölü'nün doğu kıyısında yer alan tarihî bir kenttir."
+  },
+  {
+   "id": "c8ecb759-d511-5c70-a070-f3b24faa76d1",
+   "place": "e7d52492-2313-5972-a766-3f1ef6a47a5d",
+   "lang": "en",
+   "title": "The temple",
+   "year": 77,
+   "text": "The pagan temple of Garni is traditionally dated to the 1st century CE and attributed to King Tiridates I."
+  },
+  {
+   "id": "318cfc5e-db98-5140-8cda-55c187146c34",
+   "place": "e7d52492-2313-5972-a766-3f1ef6a47a5d",
+   "lang": "ru",
+   "title": "Землетрясение 1679 года",
+   "year": 1679,
+   "text": "Храм в Гарни был разрушен землетрясением 1679 года и восстановлен в XX веке."
+  },
+  {
+   "id": "b44290f5-58af-52e2-828c-041d12b4c0f9",
+   "place": "f1aec2d0-dde4-57b5-8138-af2bb2cee639",
+   "lang": "hy",
+   "title": "Մայրաքաղաք",
+   "year": 961,
+   "text": "Անին Բագրատունյաց Հայաստանի մայրաքաղաքն էր 961 թվականից։"
+  },
+  {
+   "id": "d4bb60e3-3b56-5f46-b134-747b2a6ee57f",
+   "place": "f1aec2d0-dde4-57b5-8138-af2bb2cee639",
+   "lang": "tr",
+   "title": "Selçuklu fethi",
+   "year": 1064,
+   "text": "Ani, 1064'te Selçuklu hükümdarı Alp Arslan tarafından ele geçirildi."
+  },
+  {
+   "id": "2915d1e3-ccea-554a-9bdb-448e114a9066",
+   "place": "fbd76ed4-dd83-51f2-8e70-182eec3d55d9",
+   "lang": "en",
+   "title": "Earthquake of 893",
+   "year": 893,
+   "text": "The city was heavily damaged by a major earthquake in 893 CE."
+  },
+  {
+   "id": "a3effbf8-44fb-559d-aaab-76ffef882dcd",
+   "place": "fbd76ed4-dd83-51f2-8e70-182eec3d55d9",
+   "lang": "hy",
+   "title": "Քաղաքական կենտրոն",
+   "year": 500,
+   "text": "Դվինը V–IX դարերում Հայաստանի քաղաքական և կրոնական կենտրոններից էր։"
+  }
+ ]
+}

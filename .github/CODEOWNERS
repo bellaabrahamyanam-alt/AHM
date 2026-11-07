@@ -1,0 +1,104 @@
+# Made by `node tools/check-domain.js --codeowners` from tools/domains.json. Do not edit by hand; change domains.json (shared domain).
+# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .github/CODEOWNERS at the repository root.
+
+# sidebar
+/app/js/sidebar/ @bellaabrahamyanam-alt
+/app/css/sidebar.css @bellaabrahamyanam-alt
+/tests/js/layers.test.js @bellaabrahamyanam-alt
+/changes/sidebar.md @bellaabrahamyanam-alt
+/todo/sidebar.md @bellaabrahamyanam-alt
+/diffs/sidebar/ @bellaabrahamyanam-alt
+
+# map
+/app/js/map/ @bellaabrahamyanam-alt
+/app/css/map.css @bellaabrahamyanam-alt
+/changes/map.md @bellaabrahamyanam-alt
+/todo/map.md @bellaabrahamyanam-alt
+/diffs/map/ @bellaabrahamyanam-alt
+
+# core
+/app/js/core/ @bellaabrahamyanam-alt
+/tests/js/dates.test.js @bellaabrahamyanam-alt
+/tests/js/data.test.js @bellaabrahamyanam-alt
+/tests/js/search.test.js @bellaabrahamyanam-alt
+/tests/fixtures/dates-vectors.json @bellaabrahamyanam-alt
+/changes/core.md @bellaabrahamyanam-alt
+/todo/core.md @bellaabrahamyanam-alt
+/diffs/core/ @bellaabrahamyanam-alt
+
+# state
+/app/js/state/ @bellaabrahamyanam-alt
+/tests/js/state.test.js @bellaabrahamyanam-alt
+/changes/state.md @bellaabrahamyanam-alt
+/todo/state.md @bellaabrahamyanam-alt
+/diffs/state/ @bellaabrahamyanam-alt
+
+# campaigns
+/app/features/campaigns/ @bellaabrahamyanam-alt
+/tests/js/campaigns.test.js @bellaabrahamyanam-alt
+/changes/campaigns.md @bellaabrahamyanam-alt
+/todo/campaigns.md @bellaabrahamyanam-alt
+/diffs/campaigns/ @bellaabrahamyanam-alt
+
+# data
+/data/ @bellaabrahamyanam-alt
+/service/ @bellaabrahamyanam-alt
+/controller/ @bellaabrahamyanam-alt
+/config/ @bellaabrahamyanam-alt
+/event/ @bellaabrahamyanam-alt
+/language/ @bellaabrahamyanam-alt
+/styles/ @bellaabrahamyanam-alt
+/dev/ @bellaabrahamyanam-alt
+/ext.php @bellaabrahamyanam-alt
+/composer.json @bellaabrahamyanam-alt
+/tests/php/ @bellaabrahamyanam-alt
+/tests/data/ @bellaabrahamyanam-alt
+/tests/js/parity.test.js @bellaabrahamyanam-alt
+/tests/fixtures/rules.json @bellaabrahamyanam-alt
+/changes/data.md @bellaabrahamyanam-alt
+/todo/data.md @bellaabrahamyanam-alt
+/diffs/data/ @bellaabrahamyanam-alt
+
+# shared
+/README.md @bellaabrahamyanam-alt
+/AGENTS.md @bellaabrahamyanam-alt
+/DOMAINS.md @bellaabrahamyanam-alt
+/INTERFACES.md @bellaabrahamyanam-alt
+/AGENT_CHANGES.md @bellaabrahamyanam-alt
+/TODO.md @bellaabrahamyanam-alt
+/tools/ @bellaabrahamyanam-alt
+/requests/ @bellaabrahamyanam-alt
+/proposals/ @bellaabrahamyanam-alt
+/tasks/ @bellaabrahamyanam-alt
+/app/index.html @bellaabrahamyanam-alt
+/app/js/config.js @bellaabrahamyanam-alt
+/app/js/ahm.js @bellaabrahamyanam-alt
+/app/js/features.js @bellaabrahamyanam-alt
+/app/css/base.css @bellaabrahamyanam-alt
+/app/package.json @bellaabrahamyanam-alt
+/app/bun.lock @bellaabrahamyanam-alt
+/app/editorconfig @bellaabrahamyanam-alt
+/app/prettierignore @bellaabrahamyanam-alt
+/app/prettierrc.json @bellaabrahamyanam-alt
+/app/tsconfig.json @bellaabrahamyanam-alt
+/app/tsserver.js @bellaabrahamyanam-alt
+/tests/README.md @bellaabrahamyanam-alt
+/tests/js/lib/ @bellaabrahamyanam-alt
+/tests/js/run.js @bellaabrahamyanam-alt
+/tests/js/lint.test.js @bellaabrahamyanam-alt
+/tests/js/browser.test.js @bellaabrahamyanam-alt
+/tests/js/contract.test.js @bellaabrahamyanam-alt
+/tests/js/domains.test.js @bellaabrahamyanam-alt
+/tests/js/boundaries.test.js @bellaabrahamyanam-alt
+/tests/js/features.test.js @bellaabrahamyanam-alt
+/context/ @bellaabrahamyanam-alt
+/tests/js/context.test.js @bellaabrahamyanam-alt
+/tests/js/ci.test.js @bellaabrahamyanam-alt
+/changes/shared.md @bellaabrahamyanam-alt
+/todo/shared.md @bellaabrahamyanam-alt
+/diffs/shared/ @bellaabrahamyanam-alt
+
+# repository root
+/.github/ @bellaabrahamyanam-alt
+/.claude/ @bellaabrahamyanam-alt
+/.gitignore @bellaabrahamyanam-alt

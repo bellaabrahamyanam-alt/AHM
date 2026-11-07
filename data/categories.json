@@ -1,0 +1,50 @@
+{
+ "version": 1,
+ "categories": [
+  {
+   "id": "bee2a289-d275-53ad-865f-49cca7944349",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Military campaign"
+    }
+   ]
+  },
+  {
+   "id": "bb406eeb-45e0-54e3-92c3-bd4107da2019",
+   "names": [
+    {
+     "lang": "en",
+     "name": "State or kingdom"
+    }
+   ]
+  },
+  {
+   "id": "c147e8e0-e93e-500c-8780-92d68cbd3d1f",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Trade route"
+    }
+   ]
+  },
+  {
+   "id": "3c0c4eda-4455-52e2-9228-9563b621ecad",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Migration"
+    }
+   ]
+  },
+  {
+   "id": "e9e73ac7-6b63-5928-be14-16757677d0ff",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Religion and cult"
+    }
+   ]
+  }
+ ]
+}

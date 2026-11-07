@@ -1,0 +1,59 @@
+ahm_map_page:
+  path: /map
+  defaults: { _controller: ahm.map.controller:page }
+
+ahm_map_data:
+  path: /map/data/{f}
+  defaults: { _controller: ahm.map.controller:data }
+  requirements: { f: 'places|notes-index|overlays|languages|layers|layer-notes-index|categories' }
+
+ahm_map_note:
+  path: /map/note/{place}/{id}
+  defaults: { _controller: ahm.map.controller:note }
+  requirements: { place: '[0-9a-f-]{36}', id: '[0-9a-f-]{36}' }
+
+ahm_map_save:
+  path: /map/save
+  defaults: { _controller: ahm.map.controller:save }
+  methods: [POST]
+
+ahm_map_language_save:
+  path: /map/language-save
+  defaults: { _controller: ahm.map.controller:language_save }
+  methods: [POST]
+
+ahm_map_layer_save:
+  path: /map/layer-save
+  defaults: { _controller: ahm.map.controller:layer_save }
+  methods: [POST]
+
+ahm_map_layer_delete:
+  path: /map/layer-delete
+  defaults: { _controller: ahm.map.controller:layer_delete }
+  methods: [POST]
+
+ahm_map_category_save:
+  path: /map/category-save
+  defaults: { _controller: ahm.map.controller:category_save }
+  methods: [POST]
+
+ahm_map_overlay_image:
+  path: /map/overlay/{id}
+  defaults: { _controller: ahm.map.controller:overlay_image }
+  requirements: { id: '[0-9a-f-]{36}' }
+
+ahm_map_overlay_save:
+  path: /map/overlay-save
+  defaults: { _controller: ahm.map.controller:overlay_save }
+  methods: [POST]
+
+ahm_map_overlay_upload:
+  path: /map/overlay-upload/{id}
+  defaults: { _controller: ahm.map.controller:overlay_upload }
+  requirements: { id: '[0-9a-f-]{36}' }
+  methods: [POST]
+
+ahm_map_overlay_delete:
+  path: /map/overlay-delete
+  defaults: { _controller: ahm.map.controller:overlay_delete }
+  methods: [POST]

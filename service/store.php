@@ -1,0 +1,1254 @@
+<?php
+namespace ahm\map\service;
+
+/** All reading and writing of the map data (places.geojson + notes/<place>/<note-id>.md). Knows nothing about phpBB. */
+class store
+{
+    const TYPES = [
+        'settlement',
+        'city',
+        'town',
+        'village',
+        'fortress',
+        'temple',
+        'tomb',
+        'inscription_site',
+        'monument',
+        'mountain',
+        'lake',
+        'river',
+        'region'
+    ];
+    const UUID = '/^[0-9a-f-]{36}$/';
+    const LANG = '/^[A-Za-z-]{2,8}$/';
+    const MAX_HEIGHT_M = 9000;
+    /** Names for language codes found in older data when the dictionary (languages.json) is first created. */
+    const KNOWN_LANGS = [
+        'en' => ['English', 'English'],
+        'hy' => ['Armenian', 'Հայերեն'],
+        'ru' => ['Russian', 'Русский'],
+        'tr' => ['Turkish', 'Türkçe'],
+        'la' => ['Latin', 'Latina'],
+        'xur' => ['Urartian', '']
+    ];
+    private $base;
+
+    public function __construct($dir)
+    {
+        $this->base = rtrim($dir, '/') . '/';
+    }
+
+    public static function uuid4()
+    {
+        $d = random_bytes(16);
+        $d[6] = chr((ord($d[6]) & 0x0f) | 0x40);
+        $d[8] = chr((ord($d[8]) & 0x3f) | 0x80);
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($d), 4));
+    }
+
+    private static function write_atomic($path, $s)
+    {
+        $t = $path . '.tmp';
+        file_put_contents($t, $s);
+        rename($t, $path);
+    }
+
+    private static function bad($m)
+    {
+        return new \InvalidArgumentException($m);
+    }
+
+    private static function meta($head)
+    {
+        $meta = [];
+        foreach (explode("\n", trim($head)) as $ln) {
+            $kv = explode(': ', $ln, 2);
+            if (count($kv) == 2) {
+                $meta[$kv[0]] = $kv[1];
+            }
+        }
+        return $meta;
+    }
+
+    /** Add a place and/or add or edit a note. Returns the place id. */
+    public function save(array $in)
+    {
+        $arch = $this->base . 'archive/';
+        @mkdir($arch, 0775, true);
+        $lock = fopen($this->base . '.lock', 'c');
+        flock($lock, LOCK_EX);
+        try {
+            $this->migrate();
+            $codes = array_column($this->lang_load(), 'code'); // the only languages a name or note may use
+            // a new place may join layers at once: "layer_ids" (a list) and/or "layer_id" (one); checked before anything is written
+            $joins = [];
+            if (isset($in['place'])) {
+                $want = $in['layer_ids'] ?? [];
+                if (!is_array($want)) {
+                    throw self::bad('layer_ids must be a list');
+                }
+                if (($in['layer_id'] ?? '') !== '') {
+                    $want[] = (string) $in['layer_id'];
+                }
+                $ld = $this->layers_data();
+                foreach ($want as $x) {
+                    if (!is_string($x) || !preg_match(self::UUID, $x) || $this->layer_index($ld, $x) === null) {
+                        throw self::bad('unknown layer');
+                    }
+                    if (!in_array($x, $joins, true)) {
+                        $joins[] = $x;
+                    }
+                }
+            }
+            // the layers a note is tied to (when the request says so): the place must be a member, or join in this request
+            $tags = null;
+            if (isset($in['note']) && is_array($in['note']) && array_key_exists('layers', $in['note'])) {
+                $tags = $this->clean_note_layers($in['note']['layers'], $in['place_id'] ?? ($in['place_update']['id'] ?? null), $joins);
+            }
+            $geo = $this->base . 'places.geojson';
+            $fc = json_decode(file_get_contents($geo), true);
+            $pid = $in['place_id'] ?? null;
+            $stamp = date('Ymd-His');
+            if (isset($in['place'])) {
+                $c = self::clean_place($in['place'], $codes);
+                $pid = self::uuid4();
+                copy($geo, $this->archive_path('places', 'geojson'));
+                $fc['features'][] = [
+                    'type' => 'Feature',
+                    'geometry' => ['type' => 'Point', 'coordinates' => [$c['lon'], $c['lat']]],
+                    'properties' => ['id' => $pid] + $c['props']
+                ];
+                self::write_atomic($geo, json_encode($fc, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+                foreach ($joins as $lid) {
+                    $this->change_members($lid, [$pid], []); // the place stays in the general layer as well
+                }
+            } elseif (isset($in['place_update'])) {
+                // change an existing place: position, names, type, dates (its id never changes)
+                $u = $in['place_update'];
+                $pid = (string) ($u['id'] ?? '');
+                $c = self::clean_place($u, $codes);
+                $found = false;
+                foreach ($fc['features'] as $k => $f) {
+                    if (($f['properties']['id'] ?? '') === $pid) {
+                        $fc['features'][$k]['geometry'] = ['type' => 'Point', 'coordinates' => [$c['lon'], $c['lat']]];
+                        $fc['features'][$k]['properties'] = array_merge($f['properties'], $c['props']);
+                        $found = true;
+                    }
+                }
+                if (!$found) {
+                    throw self::bad('unknown place');
+                }
+                copy($geo, $this->archive_path('places', 'geojson'));
+                self::write_atomic($geo, json_encode($fc, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            } else {
+                $ok = false;
+                foreach ($fc['features'] as $f) {
+                    if (($f['properties']['id'] ?? '') === $pid) {
+                        $ok = true;
+                    }
+                }
+                if (!$ok) {
+                    throw self::bad('unknown place');
+                }
+            }
+            if (isset($in['note'])) {
+                $n = $in['note'];
+                list($lang, $title, $text, $date) = self::clean_note($n, $codes);
+                $dir = $this->base . 'notes/' . $pid;
+                @mkdir($dir, 0775, true);
+                $nid = (string) ($n['id'] ?? '');
+                $kept = [];
+                if ($nid !== '') {
+                    // edit an existing note
+                    if (!preg_match(self::UUID, $nid) || !is_file("$dir/$nid.md")) {
+                        throw self::bad('unknown note');
+                    }
+                    $kept = self::layer_ids(self::note_meta("$dir/$nid.md")['layers'] ?? '');
+                    copy("$dir/$nid.md", $this->archive_path("note-$pid-$nid", 'md'));
+                } else {
+                    $nid = self::uuid4();
+                } // new note: any number per place and language
+                // layers: a note may be tied to the layers its place belongs to (it stays visible in the general layer)
+                self::write_atomic("$dir/$nid.md", self::note_file($nid, $lang, $title, $date, $text, $tags ?? $kept));
+            }
+            $this->rebuild_index();
+            return $pid;
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private static function one_line($v, $max)
+    {
+        $v = trim(preg_replace('/\s+/', ' ', (string) $v));
+        return function_exists('mb_substr') ? mb_substr($v, 0, $max) : substr($v, 0, $max);
+    }
+
+    /** Text of a note file: a small header, then the text. The date (if any) is one line of JSON. */
+    private static function note_file($id, $lang, $title, $date, $text, array $layers = [])
+    {
+        return "---\nid: $id\nlang: $lang\ntitle: $title\n" .
+            ($layers ? 'layers: ' . implode(',', $layers) . "\n" : '') .
+            ($date !== null ? 'date: ' . json_encode($date) . "\n" : '') .
+            "---\n$text\n";
+    }
+
+    /** Checks the language, title, text and date of a note (place note or layer note). Returns [lang, title, text, date]. */
+    private static function clean_note(array $n, array $codes)
+    {
+        $lang = (string) ($n['lang'] ?? '');
+        $text = trim((string) ($n['text'] ?? ''));
+        $title = trim(preg_replace('/\s+/', ' ', (string) ($n['title'] ?? '')));
+        if (!preg_match(self::LANG, $lang) || $title === '' || $text === '') {
+            throw self::bad('a note needs a language, a title and a text');
+        }
+        if (!in_array($lang, $codes, true)) {
+            throw self::bad("language \"$lang\" is not in the list; ask an administrator to add it");
+        }
+        return [$lang, $title, $text, dates::clean($n['date'] ?? null, 'note date')]; // the date is optional: null = unknown
+    }
+
+    /** The header lines of a note file as an array (empty when the file is not a note). */
+    private static function note_meta($file)
+    {
+        $parts = explode("---\n", (string) @file_get_contents($file), 3);
+        return count($parts) < 3 ? [] : self::meta($parts[1]);
+    }
+
+    /** "id1,id2" (a note's layers: header) -> the valid ids. */
+    private static function layer_ids($csv)
+    {
+        $out = [];
+        foreach (explode(',', (string) $csv) as $x) {
+            $x = trim($x);
+            if (preg_match(self::UUID, $x) && !in_array($x, $out, true)) {
+                $out[] = $x;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Checks the fields of a place (new or edited) and returns [lat, lon, props]. Several names per language are
+     * allowed. $codes = the language dictionary. A mountain has a height (optional) and no dates; every other type has
+     * optional dates and no height.
+     */
+    private static function clean_place(array $p, array $codes)
+    {
+        $lat = (float) ($p['lat'] ?? 999);
+        $lon = (float) ($p['lon'] ?? 999);
+        if ($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
+            throw self::bad('bad coordinates');
+        }
+        if (!in_array($p['type'] ?? '', self::TYPES, true)) {
+            throw self::bad('bad type');
+        }
+        $names = [];
+        foreach ($p['names'] ?? [] as $n) {
+            $nm = self::one_line($n['name'] ?? '', 200);
+            $lg = (string) ($n['lang'] ?? '');
+            if ($nm === '') {
+                continue;
+            }
+            if (!in_array($lg, $codes, true)) {
+                throw self::bad("language \"$lg\" is not in the list; ask an administrator to add it");
+            }
+            $names[] = ['lang' => $lg, 'name' => $nm];
+        }
+        if (!$names) {
+            throw self::bad('at least one name is required');
+        }
+        $label = $names[0]['name'];
+        foreach ($names as $n) {
+            if ($n['lang'] === 'en') {
+                $label = $n['name'];
+                break;
+            }
+        }
+        $from = null;
+        $to = null;
+        $height = null;
+        if ($p['type'] === 'mountain') {
+            $h = $p['height_m'] ?? null;
+            if ($h !== null && $h !== '') {
+                if (is_bool($h) || !is_numeric($h) || (float) $h != floor((float) $h) || $h < 0 || $h > self::MAX_HEIGHT_M) {
+                    throw self::bad('height must be a whole number of metres from 0 to ' . self::MAX_HEIGHT_M);
+                }
+                $height = (int) $h;
+            }
+        } else {
+            $from = dates::clean($p['date_from'] ?? null, 'begin date');
+            $to = dates::clean($p['date_to'] ?? null, 'end date');
+            dates::order_check($from, $to);
+        }
+        return [
+            'lat' => $lat,
+            'lon' => $lon,
+            'props' => [
+                'label' => $label,
+                'type' => $p['type'],
+                'date_from' => $from,
+                'date_to' => $to,
+                'height_m' => $height,
+                'names' => $names
+            ]
+        ];
+    }
+
+    /** notes/index.json is generated from the note files and is only used for searching. */
+    public function rebuild_index()
+    {
+        $root = $this->base . 'notes/';
+        $out = [];
+        foreach (scandir($root) as $pl) {
+            if (!preg_match(self::UUID, $pl)) {
+                continue;
+            }
+            foreach (scandir($root . $pl) as $fn) {
+                if (substr($fn, -3) !== '.md') {
+                    continue;
+                }
+                $parts = explode("---\n", file_get_contents("$root$pl/$fn"), 3);
+                if (count($parts) < 3) {
+                    continue;
+                }
+                $meta = self::meta($parts[1]);
+                $stem = substr($fn, 0, -3);
+                $out[] = [
+                    'id' => $meta['id'] ?? $stem,
+                    'place' => $pl,
+                    'lang' => $meta['lang'] ?? $stem,
+                    'title' => $meta['title'] ?? '',
+                    'layers' => self::layer_ids($meta['layers'] ?? ''),
+                    'date' => self::note_date($meta),
+                    'text' => trim($parts[2])
+                ];
+            }
+        }
+        self::write_atomic(
+            $root . 'index.json',
+            json_encode(['version' => 1, 'notes' => $out], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+        );
+    }
+
+    /** The date of a note from its header: the "date:" JSON, or (older files) "year:" + "when:" converted. null = unknown. */
+    private static function note_date(array $meta)
+    {
+        if (isset($meta['date'])) {
+            $d = json_decode($meta['date'], true);
+            return is_array($d) ? dates::upgrade($d) : null;
+        }
+        return isset($meta['year']) ? dates::from_legacy($meta['year'], $meta['when'] ?? '', false) : null;
+    }
+
+    /**
+     * Brings the data up to date; safe to repeat. Returns how many things were converted.
+     *  1. old notes <place>/<lang>.md  ->  <place>/<note-id>.md
+     *  2. old dates (a year number + wording + "approximate" flag, or time stamps in seconds)  ->  the date model of service/dates.php
+     *  3. the language dictionary (languages.json) is created from the languages already in use
+     * Every file that is replaced is copied to archive/ first.
+     */
+    public function migrate()
+    {
+        $count = $this->migrate_note_files() + $this->migrate_place_dates() + $this->migrate_note_dates();
+        $this->lang_load();
+        if ($count) {
+            $this->rebuild_index();
+        }
+        return $count;
+    }
+
+    /** Places: date_from/date_to numbers + *_text + approx  ->  date objects (or null); a mountain gets a height, no dates. */
+    private function migrate_place_dates()
+    {
+        $geo = $this->base . 'places.geojson';
+        if (!is_file($geo)) {
+            return 0;
+        }
+        $fc = json_decode(file_get_contents($geo), true);
+        if (!is_array($fc) || !isset($fc['features'])) {
+            return 0;
+        }
+        $drop = ['id', 'label', 'type', 'date_from', 'date_to', 'height_m', 'names', 'approx', 'date_from_text', 'date_to_text'];
+        $n = 0;
+        foreach ($fc['features'] as $k => $f) {
+            $p = $f['properties'];
+            $legacy =
+                array_key_exists('approx', $p) ||
+                array_key_exists('date_from_text', $p) ||
+                array_key_exists('date_to_text', $p) ||
+                !array_key_exists('height_m', $p) ||
+                (isset($p['date_from']) && !is_array($p['date_from'])) ||
+                (isset($p['date_to']) && !is_array($p['date_to'])) ||
+                is_int($p['date_from']['ts'] ?? null) || // time stamps as seconds -> ISO 8601 text
+                is_int($p['date_to']['ts'] ?? null);
+            if (!$legacy) {
+                continue;
+            }
+            $mountain = ($p['type'] ?? '') === 'mountain';
+            $conv = function ($v, $text) use ($p) {
+                return is_array($v) ? dates::upgrade($v) : dates::from_legacy($v, $text, !empty($p['approx']));
+            };
+            $props = [
+                'id' => $p['id'],
+                'label' => $p['label'] ?? '',
+                'type' => $p['type'],
+                'date_from' => $mountain ? null : $conv($p['date_from'] ?? null, $p['date_from_text'] ?? ''),
+                'date_to' => $mountain ? null : $conv($p['date_to'] ?? null, $p['date_to_text'] ?? ''),
+                'height_m' => $mountain && isset($p['height_m']) ? $p['height_m'] : null,
+                'names' => $p['names'] ?? []
+            ];
+            $fc['features'][$k]['properties'] = $props + array_diff_key($p, array_flip($drop));
+            $n++;
+        }
+        if ($n) {
+            $fc['version'] = 3; // 3 = dates with ISO 8601 time stamps
+            @mkdir($this->base . 'archive/', 0775, true);
+            copy($geo, $this->base . 'archive/places-' . date('Ymd-His') . '-before-dates.geojson');
+            self::write_atomic($geo, json_encode($fc, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        }
+        return $n;
+    }
+
+    /** Notes: "year:" + "when:" header lines  ->  one "date:" line (or none when no date can be read). */
+    private function migrate_note_dates()
+    {
+        $root = $this->base . 'notes/';
+        if (!is_dir($root)) {
+            return 0;
+        }
+        $count = 0;
+        foreach (scandir($root) as $pl) {
+            if (!preg_match(self::UUID, $pl) || !is_dir($root . $pl)) {
+                continue;
+            }
+            foreach (scandir($root . $pl) as $fn) {
+                $stem = substr($fn, 0, -3);
+                if (substr($fn, -3) !== '.md' || !preg_match(self::UUID, $stem)) {
+                    continue;
+                }
+                $parts = explode("---\n", file_get_contents("$root$pl/$fn"), 3);
+                if (count($parts) < 3) {
+                    continue;
+                }
+                $meta = self::meta($parts[1]);
+                $dj = isset($meta['date']) ? json_decode($meta['date'], true) : null;
+                if (!(isset($meta['year']) && !isset($meta['date'])) && !(is_array($dj) && is_int($dj['ts'] ?? null))) {
+                    continue; // neither "year:" lines nor a date with a time stamp in seconds
+                }
+                @mkdir($this->base . 'archive/', 0775, true);
+                copy("$root$pl/$fn", $this->base . "archive/legacy-dates-$pl-$fn");
+                self::write_atomic(
+                    "$root$pl/$fn",
+                    "---\nid: " .
+                        ($meta['id'] ?? $stem) .
+                        "\nlang: " .
+                        ($meta['lang'] ?? '') .
+                        "\ntitle: " .
+                        ($meta['title'] ?? '') .
+                        "\n" .
+                        (isset($meta['layers']) ? 'layers: ' . $meta['layers'] . "\n" : '') .
+                        (($d = self::note_date($meta)) !== null ? 'date: ' . json_encode($d) . "\n" : '') .
+                        "---\n" .
+                        $parts[2]
+                );
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    // ------------------------------------------------------------------ languages (the dictionary)
+    /** The dictionary as the browser gets it. Only administrators add to it (see save_language). */
+    public function languages()
+    {
+        return $this->locked(function () {
+            return ['version' => 1, 'languages' => $this->lang_load()];
+        });
+    }
+
+    /** Reads languages.json; when it does not exist yet, creates it from the languages already used. Caller holds the lock. */
+    private function lang_load()
+    {
+        $f = $this->base . 'languages.json';
+        $d = is_file($f) ? json_decode(file_get_contents($f), true) : null;
+        if (is_array($d) && isset($d['languages']) && is_array($d['languages'])) {
+            return $d['languages'];
+        }
+        $codes = ['en', 'hy', 'ru', 'tr'];
+        $used = $this->used_lang_codes();
+        sort($used);
+        foreach ($used as $c) {
+            if (!in_array($c, $codes, true)) {
+                $codes[] = $c;
+            }
+        }
+        $list = [];
+        foreach ($codes as $c) {
+            $k = self::KNOWN_LANGS[$c] ?? [$c, ''];
+            $list[] = ['code' => $c, 'name' => $k[0], 'native' => $k[1]];
+        }
+        @mkdir($this->base, 0775, true);
+        self::write_atomic($f, json_encode(['version' => 1, 'languages' => $list], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        return $list;
+    }
+
+    /** Language codes found in places (names) and notes (header). */
+    private function used_lang_codes()
+    {
+        $used = [];
+        $geo = $this->base . 'places.geojson';
+        $fc = is_file($geo) ? json_decode(file_get_contents($geo), true) : null;
+        foreach ($fc['features'] ?? [] as $f) {
+            foreach ($f['properties']['names'] ?? [] as $n) {
+                if (!empty($n['lang'])) {
+                    $used[$n['lang']] = true;
+                }
+            }
+        }
+        $root = $this->base . 'notes/';
+        foreach (is_dir($root) ? scandir($root) : [] as $pl) {
+            if (!preg_match(self::UUID, $pl) || !is_dir($root . $pl)) {
+                continue;
+            }
+            foreach (scandir($root . $pl) as $fn) {
+                if (substr($fn, -3) === '.md' && preg_match('/^lang: *(.+)$/m', substr(file_get_contents("$root$pl/$fn"), 0, 600), $m)) {
+                    $used[trim($m[1])] = true;
+                }
+            }
+        }
+        return array_keys($used);
+    }
+
+    /** Administrators only (checked by the controller): adds one language to the dictionary. Returns its code. */
+    public function save_language(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            $code = strtolower(trim((string) ($in['code'] ?? '')));
+            $name = self::one_line($in['name'] ?? '', 80);
+            $native = self::one_line($in['native'] ?? '', 80);
+            if (!preg_match(self::LANG, $code)) {
+                throw self::bad('the language code must be 2-8 letters (for example en, hy, xur)');
+            }
+            if ($name === '') {
+                throw self::bad('the language needs a name');
+            }
+            $list = $this->lang_load();
+            $edit = !empty($in['edit']); // true = change the names of an existing language (the code never changes)
+            $at = null;
+            foreach ($list as $i => $l) {
+                if ($l['code'] === $code) {
+                    $at = $i;
+                }
+            }
+            if ($edit && $at === null) {
+                throw self::bad("language \"$code\" is not in the list");
+            }
+            if (!$edit && $at !== null) {
+                throw self::bad("language \"$code\" is already in the list");
+            }
+            $f = $this->base . 'languages.json';
+            @mkdir($this->base . 'archive/', 0775, true);
+            copy($f, $this->archive_path('languages', 'json'));
+            $entry = ['code' => $code, 'name' => $name, 'native' => $native];
+            if ($edit) {
+                $list[$at] = $entry;
+            } else {
+                $list[] = $entry;
+            }
+            self::write_atomic($f, json_encode(['version' => 1, 'languages' => $list], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            return $code;
+        });
+    }
+
+    /** Old notes were stored as <place>/<lang>.md. They become <place>/<note-id>.md with a "lang:" header. */
+    private function migrate_note_files()
+    {
+        $root = $this->base . 'notes/';
+        if (!is_dir($root)) {
+            return 0;
+        }
+        $arch = $this->base . 'archive/';
+        $count = 0;
+        foreach (scandir($root) as $pl) {
+            if (!preg_match(self::UUID, $pl) || !is_dir($root . $pl)) {
+                continue;
+            }
+            foreach (scandir($root . $pl) as $fn) {
+                $stem = substr($fn, 0, -3);
+                if (substr($fn, -3) !== '.md' || preg_match(self::UUID, $stem) || !preg_match(self::LANG, $stem)) {
+                    continue;
+                }
+                $parts = explode("---\n", file_get_contents("$root$pl/$fn"), 3);
+                if (count($parts) < 3) {
+                    continue;
+                }
+                $meta = self::meta($parts[1]);
+                $id = isset($meta['id']) && preg_match(self::UUID, $meta['id']) ? $meta['id'] : self::uuid4();
+                self::write_atomic(
+                    "$root$pl/$id.md",
+                    "---\nid: $id\nlang: $stem\ntitle: " .
+                        ($meta['title'] ?? '') .
+                        "\nyear: " .
+                        (int) ($meta['year'] ?? 0) .
+                        "\n---\n" .
+                        $parts[2]
+                );
+                @mkdir($arch, 0775, true);
+                rename("$root$pl/$fn", $arch . "legacy-$pl-$fn");
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    // ------------------------------------------------------------------ categories and layers
+    // A layer is a named SUBSET of the general layer (= all places and all notes, which is not stored). It has names and
+    // descriptions in dictionary languages, one optional category, an optional colour, optional dates, its own notes
+    // and an ORDERED list of member places (the order is kept for later: routes of a campaign). Adding a place to a
+    // layer never removes it from anything else. A place note can be tied to layers (header "layers:") when its place
+    // is a member; such a note is shown in the general layer and in those layers only.
+    const COLOR = '/^#[0-9a-fA-F]{6}$/';
+    const MAX_DESC = 5000;
+
+    /** Unique file name in archive/ (a second change in the same second must not overwrite the first copy). */
+    private function archive_path($stem, $ext)
+    {
+        @mkdir($this->base . 'archive/', 0775, true);
+        $p = $this->base . 'archive/' . $stem . '-' . date('Ymd-His');
+        $c = $p . '.' . $ext;
+        for ($i = 1; file_exists($c); $i++) {
+            $c = $p . '-' . $i . '.' . $ext;
+        }
+        return $c;
+    }
+
+    private function list_data($file, $key)
+    {
+        $f = $this->base . $file;
+        $d = is_file($f) ? json_decode(file_get_contents($f), true) : null;
+        return is_array($d) && isset($d[$key]) && is_array($d[$key]) ? $d : ['version' => 1, $key => []];
+    }
+
+    /** Writes categories.json / layers.json; the old file is copied to archive/ first. */
+    private function put_list($file, $stem, array $d)
+    {
+        $f = $this->base . $file;
+        if (is_file($f)) {
+            copy($f, $this->archive_path($stem, 'json'));
+        }
+        self::write_atomic($f, json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    }
+
+    private function categories_data()
+    {
+        return $this->list_data('categories.json', 'categories');
+    }
+
+    private function layers_data()
+    {
+        return $this->list_data('layers.json', 'layers');
+    }
+
+    private function layer_index(array $d, $id)
+    {
+        foreach ($d['layers'] as $i => $l) {
+            if ($l['id'] === $id) {
+                return $i;
+            }
+        }
+        return null;
+    }
+
+    public function categories()
+    {
+        return $this->locked(function () {
+            return $this->categories_data();
+        });
+    }
+
+    public function layers()
+    {
+        return $this->locked(function () {
+            return $this->layers_data();
+        });
+    }
+
+    public function layer_notes_index()
+    {
+        return $this->locked(function () {
+            $f = $this->base . 'layer-notes/index.json';
+            $d = is_file($f) ? json_decode(file_get_contents($f), true) : null;
+            return is_array($d) && isset($d['notes']) ? $d : ['version' => 1, 'notes' => []];
+        });
+    }
+
+    /** A list of {lang, name} (several per language allowed); every language must be in the dictionary. */
+    private static function clean_names($list, array $codes, $none_msg)
+    {
+        $out = [];
+        foreach (is_array($list) ? $list : [] as $n) {
+            $nm = is_array($n) ? self::one_line($n['name'] ?? '', 200) : '';
+            $lg = is_array($n) ? (string) ($n['lang'] ?? '') : '';
+            if ($nm === '') {
+                continue;
+            }
+            if (!in_array($lg, $codes, true)) {
+                throw self::bad("language \"$lg\" is not in the list; ask an administrator to add it");
+            }
+            $out[] = ['lang' => $lg, 'name' => $nm];
+        }
+        if (!$out) {
+            throw self::bad($none_msg);
+        }
+        return $out;
+    }
+
+    /** Administrators only (checked by the controller): adds a category, or changes the names of one. Returns its id. */
+    public function save_category(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            $codes = array_column($this->lang_load(), 'code');
+            $names = self::clean_names($in['names'] ?? [], $codes, 'a category needs at least one name');
+            $d = $this->categories_data();
+            $id = (string) ($in['id'] ?? '');
+            if ($id !== '') {
+                $found = false;
+                foreach ($d['categories'] as $i => $c) {
+                    if ($c['id'] === $id) {
+                        $d['categories'][$i]['names'] = $names;
+                        $found = true;
+                    }
+                }
+                if (!preg_match(self::UUID, $id) || !$found) {
+                    throw self::bad('unknown category');
+                }
+            } else {
+                $id = self::uuid4();
+                $d['categories'][] = ['id' => $id, 'names' => $names];
+            }
+            $this->put_list('categories.json', 'categories', $d);
+            return $id;
+        });
+    }
+
+    private function clean_layer(array $in, array $codes)
+    {
+        $names = self::clean_names($in['names'] ?? [], $codes, 'a layer needs at least one name');
+        $desc = [];
+        $seen = [];
+        foreach (is_array($in['descriptions'] ?? null) ? $in['descriptions'] : [] as $x) {
+            $t = is_array($x) ? trim(str_replace("\r\n", "\n", (string) ($x['text'] ?? ''))) : '';
+            $lg = is_array($x) ? (string) ($x['lang'] ?? '') : '';
+            if ($t === '') {
+                continue;
+            }
+            if (!in_array($lg, $codes, true)) {
+                throw self::bad("language \"$lg\" is not in the list; ask an administrator to add it");
+            }
+            if (isset($seen[$lg])) {
+                throw self::bad("a layer has one description per language (\"$lg\" appears twice)");
+            }
+            if ((function_exists('mb_strlen') ? mb_strlen($t) : strlen($t)) > self::MAX_DESC) {
+                throw self::bad('a description can have at most ' . self::MAX_DESC . ' characters');
+            }
+            $seen[$lg] = true;
+            $desc[] = ['lang' => $lg, 'text' => $t];
+        }
+        $cat = $in['category'] ?? null;
+        if ($cat === '') {
+            $cat = null;
+        }
+        if ($cat !== null) {
+            $ok = false;
+            foreach ($this->categories_data()['categories'] as $c) {
+                $ok = $ok || $c['id'] === $cat;
+            }
+            if (!is_string($cat) || !$ok) {
+                throw self::bad('unknown category');
+            }
+        }
+        $color = $in['color'] ?? null;
+        if ($color === '') {
+            $color = null;
+        }
+        if ($color !== null && (!is_string($color) || !preg_match(self::COLOR, $color))) {
+            throw self::bad('the colour must look like #aa3344');
+        }
+        $from = dates::clean($in['date_from'] ?? null, 'begin date');
+        $to = dates::clean($in['date_to'] ?? null, 'end date');
+        dates::order_check($from, $to);
+        return [
+            'names' => $names,
+            'descriptions' => $desc,
+            'category' => $cat,
+            'color' => $color === null ? null : strtolower($color),
+            'date_from' => $from,
+            'date_to' => $to
+        ];
+    }
+
+    private static function now_utc()
+    {
+        return gmdate('Y-m-d\TH:i:s\Z');
+    }
+
+    /** Creates a layer (no id; it starts with no places) or changes the fields of one (its places stay). Returns the id. */
+    public function save_layer(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            $codes = array_column($this->lang_load(), 'code');
+            $c = $this->clean_layer($in, $codes);
+            $d = $this->layers_data();
+            $id = (string) ($in['id'] ?? '');
+            $now = self::now_utc();
+            if ($id !== '') {
+                $i = preg_match(self::UUID, $id) ? $this->layer_index($d, $id) : null;
+                if ($i === null) {
+                    throw self::bad('unknown layer');
+                }
+                $d['layers'][$i] = array_merge($d['layers'][$i], $c, ['updated' => $now]);
+            } else {
+                $id = self::uuid4();
+                $d['layers'][] = ['id' => $id] + $c + ['members' => [], 'created' => $now, 'updated' => $now];
+            }
+            $this->put_list('layers.json', 'layers', $d);
+            return $id;
+        });
+    }
+
+    /** [place id => true] of every place. */
+    private function place_ids()
+    {
+        $fc = json_decode((string) @file_get_contents($this->base . 'places.geojson'), true);
+        $out = [];
+        foreach (is_array($fc) ? $fc['features'] ?? [] : [] as $f) {
+            $out[$f['properties']['id'] ?? ''] = true;
+        }
+        return $out;
+    }
+
+    /** Adds and/or removes places of one layer. The caller holds the lock. Returns the new number of members. */
+    private function change_members($lid, array $add, array $remove)
+    {
+        $d = $this->layers_data();
+        $i = preg_match(self::UUID, (string) $lid) ? $this->layer_index($d, $lid) : null;
+        if ($i === null) {
+            throw self::bad('unknown layer');
+        }
+        $places = $this->place_ids();
+        $members = array_column($d['layers'][$i]['members'], 'place');
+        $changed = false;
+        foreach ($add as $p) {
+            if (!is_string($p) || !isset($places[$p])) {
+                throw self::bad('unknown place');
+            }
+            if (!in_array($p, $members, true)) {
+                $members[] = $p; // appended: the order of the list is the order of adding
+                $changed = true;
+            }
+        }
+        $removed = [];
+        foreach ($remove as $p) {
+            $k = array_search($p, $members, true);
+            if ($k !== false) {
+                unset($members[$k]);
+                $removed[] = $p;
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $list = [];
+            foreach ($members as $p) {
+                $list[] = ['place' => $p];
+            }
+            $d['layers'][$i]['members'] = $list;
+            $d['layers'][$i]['updated'] = self::now_utc();
+            $this->put_list('layers.json', 'layers', $d);
+            foreach ($removed as $p) {
+                $this->untag_notes($lid, $p); // a place that left the layer keeps its notes, but they are no longer tied to it
+            }
+            if ($removed) {
+                $this->rebuild_index();
+            }
+        }
+        return count($members);
+    }
+
+    /** Takes the layer id out of the "layers:" header of the notes of one place (or of all places when $pid is null). */
+    private function untag_notes($lid, $pid = null)
+    {
+        $root = $this->base . 'notes/';
+        foreach ($pid === null ? (is_dir($root) ? scandir($root) : []) : [$pid] as $pl) {
+            if (!preg_match(self::UUID, $pl) || !is_dir($root . $pl)) {
+                continue;
+            }
+            foreach (scandir($root . $pl) as $fn) {
+                if (substr($fn, -3) !== '.md') {
+                    continue;
+                }
+                $file = "$root$pl/$fn";
+                $parts = explode("---\n", file_get_contents($file), 3);
+                if (count($parts) < 3) {
+                    continue;
+                }
+                $ids = self::layer_ids(self::meta($parts[1])['layers'] ?? '');
+                if (!in_array($lid, $ids, true)) {
+                    continue;
+                }
+                copy($file, $this->archive_path('note-' . $pl . '-' . substr($fn, 0, -3) . '-untag', 'md'));
+                $head = preg_replace('/^layers: .*\n?/m', '', $parts[1]);
+                $ids = array_values(array_diff($ids, [$lid]));
+                if ($ids) {
+                    $head = rtrim($head, "\n") . "\nlayers: " . implode(',', $ids) . "\n";
+                }
+                self::write_atomic($file, "---\n" . $head . "---\n" . $parts[2]);
+            }
+        }
+    }
+
+    /** Checks the layers of a place note: they must exist and the place must be a member of each (or join it in the same request). Returns the ids. */
+    private function clean_note_layers($ids, $pid, array $joining = [])
+    {
+        if (!is_array($ids)) {
+            throw self::bad('layers must be a list');
+        }
+        $d = $this->layers_data();
+        $out = [];
+        foreach ($ids as $id) {
+            $i = is_string($id) && preg_match(self::UUID, $id) ? $this->layer_index($d, $id) : null;
+            if ($i === null) {
+                throw self::bad('unknown layer');
+            }
+            if (!in_array($id, $joining, true) && ($pid === null || !in_array($pid, array_column($d['layers'][$i]['members'], 'place'), true))) {
+                throw self::bad('the place is not in the layer "' . $d['layers'][$i]['names'][0]['name'] . '"; add it to the layer first');
+            }
+            if (!in_array($id, $out, true)) {
+                $out[] = $id;
+            }
+        }
+        return $out;
+    }
+
+    /** POST /map/layer-save, members: {id, add: [place ids], remove: [place ids]}. Returns the number of members. */
+    public function save_members(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            foreach (['add', 'remove'] as $k) {
+                if (isset($in[$k]) && !is_array($in[$k])) {
+                    throw self::bad("\"$k\" must be a list of place ids");
+                }
+            }
+            return $this->change_members((string) ($in['id'] ?? ''), $in['add'] ?? [], $in['remove'] ?? []);
+        });
+    }
+
+    /** Adds or edits a note of a layer itself (not of a place): {layer_id, note: {id?, lang, title, date, text}}. Returns its id. */
+    public function save_layer_note(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            $codes = array_column($this->lang_load(), 'code');
+            $lid = (string) ($in['layer_id'] ?? '');
+            if (!preg_match(self::UUID, $lid) || $this->layer_index($this->layers_data(), $lid) === null) {
+                throw self::bad('unknown layer');
+            }
+            $n = $in['note'] ?? null;
+            if (!is_array($n)) {
+                throw self::bad('a note is required');
+            }
+            list($lang, $title, $text, $date) = self::clean_note($n, $codes);
+            $dir = $this->base . 'layer-notes/' . $lid;
+            @mkdir($dir, 0775, true);
+            $nid = (string) ($n['id'] ?? '');
+            if ($nid !== '') {
+                if (!preg_match(self::UUID, $nid) || !is_file("$dir/$nid.md")) {
+                    throw self::bad('unknown note');
+                }
+                copy("$dir/$nid.md", $this->archive_path("layer-note-$lid-$nid", 'md'));
+            } else {
+                $nid = self::uuid4();
+            }
+            self::write_atomic("$dir/$nid.md", self::note_file($nid, $lang, $title, $date, $text));
+            $this->rebuild_layer_notes_index();
+            return $nid;
+        });
+    }
+
+    /** layer-notes/index.json: generated from the note files, used for showing and searching. */
+    private function rebuild_layer_notes_index()
+    {
+        $root = $this->base . 'layer-notes/';
+        @mkdir($root, 0775, true);
+        $out = [];
+        foreach (scandir($root) as $ly) {
+            if (!preg_match(self::UUID, $ly) || !is_dir($root . $ly)) {
+                continue;
+            }
+            foreach (scandir($root . $ly) as $fn) {
+                $parts = substr($fn, -3) === '.md' ? explode("---\n", file_get_contents("$root$ly/$fn"), 3) : [];
+                if (count($parts) < 3) {
+                    continue;
+                }
+                $meta = self::meta($parts[1]);
+                $out[] = [
+                    'id' => $meta['id'] ?? substr($fn, 0, -3),
+                    'layer' => $ly,
+                    'lang' => $meta['lang'] ?? '',
+                    'title' => $meta['title'] ?? '',
+                    'date' => self::note_date($meta),
+                    'text' => trim($parts[2])
+                ];
+            }
+        }
+        self::write_atomic(
+            $root . 'index.json',
+            json_encode(['version' => 1, 'notes' => $out], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+        );
+    }
+
+    /** Administrators only (checked by the controller). Removes a layer; its places and their notes stay in the general layer. */
+    public function delete_layer($id)
+    {
+        return $this->locked(function () use ($id) {
+            $d = $this->layers_data();
+            $i = preg_match(self::UUID, (string) $id) ? $this->layer_index($d, $id) : null;
+            if ($i === null) {
+                throw self::bad('unknown layer');
+            }
+            array_splice($d['layers'], $i, 1);
+            $this->put_list('layers.json', 'layers', $d); // the copy in archive/ still has the layer and its members
+            $dir = $this->base . 'layer-notes/' . $id;
+            if (is_dir($dir)) {
+                foreach (scandir($dir) as $fn) {
+                    if (substr($fn, -3) === '.md') {
+                        rename("$dir/$fn", $this->archive_path('layer-note-' . $id . '-' . substr($fn, 0, -3), 'md'));
+                    }
+                }
+                @rmdir($dir);
+                $this->rebuild_layer_notes_index();
+            }
+            $this->untag_notes($id);
+            $this->rebuild_index();
+            return true;
+        });
+    }
+
+    /** POST /map/layer-save: one of {layer}, {layer_members}, {layer_note}. Returns what the browser needs. */
+    public function layer_save(array $in)
+    {
+        if (isset($in['layer']) && is_array($in['layer'])) {
+            return ['id' => $this->save_layer($in['layer'])];
+        }
+        if (isset($in['layer_members']) && is_array($in['layer_members'])) {
+            return ['members' => $this->save_members($in['layer_members'])];
+        }
+        if (isset($in['layer_note']) && is_array($in['layer_note'])) {
+            return ['id' => $this->save_layer_note($in['layer_note'])];
+        }
+        throw self::bad('nothing to save');
+    }
+
+    // ------------------------------------------------------------------ historical map images (overlays)
+    const IMG_MAX = 12582912; // 12 MB
+
+    private static function sniff($b)
+    {
+        if (strncmp($b, "\x89PNG\r\n\x1a\n", 8) === 0) {
+            return ['image/png', 'png'];
+        }
+        if (strncmp($b, "\xFF\xD8\xFF", 3) === 0) {
+            return ['image/jpeg', 'jpg'];
+        }
+        if (strlen($b) > 12 && substr($b, 0, 4) === 'RIFF' && substr($b, 8, 4) === 'WEBP') {
+            return ['image/webp', 'webp'];
+        }
+        return null;
+    }
+
+    public static function mime_of($file)
+    {
+        $e = pathinfo($file, PATHINFO_EXTENSION);
+        return $e === 'png' ? 'image/png' : ($e === 'webp' ? 'image/webp' : 'image/jpeg');
+    }
+
+    private function locked(callable $fn)
+    {
+        @mkdir($this->base, 0775, true);
+        $lock = fopen($this->base . '.lock', 'c');
+        flock($lock, LOCK_EX);
+        try {
+            return $fn();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    public function overlays()
+    {
+        $f = $this->base . 'overlays.json';
+        $d = is_file($f) ? json_decode(file_get_contents($f), true) : null;
+        return is_array($d) && isset($d['overlays']) ? $d : ['version' => 1, 'overlays' => []];
+    }
+
+    private function write_overlays(array $d)
+    {
+        self::write_atomic(
+            $this->base . 'overlays.json',
+            json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+        );
+    }
+
+    /** [absolute path, mime] of an overlay's image, or null. */
+    public function overlay_file($id)
+    {
+        if (!preg_match(self::UUID, $id)) {
+            return null;
+        }
+        foreach ($this->overlays()['overlays'] as $o) {
+            if ($o['id'] === $id && $o['file'] !== '' && is_file($this->base . 'overlays/' . $o['file'])) {
+                return [$this->base . 'overlays/' . $o['file'], self::mime_of($o['file'])];
+            }
+        }
+        return null;
+    }
+
+    private static function clean_overlay(array $in)
+    {
+        $title = trim(preg_replace('/\s+/', ' ', (string) ($in['title'] ?? '')));
+        if ($title === '') {
+            throw self::bad('a title is required');
+        }
+        $title = function_exists('mb_substr') ? mb_substr($title, 0, 120) : substr($title, 0, 120);
+        $co = $in['coordinates'] ?? null;
+        if (!is_array($co) || count($co) !== 4) {
+            throw self::bad('four corner coordinates are required');
+        }
+        $coords = [];
+        foreach ($co as $c) {
+            if (!is_array($c) || count($c) < 2 || !is_numeric($c[0]) || !is_numeric($c[1])) {
+                throw self::bad('bad coordinates');
+            }
+            $lon = (float) $c[0];
+            $lat = (float) $c[1];
+            if ($lon < -180 || $lon > 180 || $lat < -85.06 || $lat > 85.06) {
+                throw self::bad('coordinates out of range');
+            }
+            $coords[] = [$lon, $lat];
+        }
+        $min = (float) ($in['minzoom'] ?? 0);
+        $max = (float) ($in['maxzoom'] ?? 24);
+        $op = (float) ($in['opacity'] ?? 0.6);
+        if ($min < 0 || $max > 24 || $min >= $max) {
+            throw self::bad('zoom range must satisfy 0 <= from < to <= 24');
+        }
+        if ($op < 0 || $op > 1) {
+            throw self::bad('opacity must be between 0 and 1');
+        }
+        return ['title' => $title, 'coordinates' => $coords, 'minzoom' => $min, 'maxzoom' => $max, 'opacity' => $op];
+    }
+
+    /** Create (no id) or update (id) an overlay's settings. The image itself is uploaded separately. Returns the id. */
+    public function save_overlay(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            $d = $this->overlays();
+            $c = self::clean_overlay($in);
+            $id = (string) ($in['id'] ?? '');
+            $now = gmdate('Y-m-d\TH:i:s\Z');
+            if ($id !== '') {
+                if (!preg_match(self::UUID, $id)) {
+                    throw self::bad('bad id');
+                }
+                $found = false;
+                foreach ($d['overlays'] as $i => $o) {
+                    if ($o['id'] === $id) {
+                        $d['overlays'][$i] = array_merge($o, $c, ['updated' => $now]);
+                        $found = true;
+                    }
+                }
+                if (!$found) {
+                    throw self::bad('unknown overlay');
+                }
+            } else {
+                $id = self::uuid4();
+                $d['overlays'][] = array_merge(['id' => $id, 'file' => '', 'created' => $now], $c, ['updated' => $now]);
+            }
+            $this->write_overlays($d);
+            return $id;
+        });
+    }
+
+    public function save_overlay_image($id, $bytes)
+    {
+        return $this->locked(function () use ($id, $bytes) {
+            if (!preg_match(self::UUID, $id)) {
+                throw self::bad('bad id');
+            }
+            if ($bytes === '' || strlen($bytes) > self::IMG_MAX) {
+                throw self::bad('image missing or larger than 12 MB');
+            }
+            $t = self::sniff($bytes);
+            if (!$t) {
+                throw self::bad('only PNG, JPEG or WebP images are accepted');
+            }
+            $d = $this->overlays();
+            $idx = null;
+            foreach ($d['overlays'] as $i => $o) {
+                if ($o['id'] === $id) {
+                    $idx = $i;
+                }
+            }
+            if ($idx === null) {
+                throw self::bad('unknown overlay');
+            }
+            $dir = $this->base . 'overlays/';
+            @mkdir($dir, 0775, true);
+            $file = $id . '.' . $t[1];
+            $old = $d['overlays'][$idx]['file'];
+            self::write_atomic($dir . $file, $bytes);
+            if ($old !== '' && $old !== $file && is_file($dir . $old)) {
+                @mkdir($this->base . 'archive/', 0775, true);
+                rename($dir . $old, $this->base . 'archive/overlay-' . date('Ymd-His') . '-' . $old);
+            }
+            $d['overlays'][$idx]['file'] = $file;
+            $d['overlays'][$idx]['updated'] = gmdate('Y-m-d\TH:i:s\Z');
+            $this->write_overlays($d);
+            return $file;
+        });
+    }
+
+    public function delete_overlay($id)
+    {
+        return $this->locked(function () use ($id) {
+            if (!preg_match(self::UUID, $id)) {
+                throw self::bad('bad id');
+            }
+            $d = $this->overlays();
+            $keep = [];
+            $found = false;
+            $arch = $this->base . 'archive/';
+            @mkdir($arch, 0775, true);
+            foreach ($d['overlays'] as $o) {
+                if ($o['id'] !== $id) {
+                    $keep[] = $o;
+                    continue;
+                }
+                $found = true;
+                if ($o['file'] !== '' && is_file($this->base . 'overlays/' . $o['file'])) {
+                    rename(
+                        $this->base . 'overlays/' . $o['file'],
+                        $arch . 'overlay-' . date('Ymd-His') . '-' . $o['file']
+                    );
+                }
+            }
+            if (!$found) {
+                throw self::bad('unknown overlay');
+            }
+            $d['overlays'] = $keep;
+            $this->write_overlays($d);
+            return true;
+        });
+    }
+}

@@ -162,3 +162,197 @@ test('layers: nothing is sent when nothing changed', async () => {
   await p.X('lySavePlaces()');
   eq(0, sent.length);
 });
+
+// ---- task 003: the sidebar publishes the state (AHM.state, I-6) ----
+// Written first (TDD). While ui.js / layers.js do not publish yet, these tests are skipped so the suite stays green.
+// Run them red with:  AHM_TDD=1 node tests/js/run.js --no-browser sidebar
+const fs = require('fs');
+const path = require('path');
+const { JS, SAMPLE } = require('./lib/ctx');
+const srcOf = (f) => fs.readFileSync(path.join(JS, 'sidebar', f), 'utf8');
+const publishesSelected = () => /AHM\.state\.set\(\s*['"]selected['"]/.test(srcOf('ui.js'));
+const publishesLayers = () => /AHM\.state\.patch\(\s*['"]layers['"]/.test(srcOf('layers.js'));
+const gated = (isBuilt, name, fn) =>
+  test(name, async () => {
+    if (!isBuilt() && !process.env.AHM_TDD) return console.log('    (not published yet: skipped; AHM_TDD=1 runs it)');
+    await fn();
+  });
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+const UI_SCRIPTS = ['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'search.js', 'searchfield.js', 'period.js', 'placeform.js', 'layers.js'];
+/** The page with ui.js itself running (it declares cur, tab, show, update ...), a map stand-in, and recorded event handlers. */
+function uiPage() {
+  const p = load(UI_SCRIPTS);
+  const doc = p.ctx.document;
+  const h = {};
+  const plain = doc.querySelector;
+  doc.querySelector = (s) => {
+    const e = plain(s);
+    e.after ||= () => {};
+    e.append ||= () => {};
+    if (!e.__w) {
+      e.__w = true;
+      e.addEventListener = (ev, fn) => (h[s + ':' + ev] ||= []).push(fn);
+    }
+    return e;
+  };
+  doc.addEventListener = (ev, fn) => (h['document:' + ev] ||= []).push(fn);
+  doc.activeElement = { tagName: 'BODY' };
+  p.X(`var typeIcon = () => '';
+    AHM.map = { setFeatures() {}, hidePlace() {}, focusPlace() {}, focusPoint() {}, fitTo() {}, fitRoute() {}, setRoute() {}, setRouteMarkers() {}, setPick() {}, resize() {}, getZoom: () => 6, editPin: () => ({ getPosition() {}, setPosition() {}, remove() {} }) };`);
+  p.X(fs.readFileSync(path.join(JS, 'sidebar', 'ui.js'), 'utf8'));
+  p.X('setData(__0, [])', SAMPLE.places);
+  p.X(`globalThis.__sel = []; globalThis.__reads = []; globalThis.__peek = AHM.state.get;
+    AHM.on('state:selected', (e) => __sel.push(e.value));
+    const __get = AHM.state.get; AHM.state.get = (k) => (__reads.push(k), __get(k));`);
+  return { p, h };
+}
+const rowClick = (h, ev, id, detail = 1) =>
+  (h['#list:' + ev] || []).forEach((fn) => fn({ detail, target: { closest: (s) => (s === 'li[data-id]' ? { dataset: { id } } : null) } }));
+const pressEsc = (h) => (h['document:keydown'] || []).forEach((fn) => fn({ key: 'Escape' }));
+const inSync = (p) => eq(p.X('cur ? cur.id : null'), p.X('__peek("selected")'), 'selected equals the open place id (or null)');
+
+gated(publishesSelected, 'sidebar publishes: a click on a place row publishes its id; a second click folds it and publishes null', async () => {
+  const { p, h } = uiPage();
+  rowClick(h, 'click', 'p1');
+  await tick();
+  eq(['p1'], p.X('__sel'));
+  inSync(p);
+  rowClick(h, 'click', 'p1');
+  await tick();
+  eq(['p1', null], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: a double click (list or map) opens and selects the place', async () => {
+  const { p, h } = uiPage();
+  p.X('AHM.emit("place:click", { id: "p1" })');
+  await tick();
+  rowClick(h, 'dblclick', 'p2');
+  await tick();
+  eq(['p1', 'p2'], p.X('__sel'));
+  p.X('AHM.emit("place:dblclick", { id: "p3" })');
+  await tick();
+  eq(['p1', 'p2', 'p3'], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: switching place replaces the id; an unknown id changes nothing', async () => {
+  const { p } = uiPage();
+  await p.X('show("p1")');
+  await p.X('show("p2")');
+  await p.X('show("nope")');
+  eq(['p1', 'p2'], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: a map click on empty map keeps the selection', async () => {
+  const { p } = uiPage();
+  await p.X('show("p1")');
+  p.X('AHM.emit("map:click", { lon: 44, lat: 40, name: "x" })');
+  eq(['p1'], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: Esc closes the place and publishes null', async () => {
+  const { p, h } = uiPage();
+  await p.X('show("p1")');
+  pressEsc(h);
+  eq(['p1', null], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: switching tab closes the place and publishes null', async () => {
+  const { p } = uiPage();
+  await p.X('show("p1")');
+  p.X('tab("layers")');
+  eq(['p1', null], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: typing in the search closes the place and publishes null', async () => {
+  const { p, h } = uiPage();
+  await p.X('show("p1")');
+  p.el('#q').value = 'zz';
+  (h['#q:input'] || []).forEach((fn) => fn({}));
+  eq(['p1', null], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: a filter that hides the open place does not change the selection', async () => {
+  const { p } = uiPage();
+  await p.X('show("p1")');
+  p.el('#q').value = 'zzzz';
+  p.X('update()');
+  eq(['p1'], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: editing a place selects it; Esc then publishes null', async () => {
+  const { p, h } = uiPage();
+  p.X('editPlace(places[0])');
+  eq(['p1'], p.X('__sel'));
+  inSync(p);
+  pressEsc(h);
+  eq(['p1', null], p.X('__sel'));
+  inSync(p);
+});
+
+gated(publishesSelected, 'sidebar publishes: the sidebar never reads "selected" back', async () => {
+  const { p, h } = uiPage();
+  rowClick(h, 'click', 'p1');
+  await tick();
+  await p.X('show("p2")');
+  p.X('AHM.emit("map:click", { lon: 44, lat: 40 })');
+  p.X('tab("layers")');
+  await p.X('show("p1")');
+  pressEsc(h);
+  eq(false, p.X('__reads.includes("selected")'));
+});
+
+// ---- layers: after the sets in lyState change, AHM.state.patch('layers', {}) announces it ----
+const layPage = () => {
+  const p = page();
+  p.X(`globalThis.__lay = [];
+    AHM.on('state:layers', () => __lay.push({ only: [...lyState.only], hide: [...lyState.hide], staged: lyState.staged && [...lyState.staged] }));`);
+  return p;
+};
+const lastLay = (p) => p.X('__lay[__lay.length - 1]');
+
+gated(publishesLayers, 'sidebar publishes: lyToggleFilter announces the changed only / hide sets', () => {
+  const p = layPage();
+  p.X('lyToggleFilter("only", "A")');
+  ok(p.X('__lay.length') >= 1, 'state:layers announced');
+  eq({ only: ['A'], hide: [], staged: null }, lastLay(p), 'announced after the change');
+  p.X('__lay.length = 0; lyToggleFilter("hide", "A")');
+  ok(p.X('__lay.length') >= 1);
+  eq({ only: [], hide: ['A'], staged: null }, lastLay(p));
+});
+
+gated(publishesLayers, 'sidebar publishes: lyClearFilters (Reset) announces the emptied sets', () => {
+  const p = layPage();
+  p.X('lyState.only.add("A"); lyState.hide.add("B"); lyClearFilters()');
+  ok(p.X('__lay.length') >= 1, 'state:layers announced');
+  eq({ only: [], hide: [], staged: null }, lastLay(p));
+});
+
+gated(publishesLayers, 'sidebar publishes: a layer deleted by someone else is removed from the sets and announced', () => {
+  const p = layPage();
+  p.X('lyState.only.add("A"); lyState.hide.add("B")');
+  p.X('lySet(__0, [], [])', [L('A', 'Alpha', 'p1')]);
+  ok(p.X('__lay.length') >= 1, 'state:layers announced');
+  eq({ only: ['A'], hide: [], staged: null }, lastLay(p));
+});
+
+gated(publishesLayers, 'sidebar publishes: choosing places (start, toggle, stop) announces the staged set', () => {
+  const p = layPage();
+  p.X('lyOpen("A"); __lay.length = 0; lyStartEdit()');
+  ok(p.X('__lay.length') >= 1, 'start announced');
+  eq(['p1', 'p2'], lastLay(p).staged.slice().sort());
+  p.X('__lay.length = 0; lyToggleMember("p3")');
+  ok(p.X('__lay.length') >= 1, 'toggle announced');
+  eq(['p1', 'p2', 'p3'], lastLay(p).staged.slice().sort());
+  p.X('__lay.length = 0; lyStopEdit()');
+  ok(p.X('__lay.length') >= 1, 'stop announced');
+  eq(null, lastLay(p).staged);
+});

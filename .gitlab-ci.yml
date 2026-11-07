@@ -1,5 +1,5 @@
 # Checks for every merge request and for master (DOMAINS.md, "Git workflow"). Replaces .github/workflows/ci.yml.
-# GitLab.com note: shared runners need the account to be verified and use the monthly compute minutes of the plan (owner, tasks/007).
+# GitLab.com note: shared runners need the account to be verified and use the monthly compute minutes of the plan (owner setup: DOMAINS.md, "Git workflow").
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'

@@ -234,3 +234,9 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of the merge request. Then: `sidebar-tdd: task 003` opens the Draft merge request on the branch `sidebar/publish-state` without exploring.
 **Follow-ups (owner only):** paste `tools/prompts/project-instructions.md` into the Claude Project and delete the old documents and the old architect brief there; the old text still describes `ext/ahm/map/`, GitHub and cloning and was the likely cause of the confusion (inferred, not seen).
 
+## 2026-11-07 — #19 Lean delivery (proposal 008, owner approved)
+**What:** the `-tdd` agent opens no merge request (the Draft flow of #18 is dropped); only `-dev` opens it. `.gitlab-ci.yml`: job `tests` runs only when code, tests, config, `context/`, `tools/*`, `INTERFACES.md`, `README.md`, `*.php` or `*.json` change; documents skip it. `tools/prompts/_common.md`: agents test git once and clone when it works (local tests, small outputs), rule 11 (small tool output), the two role flows now live there; the 12 domain role files are short; `gatekeeper` has no Draft check; `project-instructions.md` updated; `DOMAINS.md`; proposals 007 (note) and 008.
+**Why:** CI minutes and tokens. Red tests on a merge request waste a pipeline; a documents-only change ran the full PHP and JS tests with browser.
+**Verify:** CI of this merge request (it changes `.gitlab-ci.yml`, so the tests still run once). Then a documents-only merge request must show only the job `domain`. `sidebar-dev: task 003` opens the merge request on `sidebar/publish-state`.
+**Follow-ups:** the path list in `.gitlab-ci.yml` must grow with a new top-level code folder. Optional next step: split `tests` into PHP and JS jobs with their own path lists, and cache the npm and Playwright installs. Owner: allow gitlab.com in the chat network settings so agents can clone.
+

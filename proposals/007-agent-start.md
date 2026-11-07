@@ -2,6 +2,7 @@
 
 Status: approved (the owner, 2026-11-07, in the chat: "I want to you fix all complaints and outdated things in order to everything be clear and nice structured.")
 From: shared (architect). Merge request: branch `shared/agent-start`.
+Update (same day, proposal 008): the Draft merge request part is dropped (the `-tdd` agent opens no merge request) and the Project instructions now test git once instead of forbidding it. The rest stands.
 
 ## Why
 The owner called `sidebar-tdd task 003` in a Claude Project chat. The agent tried to clone (gitlab.com is blocked there), searched work items and branches, listed a folder `ext/ahm/map` that does not exist, did not know which file "task 003" is, and opened no merge request. Causes: (1) old Project documents and the old architect brief still describe `ext/ahm/map/`, GitHub, `add_repo` and cloning; (2) the rules did not say where things are, how a task number maps to a file, or that a chat cannot run git or tests; (3) the `-tdd` role opened no merge request, so the owner saw nothing.

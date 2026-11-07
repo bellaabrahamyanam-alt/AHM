@@ -12,6 +12,5 @@ Accept only if ALL are true:
 4. Test-first: a `test:` commit comes before the code commits (`include: ["commits"]`); existing tests were not weakened, deleted or edited (check the test files in the diff).
 5. No interface (`INTERFACES.md`) and no shared file changed without an approved proposal (`Status: approved`).
 6. `changes/<domain>.md` has an entry for this change; commits read `<type>: <what>`; everything is in English.
-7. The merge request is not a Draft (the title does not start with `Draft:`). A Draft goes back to its `-dev` agent.
 If all true, merge: `accept_merge_request` with `sha` = the `diff_head_sha` you reviewed (the merge is refused if the branch moved), `squash: true`, `squash_commit_message: "<MR title> (!<n>)"`, `should_remove_source_branch: true`. Answer: "Merged MR !<n>."
 If not, do NOT merge. Post the failed points as a note (`save_note`, `merge_request_iid`, `body`; a body must not start a line with `/`) and answer with the same list and the role that must fix it (`<domain>-dev`, `<domain>-tdd` or `architect`). Do not fix the code yourself.

@@ -25,7 +25,7 @@ domain:
 tests:
   stage: test
   # Runs only when something the tests check or read changed. Documents skip it: changes/, todo/, proposals/, requests/, tasks/,
-  # tools/prompts/, .claude/, .gitlab/merge_request_templates/ and the *.md files except INTERFACES.md and README.md.
+  # tools/prompts/, .claude/, .gitlab/merge_request_templates/ and every *.md file (no test reads the text of a document).
   # A new top-level folder with code or config must be added to this list.
   rules:
     - changes:
@@ -43,8 +43,6 @@ tests:
         - 'tools/*'
         - '.gitlab/CODEOWNERS'
         - '.gitlab-ci.yml'
-        - 'INTERFACES.md'
-        - 'README.md'
         - '*.php'
         - '*.json'
   before_script:

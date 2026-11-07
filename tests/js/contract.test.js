@@ -64,7 +64,7 @@ test('contract I-2: the events emitted and handled match the lists, and each sid
   const used = uniq(names(side, /AHM\.map\.(\w+)/g));
   ok(used.every((k) => MAP_COMMANDS.includes(k)), 'the sidebar calls an AHM.map command that is not in INTERFACES.md: ' + used.filter((k) => !MAP_COMMANDS.includes(k)));
   const props = uniq(names(map + side, /\bAHM\.(\w+)/g));
-  eq(['emit', 'map', 'on'], props, 'only AHM.map, AHM.on and AHM.emit are used outside ahm.js');
+  ok(props.every((k) => ['emit', 'map', 'on', 'state'].includes(k)), 'only AHM.map, AHM.on, AHM.emit and AHM.state (I-6) may be used outside ahm.js: ' + props);
 });
 
 // ---- I-3 core functions ----
@@ -84,4 +84,27 @@ test('contract I-4: typeIcon(type) and TYPE_STYLE exist (the symbols are drawn b
   const p = load(['config.js', 'data.js', 'typeicons.js']);
   ok(typeof p.X('typeIcon') === 'function', 'typeIcon');
   ok(p.X('TYPE_STYLE.settlement') !== undefined, 'TYPE_STYLE.settlement');
+});
+
+// ---- I-6 state manager ----
+const STATE_KEYS = ['layers', 'selected'];
+
+test('contract I-6: AHM.state has exactly get, set, patch and exactly the keys selected and layers', () => {
+  const p = load(['state.js']);
+  if (p.X('typeof AHM.state') !== 'object') return console.log('    (state manager not built yet: skipped)');
+  eq(['get', 'patch', 'set'], p.X('Object.keys(AHM.state).sort()'));
+  const src = read('app', 'js', 'state', 'state.js');
+  const block = src.slice(src.indexOf('const values = {'), src.indexOf('\n  };', src.indexOf('const values = {')));
+  eq(STATE_KEYS, uniq(names(block, /^ {4}(\w+):/gm)), 'the keys of state.js must be the keys of INTERFACES.md I-6');
+  for (const k of STATE_KEYS) ok(p.X(`AHM.state.get('${k}') !== undefined`), 'get(' + k + ')');
+  ok(p.X("(() => { try { AHM.state.get('nope'); return false; } catch (e) { return /unknown key/.test(e.message); } })()"), 'an unknown key throws "unknown key"');
+});
+
+test('contract I-6: nobody but app/js/state/state.js assigns AHM.state', () => {
+  const walk = (d) =>
+    fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.js') ? [path.join(d, e.name)] : []));
+  const bad = walk(path.join(ROOT, 'app', 'js'))
+    .concat(walk(path.join(ROOT, 'app', 'features')))
+    .filter((f) => !f.endsWith(path.join('state', 'state.js')) && /\bAHM\.state\s*=[^=]/.test(fs.readFileSync(f, 'utf8')));
+  eq([], bad.map((f) => path.relative(ROOT, f)), 'files that assign AHM.state');
 });

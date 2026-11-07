@@ -228,3 +228,9 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Why:** keep the to-do list true.
 **Verify:** read `todo/shared.md`; GitLab > Settings > Repository > Protected branches.
 
+## 2026-11-07 — #18 A clear start for every agent (proposal 007, owner approved)
+**What:** After `sidebar-tdd task 003` in a Claude Project chat the agent tried to clone, searched work items, listed the missing `ext/ahm/map`, and opened no merge request. Fixes: `tools/prompts/_common.md` now starts with "Start here" (command format, `task 003` = `tasks/003-*.md`, repository map, old documents are old, cloud chat uses the GitLab tools only and CI is the test run, tool cheat sheet, finish with the next command); the `-tdd` role opens a Draft merge request and the `-dev` role removes the Draft mark when CI is green; `gatekeeper` refuses a Draft; new `tools/prompts/project-instructions.md` (text for the Claude Project); `architect.md` rewritten from the owner's original brief; `DOMAINS.md` and `tasks/README.md` updated; `proposals/007-agent-start.md`. The 12 `<domain>-tdd` and `<domain>-dev` role files are rewritten.
+**Why:** one command must be enough, and the owner must see a merge request per task from the start.
+**Verify:** CI of the merge request. Then: `sidebar-tdd: task 003` opens the Draft merge request on the branch `sidebar/publish-state` without exploring.
+**Follow-ups (owner only):** paste `tools/prompts/project-instructions.md` into the Claude Project and delete the old documents and the old architect brief there; the old text still describes `ext/ahm/map/`, GitHub and cloning and was the likely cause of the confusion (inferred, not seen).
+

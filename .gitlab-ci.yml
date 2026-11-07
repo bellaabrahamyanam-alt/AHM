@@ -1,0 +1,36 @@
+# Checks for every merge request and for master (DOMAINS.md, "Git workflow"). Replaces .github/workflows/ci.yml.
+# GitLab.com note: shared runners need the account to be verified and use the monthly compute minutes of the plan (owner, tasks/007).
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  image: node:22-bookworm
+  interruptible: true
+
+stages: [check, test]
+
+domain:
+  stage: check
+  # a branch may change only the domain(s) named in its name: <domain>/<task>
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  variables:
+    GIT_DEPTH: '0'
+  script:
+    - git fetch -q origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - node tools/ci-check-pr.js "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+
+tests:
+  stage: test
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq php-cli php-mbstring
+    - npm install -g eslint@9 playwright
+    - npx playwright install --with-deps chromium
+    - export NODE_PATH="$(npm root -g)"
+  script:
+    - php tests/php/run.php
+    - php tests/data/run.php
+    - node tests/js/run.js

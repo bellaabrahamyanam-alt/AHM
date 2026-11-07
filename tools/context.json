@@ -27,7 +27,7 @@
       "read": ["service/store.php", "controller/main.php", "dev/save-handler.js"]
     },
     "shared": {
-      "brief": "Owner-only integration: domain table, interfaces, config, index.html, shared tests and tools, reviewing and merging the agents' pull requests.",
+      "brief": "Owner-only integration: domain table, interfaces, config, index.html, shared tests and tools, reviewing and merging the agents' merge requests.",
       "read": ["DOMAINS.md", "tools/domains.json", "tools/context.json"]
     }
   }

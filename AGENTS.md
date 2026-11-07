@@ -5,7 +5,7 @@ Read this file first, then `DOMAINS.md` and `INTERFACES.md`, then `README.md`, t
 
 ## Owner's working requirements (always follow)
 
-1. **One diff file per answer** (when the work is NOT delivered by a GitHub pull request: see `DOMAINS.md`, "Git workflow", where the pull request is the diff). Every time you answer with changes, produce exactly one unified-diff file containing all the
+1. **One diff file per answer** (when the work is NOT delivered by a GitLab merge request: see `DOMAINS.md`, "Git workflow", where the merge request is the diff). Every time you answer with changes, produce exactly one unified-diff file containing all the
    changes of that answer (`diff -ruN` style, paths `a/…` and `b/…` relative to the repository root, i.e. `app/...`, `tests/...`).
    **Send that diff to the owner as its own separate file in every answer** (`SendUserFile`, next to the archive), so it is visible
    without opening the archive. The same file is also stored in `diffs/` inside the archive (requirement 3).
@@ -13,7 +13,7 @@ Read this file first, then `DOMAINS.md` and `INTERFACES.md`, then `README.md`, t
    `changes/<domain>.md` (date, what, why, files, how to verify, open follow-ups). The entry is part of the same diff.
    Another agent must be able to continue from that file alone. (`AGENT_CHANGES.md` is the read-only history of entries #1-#26;
    when one agent works across several domains for the owner, it writes one entry in each domain log it touched.)
-3. **Always deliver the FULL ARCHIVE** (when the work is NOT delivered by a pull request; with a pull request the repository is the archive) (supersedes the earlier "only changed files" rule). In every answer give the owner the
+3. **Always deliver the FULL ARCHIVE** (when the work is NOT delivered by a merge request; with a merge request the repository is the archive) (supersedes the earlier "only changed files" rule). In every answer give the owner the
    whole project as ONE `.tar.gz` file. "Everything" means everything in the project: the code, **the diffs**, the tests, the
    documentation, the data, **dotfiles** and every other file. The ONLY thing left out is `node_modules` (any folder with that
    name). Nothing else is skipped, ever, and "the archive" always means this full archive.

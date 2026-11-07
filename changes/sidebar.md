@@ -14,3 +14,25 @@ One entry per change, newest last: date, what, why, files, how to verify, open f
 
 ### Verify
 `node tests/js/run.js`.
+
+---
+
+## 2026-11-07 — #2 Sidebar publishes selected place and layer changes to AHM.state (task 003)
+
+### What
+- `sidebar/ui.js`: wherever `cur` is set (show, closeDetail, editPlace), also `AHM.state.set('selected', cur ? cur.id : null)`. The sidebar never reads `selected` back.
+- `sidebar/layers.js`: after in-place changes to the `lyState` sets or staged members (`lyToggleFilter`, `lyClearFilters`, `lySet` cleanup of deleted layers, `lyStartEdit`, `lyStopEdit`, `lyToggleMember`), call `AHM.state.patch('layers', {})` so listeners see `state:layers`.
+
+### Why
+Task 003 / I-6: the map (and others) read shared selection and layer filter state from `AHM.state`, not from sidebar internals.
+
+### Files
+- `app/js/sidebar/ui.js`
+- `app/js/sidebar/layers.js`
+- `changes/sidebar.md`
+
+### Verify
+`node tests/js/run.js` (includes the gated "sidebar publishes: …" tests in `tests/js/layers.test.js`).
+
+### Open follow-ups
+None for this task. Known violation 1 in INTERFACES.md closes when task 002 is also merged.

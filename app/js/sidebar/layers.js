@@ -27,6 +27,7 @@ function lySet(ls, ln, cs) {
   ['only', 'hide'].forEach((k) => [...lyState[k]].forEach((id) => lyById(id) || lyState[k].delete(id))); // deleted by someone
   if (lyState.open && !lyById(lyState.open)) lyState.open = null;
   if (lyState.editing && !lyById(lyState.editing)) lyStopEdit();
+  AHM.state.patch('layers', {});
   lyFillCats();
   lyRender();
 }
@@ -45,12 +46,14 @@ function lyToggleFilter(kind, id) {
   const other = kind === 'only' ? 'hide' : 'only';
   lyState[other].delete(id);
   lyState[kind].has(id) ? lyState[kind].delete(id) : lyState[kind].add(id);
+  AHM.state.patch('layers', {});
   lyChanged();
 }
 function lyClearFilters() {
   lyState.only.clear();
   lyState.hide.clear();
   lyState.noteAll = false;
+  AHM.state.patch('layers', {});
   lyRender();
 }
 
@@ -247,6 +250,7 @@ function lyStartEdit() {
   if (!ly) return;
   lyState.editing = ly.id;
   lyState.staged = new Set(ly.members.map((m) => m.place));
+  AHM.state.patch('layers', {});
   lyRenderDetail();
   update(); // every place is shown now, the members get a ring
 }
@@ -254,12 +258,14 @@ function lyStopEdit() {
   if (!lyState.editing) return;
   lyState.editing = null;
   lyState.staged = null;
+  AHM.state.patch('layers', {});
   lyRenderDetail();
   update();
 }
 /** A place was clicked on the map or in the list while places are being chosen. */
 function lyToggleMember(pid) {
   lyState.staged.has(pid) ? lyState.staged.delete(pid) : lyState.staged.add(pid);
+  AHM.state.patch('layers', {});
   const cb = document.querySelector(`#lyPick li[data-pid="${pid}"] input`);
   if (cb) cb.checked = lyState.staged.has(pid);
   lyDelta();

@@ -4,13 +4,13 @@ Only the shared domain edits this file. Mark an item done with the date and the 
 
 - [x] The browser test "tabs, sheets, filters, layers, categories" was updated to the new sidebar (owner's OK 2026-11-06), `changes/shared.md` #2. The whole suite is green.
 - [ ] CSS/HTML tests (part 4 of `tests/README.md`) are not written.
-- [ ] Known violation 2: `lyState` carries sidebar state (open, editing, staged, noteAll); split it (proposal needed).
+- [ ] Known violation 1 (tasks 002-003): `lyState` carries sidebar state (open, editing, staged, noteAll); split it (proposal needed).
 
 - [x] Step 4: parallel work, features mechanism, campaigns domain (2026-11-06, `changes/shared.md` #3).
 - [ ] Decide on `proposals/002-map-extension-points.md` (owner), then the map agent implements it and shared updates `INTERFACES.md` (v1.4), `contract.test.js` and the `MAP` list in `features.test.js`.
 - [ ] When the owner wants the feature on a test forum: a request to the data domain so the controller sends `features: ['campaigns']`.
 - [x] Proposal 003 approved, state tests written first, test load lists updated (2026-11-06, `changes/shared.md` #5).
-- [ ] After the state agent delivers: core, sidebar, map steps (`tools/prompts/domain/state-follow-ups.md`); then `INTERFACES.md` I-6 (v1.4) and a contract test for the key list.
+- [x] State agent delivered (task 001); `INTERFACES.md` I-6 (v1.4) and the contract test for the key list (2026-11-07, `changes/shared.md` #15). [ ] Core, sidebar, map steps (tasks 002-004); then delete Known violation 1 in `INTERFACES.md`.
 - [x] Starter contexts, architect package, token rules (2026-11-06, `changes/shared.md` #6). [ ] Tune `tools/context.json` after the first agent sessions.
 - [x] Git workflow, CI, CODEOWNERS handles (2026-11-07, `changes/shared.md` #7). [ ] After the first push: check that the workflow runs green; fix it if not.
 - [x] Task specs for the state roll-out in `tasks/` (2026-11-07, `changes/shared.md` #8). [ ] Task 005 (contract I-6) after 001-004.

@@ -1,4 +1,4 @@
-# Interfaces between the domains (`ahm/map`), version 1.3
+# Interfaces between the domains (`ahm/map`), version 1.4
 
 This file is the contract. **Only the owner (the human) can change it**, through a proposal (`DOMAINS.md`). Agents read it, follow
 it, and never edit it. A name, signature, event, endpoint or file format that is listed here may not be renamed, removed or
@@ -6,7 +6,7 @@ reinterpreted by any agent.
 
 **Status (step 2 done):** I-1, I-2 and I-3 are implemented. The sidebar and the map no longer call each other: they use only
 `window.AHM` (`app/js/ahm.js`, `app/js/map/map.js`). Version 1.1 added, during step 2, the items marked **[1.1]** below because the
-refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). See "Known violations" for what is still open.
+refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). See "Known violations" for what is still open.
 
 ---
 
@@ -114,11 +114,26 @@ that is not listed is not requested, not run and not visible.
 
 ---
 
+## I-6 State manager (`window.AHM.state`, `app/js/state/state.js`). Provider: **state**. Consumers: everyone
+
+The one module that holds state shared between domains. It has no DOM, no map and no sidebar code and calls no other domain. Only the
+state domain writes `app/js/state/`. Spec: `proposals/003-state-manager.md` (approved), tests: `tests/js/state.test.js`.
+- `AHM.state.get(key)` returns the value. `AHM.state.set(key, value)` replaces it. `AHM.state.patch(key, partial)` assigns the given fields of an object value. These three are the whole API.
+- Keys (version 1.4, exactly these two; new keys only by proposal):
+  - `selected`: id of the place shown now, or `null` (default). Written by the sidebar, read by the map (highlight).
+  - `layers`: `{ only: Set, hide: Set, open, editing, staged, noteAll }`, the fields of the former `lyState`. `get('layers')` returns the live object; after changing its sets in place call `AHM.state.patch('layers', {})` to announce it.
+- Events: `AHM.emit('state:<key>', { value, old })`. `set` emits only when the value is not identical (`!==`); `patch` always emits once (`old` = shallow copy from before the patch).
+- Errors (thrown): unknown key (message contains "unknown key"); `patch` on a value that is not an object, or with a non-object argument; `set('layers', x)` with anything but an object that has the same fields.
+- Rules: nobody but `state.js` assigns `AHM.state`; state events are named `state:<key>`; the sidebar and the map may use `AHM.state` besides `AHM.map`, `AHM.on` and `AHM.emit`.
+- Roll-out (tasks `tasks/002`-`004`): core reads `lyState` from `AHM.state.get('layers')`; the sidebar writes `selected` and announces layer changes; the map listens to `state:selected`.
+
+---
+
 ## Known violations (open; agents must not add new ones)
 
-1. `core/layer-rules.js` holds `lyState`, which also carries sidebar state (`open`, `editing`, `staged`, `noteAll`).
+1. `core/layer-rules.js` holds `lyState`, which also carries sidebar state (`open`, `editing`, `staged`, `noteAll`). Closes when `tasks/002` (core reads it from `AHM.state`) and `tasks/003` (sidebar announces changes) are merged; then delete this item.
 2. The sidebar and the map share HTML ids by design inside the Maps fold (`#more-maps`, owned by the map); outside it neither touches
    the other's ids.
 3. `app/index.html` is edited by several domains (script list: shared; the sidebar parts and the Maps fold by their domains); step 4 may need markers or a split.
 
-Contract tests for this file: `tests/js/contract.test.js` (I-1 to I-4), `tests/js/features.test.js` (I-5), `tests/js/boundaries.test.js` (the only written-down exception left there is `typeIcon`, I-4).
+Contract tests for this file: `tests/js/contract.test.js` (I-1 to I-4 and I-6), `tests/js/features.test.js` (I-5), `tests/js/boundaries.test.js` (the only written-down exception left there is `typeIcon`, I-4).

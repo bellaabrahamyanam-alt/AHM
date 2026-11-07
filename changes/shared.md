@@ -209,3 +209,11 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Why:** the owner made the repository public and enabled the two settings; the documents must say so. This replaces the old branch `shared/docs-public-automerge`; its outdated line ("agents merge their own pull requests") is dropped.
 **Verify:** read "Git workflow" in `DOMAINS.md`; CI green. No code and no test changed.
 **Follow-ups:** the owner decides on branch protection. Check that nothing private is in the git history now that the repository is public.
+
+## 2026-11-07 — #15 Contract I-6 (INTERFACES.md v1.4) after the state manager was built (task 005, first part)
+**What:** `INTERFACES.md` version 1.4 with the new section I-6 (`AHM.state`: `get`/`set`/`patch`, keys `selected` and `layers`, events `state:<key>`, errors, rules); the "Known violations" item 1 now says when it closes (tasks 002 and 003 merged; it is NOT removed yet). `DOMAINS.md`: the state row says the module is built and approved. `tests/js/contract.test.js`: two I-6 tests (exact API and exact key list read from `state.js`; nobody else assigns `AHM.state`) and the I-2 test now allows `AHM.state` next to `AHM.map`, `AHM.on` and `AHM.emit` (tasks 003 and 004 would fail CI otherwise).
+**Why:** proposal 003 step 6 (approved by the owner 2026-11-06); task 001 is merged (`changes/state.md` #1). Tasks 002-004 are not merged yet, so only the first part of task 005 is done.
+**Files:** `INTERFACES.md`, `DOMAINS.md`, `tests/js/contract.test.js`, `todo/shared.md`, `changes/shared.md`.
+**Verify:** `node tests/js/run.js` all green; adding a key to `state.js` makes the I-6 contract test fail (checked by hand).
+**Follow-ups:** after tasks 002 and 003 are merged: delete Known violation 1 and the "Closes when" text; after task 004: nothing more in this file. The existing assertion change in an existing test needs the owner's OK (tests of shared; no weakening of the key and API checks).
+

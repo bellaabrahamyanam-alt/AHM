@@ -13,7 +13,8 @@
     ],
     "map": [
       "app/js/map/",
-      "app/css/map.css"
+      "app/css/map.css",
+      "tests/js/map.test.js"
     ],
     "core": [
       "app/js/core/",

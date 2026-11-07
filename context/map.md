@@ -16,7 +16,7 @@ The MapLibre map: base maps, place symbols, overlays, route, pins. Provides the 
 
 ## Your files (the only ones you may change)
 
-`app/js/map/`, `app/css/map.css`, and your records `changes/map.md`, `todo/map.md`.
+`app/js/map/`, `app/css/map.css`, `tests/js/map.test.js`, and your records `changes/map.md`, `todo/map.md`.
 
 ## Token rules
 

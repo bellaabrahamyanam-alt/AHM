@@ -348,7 +348,7 @@ function offsetOf(pop) {
   return { x: 0, y: Math.abs(o) };
 }
 const lift = (rec) => json((layer(rec, PLACES).paint || {})['icon-opacity']);
-const flush = () => new Promise((r) => setImmediate(r));
+const flush = () => new Promise((r) => setTimeout(r, 0));
 
 function makeClock() {
   let now = 0;

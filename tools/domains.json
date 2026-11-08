@@ -9,7 +9,8 @@
     "sidebar": [
       "app/js/sidebar/",
       "app/css/sidebar.css",
-      "tests/js/layers.test.js"
+      "tests/js/layers.test.js",
+      "tests/js/sidebar.test.js"
     ],
     "map": [
       "app/js/map/",

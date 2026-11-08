@@ -4,4 +4,5 @@
 - **Interface touched:** listens to `state:selected` (I-6). No new `AHM.map` command.
 - **Goal:** `AHM.on('state:selected', ({ value }) => ...)` draws a ring/halo around the place with that id; removes it when `value` is null.
 - **Acceptance:** highlight survives `setFeatures` re-draws and base-map switches; an id not among the features draws nothing and does not throw; map never calls the sidebar and reads `AHM.state` for nothing else; real MapLibre not available in tests, so the test uses the stub and the PR says how to check by hand; `changes/map.md` entry.
+- **Test file:** `tests/js/map.test.js` (new, owned by map, registered in `tools/domains.json`).
 - **Out of scope:** new events, sidebar files.

@@ -246,3 +246,10 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of this merge request shows only the job `domain` (documents only). The owner pastes the new text of `project-instructions.md` into the Project.
 **Follow-ups (owner only):** run the `-tdd` and `-dev` agents in Claude Code with a local clone (the biggest token saving); in the GitLab connector switch off the tools the agents do not use.
 
+## 2026-11-08 — #21 The map domain gets a test file (proposal 009)
+**What:** `map-tdd: task 004` stopped because the map domain owned no test file. `tools/domains.json`: `tests/js/map.test.js` added to the map domain; `tasks/004-map-highlight.md` names it; `context/map.md` "Your files" line updated by hand (the generator could not be run in the chat); `proposals/009-map-test-file.md`. No application code or interface change. Merge only after the owner writes `Status: approved` in the proposal (gatekeeper refused !8 without it).
+**Why:** the file-ownership tests forbid map-tdd from writing into another domain's test file.
+**Verify:** CI of this merge request (`domains.test.js`, `context.test.js`). If `context.test.js` fails, run `node tools/make-context.js` and commit the result.
+**Fix after CI of !8 (2026-11-08):** `tests/js/domains.test.js` failed twice: `tests/js/map.test.js` was registered but did not exist, and `.gitlab/CODEOWNERS` was stale. Fixed in !9 (branch `shared+map/map-test-file`, replaces !8): comments-only placeholder `tests/js/map.test.js` (a map file, so the branch names `map`) and the new CODEOWNERS line (same text as `node tools/check-domain.js --codeowners`, added by hand). The existence test is NOT relaxed.
+**Follow-ups:** `map-tdd: task 004`.
+

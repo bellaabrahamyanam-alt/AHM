@@ -78,9 +78,9 @@ scenario('browser: languages, optional dates in many formats, mountain height, n
     ok((await pg.locator('#langList li').count())===6, 'Languages tab lists 6');
     ok(await pg.locator('#lgAdd').count()===1, 'admin sees the add-language form (dev has no login)');
     // add language
-    await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','Classical Armenian'); await pg.fill('#lgNative','Գրաբար'); await pg.click('#lgAdd'); await pg.waitForTimeout(500);
+    await pg.click('#more-lang button:has-text("Add language")'); await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','Classical Armenian'); await pg.fill('#lgNative','Գրաբար'); await pg.click('#lgAdd'); await pg.waitForTimeout(500);
     ok((await pg.locator('#langList li').count())===7, 'language added -> 7');
-    await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','dup'); await pg.click('#lgAdd'); await pg.waitForTimeout(400);
+    await pg.click('#more-lang button:has-text("Add language")'); await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','dup'); await pg.click('#lgAdd'); await pg.waitForTimeout(400);
     ok(/already/.test(await pg.locator('#lgErr').innerText()), 'duplicate language refused: '+await pg.locator('#lgErr').innerText());
     // new place dialog
     await pg.evaluate(()=>openDlg('place',{lon:44.5,lat:40.1,name:'Testville'}));
@@ -183,7 +183,7 @@ scenario('browser: tabs, sheets, filters, layers (only / hide / search / create 
     await pg.click('#catCancel'); ok(await pg.locator('#catAdd').count()===1, 'Cancel closes the fields');
     await pg.click('#catAdd'); await pg.fill('#catForm .nn','Pilgrimage'); await pg.click('#catSave'); await pg.waitForTimeout(500);
     ok(await pg.locator('#catList li.tr').count()===6, 'category added');
-    await pg.click('#catList li.tr:has-text("Pilgrimage") [data-lyact=editcat]'); ok(await pg.locator('#catList li.tr:has-text("Pilgrimage") + li.cat-edit #catForm').count()===1, 'the pencil opens the fields under the row');
+    await pg.click('#catList li.tr:has-text("Pilgrimage") [data-lyact=editcat]'); ok(await pg.locator('#catAdmin #catForm').count()===1 && await pg.locator('#catList #catForm').count()===0, 'the pencil opens the fields in the editor area at the bottom of the fold (task 007)');
     await pg.fill('#catForm .nn','Pilgrimages'); await pg.click('#catSave'); await pg.waitForTimeout(500);
     ok(await pg.locator('#catList li.tr:has-text("Pilgrimages")').count()===1, 'category renamed');
     // new layer (its own Add layer fold in the Layers tab)

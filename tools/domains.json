@@ -53,6 +53,7 @@
       "AGENTS.md",
       "DOMAINS.md",
       "INTERFACES.md",
+      "DESIGN.md",
       "AGENT_CHANGES.md",
       "TODO.md",
       "tools/",
@@ -63,6 +64,7 @@
       "app/js/config.js",
       "app/js/ahm.js",
       "app/js/features.js",
+      "app/js/icons.js",
       "app/css/base.css",
       "app/package.json",
       "app/bun.lock",
@@ -80,6 +82,7 @@
       "tests/js/domains.test.js",
       "tests/js/boundaries.test.js",
       "tests/js/features.test.js",
+      "tests/js/icons.test.js",
       "context/",
       "tests/js/context.test.js",
       "tests/js/ci.test.js"

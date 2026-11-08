@@ -11,6 +11,7 @@ The MapLibre map: base maps, place symbols, overlays, route, pins. Provides the 
 - `app/js/map/map.js`
 - `app/js/map/overlays.js`
 - `app/js/map/typeicons.js`
+- `DESIGN.md`
 - `changes/map.md`
 - `todo/map.md`
 

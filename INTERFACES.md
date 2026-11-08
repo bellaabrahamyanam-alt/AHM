@@ -1,4 +1,4 @@
-# Interfaces between the domains (`ahm/map`), version 1.4
+# Interfaces between the domains (`ahm/map`), version 1.5
 
 This file is the contract. **Only the owner (the human) can change it**, through a proposal (`DOMAINS.md`). Agents read it, follow
 it, and never edit it. A name, signature, event, endpoint or file format that is listed here may not be renamed, removed or
@@ -6,7 +6,7 @@ reinterpreted by any agent.
 
 **Status (step 2 done):** I-1, I-2 and I-3 are implemented. The sidebar and the map no longer call each other: they use only
 `window.AHM` (`app/js/ahm.js`, `app/js/map/map.js`). Version 1.1 added, during step 2, the items marked **[1.1]** below because the
-refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). The roll-out of I-6 is finished (tasks 002-004 merged, 2026-11-08): Known violation 1 is closed. See "Known violations" for what is still open.
+refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). The roll-out of I-6 is finished (tasks 002-004 merged, 2026-11-08): Known violation 1 is closed. Version 1.5 (2026-11-08, proposal 010, approved) adds I-7 (icons), I-8 (types dictionary) and I-9 (shapes) and the items marked **[1.5]** in I-1 to I-4. They are built by tasks 010-014 (`tasks/README.md`), so `contract.test.js` accepts them but does not require them yet. See "Known violations" for what is still open.
 
 ---
 
@@ -17,22 +17,22 @@ The front end never builds URLs by itself; it reads them from `AHM_CONFIG.url` (
 forum controller through `window.AHM_BACKEND` in production). Names are fixed:
 
 - Read (GET): `places`, `notesIndex`, `note(place, id)`, `languages`, `overlays`, `overlayImage(o)`, `layers`,
-  `layerNotesIndex`, `categories`.
+  `layerNotesIndex`, `categories`; **[1.5]** `types`, `shapes`.
 - Write (POST, JSON unless noted): `save`, `languageSave`, `overlaySave`, `overlayUpload(id)` (multipart), `overlayDelete`,
-  `layerSave`, `layerDelete`, `categorySave`.
-- Permission flags in config: `canEdit`, `loggedIn`, `loginUrl`, `canOverlay`, `canLanguage`, `canLayerAdmin`.
+  `layerSave`, `layerDelete`, `categorySave`; **[1.5]** `typeSave`, `typeDelete`, `shapeSave`.
+- Permission flags in config: `canEdit`, `loggedIn`, `loginUrl`, `canOverlay`, `canLanguage`, `canLayerAdmin`; **[1.5]** `canTypeAdmin`.
 - Errors: HTTP 4xx with `{ "error": "<message>" }`; 400 for invalid input, 403 for no permission.
 
 ### Request bodies (the keys the front end may send)
 - `save`: one of `place_add`, `place_update`, `note_add`, `note_update`, as implemented in `service/store.php`.
 - `languageSave`: `{ code, name, native, edit? }` (`edit: true` changes the names of an existing code; the code never changes).
 - `layerSave`: `layer_add`, `layer_update`, `layer_members` (`{ id, add?, remove?, order? }`), `layer_note_add`,
-  `layer_note_update`. `categorySave`: `{ id?, names: [{ lang, name }] }`.
+  `layer_note_update`. `categorySave`: `{ id?, names: [{ lang, name }] }`. **[1.5]** `layer_members` also accepts `add_shapes` and `remove_shapes` (I-9); `typeSave` and `typeDelete` are described in I-8, `shapeSave` (`shape_add`, `shape_update`, `shape_delete`) in I-9.
 - Exact validation rules: `service/store.php` = `dev/save-handler.js` = `tests/fixtures/rules.json` (one table, checked by tests).
 
 ### File formats (owned by **data**; the front end only reads them through `core`)
 - `places.geojson`, `notes/index.json` + `notes/<place>/<id>.md`, `languages.json`, `categories.json`, `layers.json`,
-  `layer-notes/index.json`, `overlays.json`.
+  `layer-notes/index.json`, `overlays.json`; **[1.5]** `types.json` (I-8), `shapes.geojson` (I-9).
 - Dates: `null` or `{ fmt, ts, mode: exact|approx|range, ts_to }`; every `ts` is ISO 8601 / RFC 3339 text in UTC with `Z`.
 - Ids are UUID text. Names and descriptions are lists of `{ lang, name|text }`; `lang` comes from `languages.json`.
 
@@ -57,6 +57,14 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `editPin({lon, lat}, onMove) → { getPosition(), setPosition({lon, lat}) [1.1], remove() }` | the draggable red pin used while editing a place |
 | `resize()` | the panel changed size |
 | `getZoom()` | current zoom (read only) |
+| `setTypes(types)` **[1.5]** | the types dictionary (I-8) as the sidebar loaded it; the map draws points, lines and areas from it |
+| `getSymbols()` **[1.5]** | `[{ name, label }]`: the point symbols the map can draw (the sidebar offers them in the type editor); read only |
+| `setShapes(featureCollection)` **[1.5]** | the lines and areas to draw now. Feature properties: `id, name, type_code`. Replaces everything. |
+| `hideShape(id \| null)` **[1.5]** | hide one shape while it is being edited (`null` shows all) |
+| `highlightShape(id \| null)` **[1.5]** | draw one shape as selected; the sidebar holds the selection and tells the map (no new state key) |
+| `drawShape({ geometry: 'line' \| 'area', type_code, coords? }, onChange) → { getGeometry(), setType(code), remove() }` **[1.5]** | the interactive editor for a line or an area; `coords` edits an existing shape; `onChange(geometry \| null)` |
+| `showMenu({ lon, lat }, { title?, actions: [{ id, icon, label }] })` **[1.5]** | a small menu at a point; `icon` is a name of I-7, `label` is the tooltip and the `aria-label`; one menu at a time |
+| `hideMenu()` **[1.5]** | close the menu |
 
 ### Events, emitted by the map (`AHM.on(name, handler)`), handled by the sidebar
 | Event | Payload | When |
@@ -64,8 +72,10 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `map:ready` | none | the map and its layers exist |
 | `place:click` | `{ id }` | single click on a place symbol or label. The map never moves. |
 | `place:dblclick` | `{ id }` | double click on a place; the map has cancelled its own zoom; the sidebar decides (it calls `AHM.map.focusPlace(id)`) |
-| `map:click` | `{ lon, lat, name? }` | click on empty map (`name` = the base map's label under the cursor, if any) |
+| `map:click` | `{ lon, lat, name?, shapes? }` | click on the map that is not on a place (`name` = the base map's label under the cursor, if any; **[1.5]** `shapes: [{ id }]` = the shapes under the cursor, areas included) |
 | `map:show-controls` **[1.1]** | none | the map asks the sidebar to open the Maps fold (when an historical map is edited) |
+| `shape:click` **[1.5]** | `{ id }` | click on a line or on the outline of an area (6 px tolerance) |
+| `map:menu` **[1.5]** | `{ id, lon, lat }` | a button of the point menu was used (`id` = the action's id, `lon`/`lat` = the point the menu was opened at); the menu closes |
 
 ### Events handled by the map (from the sidebar and from the state manager)
 | Event | Payload | When |
@@ -81,7 +91,7 @@ never renamed, only added (by proposal).
 ## I-4 Place type symbols **[1.1]**. Provider: **map** (`map/typeicons.js`). Consumer: **sidebar**
 
 `typeIcon(type)` returns the small HTML symbol of a place type (used in lists and details) and `TYPE_STYLE` holds its shape and
-colour, so the list shows the same symbol as the map. The sidebar only calls `typeIcon`; it never reads `TYPE_STYLE`.
+colour, so the list shows the same symbol as the map. The sidebar only calls `typeIcon`; it never reads `TYPE_STYLE`. **[1.5]** `typeIcon(type)` keeps its signature and, once `AHM.map.setTypes` has been called, draws from the types dictionary (I-8).
 
 ---
 
@@ -93,10 +103,10 @@ The names and argument lists below are stable. Core never reads the DOM or the m
   `dateKey`, `dateOrderCheck`, `dateText`, `spanText`, `periodEndSec`, `datePeriodEnd`, `legacyToDate`, `DATE_FORMATS`.
   Same results as `service/dates.php` (tests: `tests/fixtures/dates-vectors.json`).
 - **Loading and naming** (`data.js`): `getJSON`, `loadPlaces`, `loadNotesIndex`, `loadNoteBody`, `loadLayers`, `loadLayerNotes`,
-  `loadCategories`, `loadLanguages`, `esc`, `norm`, `label(place, lang)`, `langName(code)`. Everything printed into HTML goes
+  `loadCategories`, `loadLanguages`, `esc`, `norm`, `label(place, lang)`, `langName(code)`; **[1.5]** `loadTypes`, `typeLabel(type, lang)` (I-8), `loadShapes` (I-9). Everything printed into HTML goes
   through `esc`.
 - **Filtering** (`search.js` and the filter rules of `layers.js`): `run(options)` (the filtered, sorted places; `options = { q, lang, sort, period }`: `q` search text, `lang` language code or `''`, `sort` `'name' | 'date'`, `period` = `[start, end)` in seconds or nulls; types and layer filters stay in `state` and `lyState`), `byDateKey`,
-  `periodBounds`, `periodActive`, and the layer rules (`layerAllows`, `lyScope`, `lyHalo`, `lyNoteVisible`).
+  `periodBounds`, `periodActive`, and the layer rules (`layerAllows`, `lyScope`, `lyHalo`, `lyNoteVisible`; **[1.5]** `layerAllowsShape(id)`, I-9).
 
 ---
 
@@ -130,6 +140,37 @@ state domain writes `app/js/state/`. Spec: `proposals/003-state-manager.md` (app
 
 ---
 
+## I-7 Icons **[1.5]** (`window.AHM.icons`, `app/js/icons.js`). Provider: **shared**. Consumers: **sidebar**, **map**
+
+One icon set for the whole interface (`DESIGN.md`, rule 2). Source: Phosphor Icons, regular weight (MIT licence, stated in the file header), pasted as SVG paths; nothing is loaded at runtime. Only the shared domain writes the file.
+- `AHM.icons.svg(name, size?)` returns an inline SVG string (default size 16, drawn in `currentColor`, `aria-hidden`). An unknown name gives `''`. The string holds no caller text, so it needs no `esc`; the button around it carries `title` and `aria-label`.
+- Fixed names (exactly these thirteen; a new name only by a change to `icons.js`, this file and `tests/js/icons.test.js`): `pencil`, `route-from`, `route-to`, `plus`, `close`, `trash`, `check`, `panel-left`, `panel-right` (`panel-left` drawn mirrored), `chevron-down`, `line`, `area`, `pin`.
+- `app/index.html` loads `js/icons.js` after `js/ahm.js` and before every sidebar and map script. Tests: `tests/js/icons.test.js`.
+
+## I-8 Types dictionary **[1.5]**. Provider: **data** (files, endpoints), **core** (loading), **map** (drawing). Consumer: **sidebar**
+
+One dictionary for points, lines and areas, managed like languages and categories. Built by tasks 011 (data, core), 013 (map) and 014 (sidebar).
+- File `types.json`: `{ version: 1, types: [ { code, geometry, names: [{ lang, name }], color, style } ] }`.
+  - `code`: stable id, `[a-z0-9-]{1,32}`, made from the English name when the type is created, never changes. Places already point to a type by this code; place files do not change.
+  - `geometry`: `point` | `line` | `area`, fixed at creation. `color`: `#rrggbb`.
+  - `style` by geometry: point `{ symbol }` (a slug; an unknown slug is drawn as a circle); line `{ width 1..12, pattern solid|dashed|dotted|double|triple, opacity 0.1..1, arrow true|false }`; area `{ fill_opacity 0..0.8, outline: { width, pattern, opacity } }` (the fill uses `color`).
+- Seed entries: one point type for each type that exists today (same colours and shapes as now), the line types `border` and `route`, and the area type `territory`.
+- Endpoints: read `types`; write `typeSave` (`{ code?, geometry, names, color, style, edit? }`; `edit: true` changes an existing code, and geometry and code never change) and `typeDelete` (`{ code }`; 400 with the count of places and shapes that use it). Flag `canTypeAdmin` (the same people as `canLanguage` today; 403 otherwise).
+- Core (I-3): `loadTypes()`, `typeLabel(type, lang)`.
+- Map (I-2): `AHM.map.setTypes(types)` (the sidebar passes the loaded dictionary), `AHM.map.getSymbols()`. `typeIcon(type)` (I-4) draws from the dictionary.
+
+## I-9 Shapes **[1.5]**. Provider: **data** (files, endpoints), **core** (loading, layer rules), **map** (drawing). Consumer: **sidebar**
+
+Lines and areas on the map (borders, routes, territories). Built by tasks 011 (data, core), 013 (map) and 014 (sidebar).
+- File `shapes.geojson`: a FeatureCollection. `geometry` is `LineString` or `Polygon`; `properties`: `{ id (UUID), type_code, names: [{ lang, name }], created, updated }`. Shapes have no dates.
+- The type of a shape must have the matching geometry (`line` with `LineString`, `area` with `Polygon`). Limits: at most 2000 points; a polygon ring is closed and has at least 4 coordinates; lon -180..180, lat -90..90.
+- Layers: `members` in `layers.json` may hold `{ "shape": id }` besides `{ "place": id }`. `layer_members` accepts `add_shapes` and `remove_shapes` (lists of ids; an unknown id is 400). Deleting a shape removes it from every layer. The formats of places and notes do not change.
+- Endpoints: read `shapes`; write `shapeSave` with `shape_add`, `shape_update`, `shape_delete` (permission `canEdit`, like places).
+- Core (I-3): `loadShapes()`, `layerAllowsShape(id)` (the same Only/Hide rules as `layerAllows`).
+- Map (I-2): `setShapes`, `hideShape`, `highlightShape`, `drawShape`; events `shape:click` and `map:click` with `shapes`. The selected shape is held by the sidebar and passed to the map with `highlightShape`; there is no new state key.
+
+---
+
 ## Known violations (open; agents must not add new ones)
 
 1. (Closed 2026-11-08: the former `lyState` is `AHM.state.get('layers')`, I-6. The numbers of the other items stay.)
@@ -137,4 +178,4 @@ state domain writes `app/js/state/`. Spec: `proposals/003-state-manager.md` (app
    the other's ids.
 3. `app/index.html` is edited by several domains (script list: shared; the sidebar parts and the Maps fold by their domains); step 4 may need markers or a split.
 
-Contract tests for this file: `tests/js/contract.test.js` (I-1 to I-4 and I-6), `tests/js/features.test.js` (I-5), `tests/js/boundaries.test.js` (the only written-down exception left there is `typeIcon`, I-4).
+Contract tests for this file: `tests/js/contract.test.js` (I-1 to I-4 and I-6; the [1.5] names are accepted but not yet required), `tests/js/icons.test.js` (I-7), `tests/js/features.test.js` (I-5), `tests/js/boundaries.test.js` (the only written-down exception left there is `typeIcon`, I-4).

@@ -12,13 +12,22 @@ const uniq = (a) => [...new Set(a)].sort();
 // ---- I-1 data <-> front end ----
 const READ = ['places', 'notesIndex', 'note', 'languages', 'overlays', 'overlayImage', 'layers', 'layerNotesIndex', 'categories'];
 const WRITE = ['save', 'languageSave', 'overlaySave', 'overlayUpload', 'overlayDelete', 'layerSave', 'layerDelete', 'categorySave'];
+// Names added by proposal 010 (INTERFACES.md 1.5): accepted before they exist, not required yet (tightened after tasks 010, 011 and 013 are merged; the owner decides).
+const NEW_READ = ['types', 'shapes'];
+const NEW_WRITE = ['typeSave', 'typeDelete', 'shapeSave'];
+/** `have` must hold every name of `need` and may hold others only from `optional`. */
+const within = (need, optional, have, what) => {
+  const missing = need.filter((k) => !have.includes(k)),
+    extra = have.filter((k) => !need.includes(k) && !optional.includes(k));
+  ok(missing.length === 0 && extra.length === 0, `${what}: missing [${missing}], not in INTERFACES.md [${extra}]`);
+};
 
 test('contract I-1: config.js offers exactly the endpoint names of INTERFACES.md, in development and in the forum', () => {
   const p = load(['config.js']);
-  eq(uniq([...READ, ...WRITE]), uniq(Object.keys(p.X('AHM_CONFIG.url'))), 'development URLs');
+  within([...READ, ...WRITE], [...NEW_READ, ...NEW_WRITE], uniq(Object.keys(p.X('AHM_CONFIG.url'))), 'development URLs');
   const src = read('app', 'js', 'config.js');
   const forum = src.slice(src.indexOf('window.AHM_BACKEND\n    ? {'), src.indexOf('    : {'));
-  eq(uniq([...READ, ...WRITE]), uniq(names(forum, /^\s{8}(\w+):/gm)), 'forum URLs');
+  within([...READ, ...WRITE], [...NEW_READ, ...NEW_WRITE], uniq(names(forum, /^\s{8}(\w+):/gm)), 'forum URLs');
 });
 
 test('contract I-1: the forum controller hands out every endpoint name, and the dev server knows every write endpoint', async () => {
@@ -45,11 +54,15 @@ test('contract I-1: the forum controller hands out every endpoint name, and the 
 const MAP_COMMANDS = ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getZoom', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers'];
 const MAP_EVENTS = ['map:click', 'map:ready', 'map:show-controls', 'place:click', 'place:dblclick'];
 const SIDEBAR_EVENTS = ['sidebar:resized'];
+// Added by proposal 010 (1.5): accepted, not required yet.
+const NEW_MAP_COMMANDS = ['drawShape', 'getSymbols', 'hideMenu', 'hideShape', 'highlightShape', 'setShapes', 'setTypes', 'showMenu'];
+const NEW_MAP_EVENTS = ['map:menu', 'shape:click'];
 
 test('contract I-2: AHM.map has exactly the commands of INTERFACES.md', () => {
   const p = load(['typeicons.js', 'map.js']);
-  eq(MAP_COMMANDS, Object.keys(p.X('AHM.map')).sort());
-  for (const k of MAP_COMMANDS) ok(typeof p.X('AHM.map.' + k) === 'function', k + ' is a function');
+  const have = Object.keys(p.X('AHM.map')).sort();
+  within(MAP_COMMANDS, NEW_MAP_COMMANDS, have, 'AHM.map commands');
+  for (const k of have) ok(typeof p.X('AHM.map.' + k) === 'function', k + ' is a function');
 });
 
 test('contract I-2: the events emitted and handled match the lists, and each side uses only the interface', () => {
@@ -57,14 +70,15 @@ test('contract I-2: the events emitted and handled match the lists, and each sid
     side = jsFiles('sidebar').join('\n');
   const emit = (s) => uniq(names(s, /AHM\.emit\(\s*["']([^"']+)["']/g)),
     on = (s) => uniq(names(s, /AHM\.on\(\s*["']([^"']+)["']/g));
-  eq(MAP_EVENTS, emit(map), 'events emitted by the map');
+  within(MAP_EVENTS, NEW_MAP_EVENTS, emit(map), 'events emitted by the map');
   eq(SIDEBAR_EVENTS, emit(side), 'events emitted by the sidebar');
-  eq(MAP_EVENTS.filter((e) => e !== 'map:ready'), on(side), 'events handled by the sidebar (map:ready needs no handler: features are queued)');
+  within(MAP_EVENTS.filter((e) => e !== 'map:ready'), NEW_MAP_EVENTS, on(side), 'events handled by the sidebar (map:ready needs no handler: features are queued)');
   eq([...SIDEBAR_EVENTS, 'state:selected'].sort(), on(map), 'events handled by the map: sidebar:resized, and state:selected of I-6 (the map highlights the selected place)');
   const used = uniq(names(side, /AHM\.map\.(\w+)/g));
-  ok(used.every((k) => MAP_COMMANDS.includes(k)), 'the sidebar calls an AHM.map command that is not in INTERFACES.md: ' + used.filter((k) => !MAP_COMMANDS.includes(k)));
+  const known = [...MAP_COMMANDS, ...NEW_MAP_COMMANDS];
+  ok(used.every((k) => known.includes(k)), 'the sidebar calls an AHM.map command that is not in INTERFACES.md: ' + used.filter((k) => !known.includes(k)));
   const props = uniq(names(map + side, /\bAHM\.(\w+)/g));
-  ok(props.every((k) => ['emit', 'map', 'on', 'state'].includes(k)), 'only AHM.map, AHM.on, AHM.emit and AHM.state (I-6) may be used outside ahm.js: ' + props);
+  ok(props.every((k) => ['emit', 'icons', 'map', 'on', 'state'].includes(k)), 'only AHM.map, AHM.on, AHM.emit, AHM.state (I-6) and AHM.icons (I-7) may be used outside ahm.js: ' + props);
 });
 
 // ---- I-3 core functions ----
@@ -78,6 +92,14 @@ test('contract I-3: the core functions of INTERFACES.md exist with the same name
   const p = load(['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'search.js', 'searchfield.js', 'period.js']);
   for (const k of CORE) ok(typeof p.X(k) === 'function', k + ' is missing from the core (or sidebar/period.js for periodActive)');
   ok(p.X('DATE_FORMATS') !== undefined, 'DATE_FORMATS');
+});
+
+// Added by proposal 010 (1.5): not required yet; a name that exists must be a function (tightened after task 011 is merged; the owner decides).
+const NEW_CORE = ['loadTypes', 'typeLabel', 'loadShapes', 'layerAllowsShape'];
+
+test('contract I-3 [1.5]: the new core names are not required yet, but a name that exists is a function', () => {
+  const p = load(['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'search.js', 'searchfield.js', 'period.js']);
+  for (const k of NEW_CORE) ok(['undefined', 'function'].includes(p.X(`typeof ${k}`)), k + ' must be a function when it exists');
 });
 
 test('contract I-4: typeIcon(type) and TYPE_STYLE exist (the symbols are drawn by the map domain, used by the sidebar)', () => {

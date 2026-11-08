@@ -453,8 +453,14 @@ const ICON_PLUS =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
 let lyCatOpen = null; // null = nothing is edited, 'new' = adding, otherwise the id of the category being renamed
 const catEditorHTML = (title) =>
-  `<div class="label">${title}</div><div class="pf" id="catForm"><div class="pf-names"></div><button type="button" class="pf-add">+ Add another name</button></div>` +
-  '<div class="btn-pair"><button id="catSave" class="primary">Save</button><button id="catCancel">Cancel</button></div><div id="catErr" class="sn"></div>';
+  `<div class="label" id="catLabel">${title}</div><div class="pf" id="catForm"><div class="pf-names"></div><button type="button" class="pf-add">+ Add another name</button></div>` +
+  '<div class="btn-pair"><button id="catSave" class="primary" disabled>Save</button><button id="catCancel">Cancel</button></div><div id="catErr" class="sn"></div>';
+function catValidateSave() {
+  const btn = $('#catSave');
+  if (!btn) return;
+  const names = [...($('#catForm') ? $('#catForm').querySelectorAll('.nn') : [])].map((i) => i.value.trim()).filter(Boolean);
+  btn.disabled = names.length === 0;
+}
 function lyRenderCats() {
   const l = $('#lang').value,
     admin = AHM_CONFIG.canLayerAdmin;
@@ -465,24 +471,25 @@ function lyRenderCats() {
       .sort((a, b) => catName(a, l).localeCompare(catName(b, l)))
       .map(
         (c) =>
-          `<li class="tr tr-cat" data-cid="${c.id}"><span class="tc-btn">` +
+          `<li class="tr tr-cat${lyCatOpen === c.id ? ' cat-renaming' : ''}" data-cid="${c.id}"><span class="tc-btn">` +
           (admin
             ? `<button type="button" class="icon-btn" data-lyact="editcat" data-cid="${c.id}" title="Rename ${esc(catName(c, l))}" aria-label="Rename ${esc(catName(c, l))}">${ICON_PENCIL}</button>`
             : '') +
-          `</span><b>${esc(catName(c, l))}</b><span class="sn">${esc(c.names.map((n) => n.name + ' [' + n.lang + ']').join(' · '))}</span></li>` +
-          (lyCatOpen === c.id ? `<li class="cat-edit">${catEditorHTML('Rename category')}</li>` : '')
+          `</span><b>${esc(catName(c, l))}</b><span class="sn">${esc(c.names.map((n) => n.name + ' [' + n.lang + ']').join(' · '))}</span></li>`
       )
       .join('') || '<li class="empty">No categories yet.</li>';
   if (!admin) {
     $('#catAdmin').innerHTML = '<div class="sn">Only administrators can add a category. Missing one? Ask an administrator.</div>';
-  } else if (lyCatOpen === 'new') {
-    $('#catAdmin').innerHTML = catEditorHTML('New category');
-  } else {
-    $('#catAdmin').innerHTML = lyCatOpen ? '' : '<button id="catAdd" class="wide">Add</button>';
-  }
-  if ($('#catForm')) {
+  } else if (lyCatOpen) {
+    $('#catAdmin').innerHTML = catEditorHTML(lyCatOpen === 'new' ? 'New category' : 'Rename category');
     placeFormWire($('#catForm'));
     catFill(lyCatOpen === 'new' ? null : catById(lyCatOpen));
+    // wire Save validation: on input (typing) and on click (add-name button adds a row)
+    $('#catForm').addEventListener('input', catValidateSave);
+    $('#catForm').addEventListener('click', catValidateSave);
+    catValidateSave();
+  } else {
+    $('#catAdmin').innerHTML = '<button id="catAdd" class="wide">Add</button>';
   }
 }
 function catFill(c) {
@@ -497,6 +504,9 @@ $('#lyCat').addEventListener('change', lyRenderList);
 $('#lang').addEventListener('input', () => {
   lyFillCats();
   lyRender();
+});
+$('#lyList').addEventListener('mousedown', (e) => {
+  if (e.detail > 1) e.preventDefault(); // suppress text selection on double-click; dragging still selects
 });
 $('#lyNew').onclick = () => lyOpenForm(null);
 $('#ly-add').hidden = !AHM_CONFIG.canEdit;

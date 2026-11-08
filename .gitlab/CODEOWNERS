@@ -12,6 +12,7 @@
 # map
 /app/js/map/ @bellaabrahamyan.am
 /app/css/map.css @bellaabrahamyan.am
+/tests/js/map.test.js @bellaabrahamyan.am
 /changes/map.md @bellaabrahamyan.am
 /todo/map.md @bellaabrahamyan.am
 /diffs/map/ @bellaabrahamyan.am

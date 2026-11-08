@@ -1,7 +1,7 @@
 # Proposal 009: the map domain owns `tests/js/map.test.js`
 
 Status: approved (the owner, 2026-11-08, in the chat, when asked: "I give my approve")
-From: shared (architect). Merge request: branch `shared/map-test-file` (!8).
+From: shared (architect). Merge request: branch `shared+map/map-test-file` (!9; it replaces !8, whose branch was `shared/map-test-file`).
 
 ## Why
 `map-tdd: task 004` stopped: the map domain owns no test file, so it cannot write the red tests of task 004 without breaking the file-ownership rules (`tests/js/domains.test.js`, `ci-check-pr.js`). Registering a file owner in `tools/domains.json` is a shared change and needs the owner's approval.
@@ -18,7 +18,7 @@ From: shared (architect). Merge request: branch `shared/map-test-file` (!8).
 The map domain (`map-tdd`, `map-dev`). No application code or interface change.
 
 ## Migration
-None. `tests/js/map.test.js` does not exist yet; `map-tdd: task 004` creates it.
+A placeholder `tests/js/map.test.js` (comments only) is added in the same merge request, because `tests/js/domains.test.js` requires every registered file to exist (CI of !8 failed on this). `map-tdd: task 004` fills it. The branch name names the map domain because the placeholder belongs to map. `.gitlab/CODEOWNERS` is regenerated for the new line.
 
 ## Tests
 None new. `tests/js/domains.test.js` and `tests/js/context.test.js` run in the pipeline of this merge request.

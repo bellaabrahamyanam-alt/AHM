@@ -260,6 +260,9 @@ function focusPlace(id) {
   if (!cur || cur.id !== id) show(id);
   AHM.map.focusPlace(id);
 }
+$("#list").addEventListener("mousedown", (e) => {
+  if (e.detail > 1) e.preventDefault(); // suppress text selection on double-click
+});
 $("#list").addEventListener("dblclick", (e) => {
   const li = e.target.closest("li[data-id]");
   if (li && !lyState.editing) focusPlace(li.dataset.id);
@@ -304,6 +307,7 @@ async function show(id) {
   const ns = inLang
     .filter((n) => lyNoteVisible(n, scope))
     .sort((a, b) => byDateKey({ date_from: a.date }, { date_from: b.date }) || a.title.localeCompare(b.title));
+  $("#detail").innerHTML = "";
   placeDetail();
   history.replaceState(null, "", "#place-" + id);
   const bodies = await Promise.all(
@@ -612,6 +616,7 @@ $("#detail").addEventListener("input", (e) => {
 // One table-like layout without lines: [button] [code] [English name] [name in the language itself].
 // Rows: pencil = edit. The last row is the add/edit row (plus = add, pencil = editing); Save and Cancel sit below it.
 let lgEditing = null; // the code being edited, or null = adding
+// lgFill, lgOpenForm, lgCloseForm and lgValidate are defined after #langAdmin is built (below renderLangs)
 function renderLangs() {
   $("#langList").innerHTML =
     languages
@@ -627,30 +632,50 @@ function renderLangs() {
       )
       .join("") || '<li class="sn">No languages yet.</li>';
 }
+// lgFill defined after #langAdmin HTML (below)
+$("#langAdmin").innerHTML = AHM_CONFIG.canLanguage
+  ? '<button id="lgOpen" class="wide">+ Add language</button>' +
+    '<div id="lgForm" hidden>' +
+    '<div class="tr tr-edit"><span class="tc-btn"><span class="tc-mode" id="lgMode">' + ICON_PLUS + "</span></span>" +
+    '<input id="lgCode" maxlength="8" placeholder="code, e.g. hy" aria-label="Language code">' +
+    '<input id="lgName" placeholder="Name in English" aria-label="Name in English">' +
+    '<input id="lgNative" placeholder="Name in the language" aria-label="Name in the language itself"></div>' +
+    '<div class="btn-pair"><button id="lgAdd" class="primary" disabled>Save</button><button id="lgCancel">Cancel</button></div><div id="lgErr" class="sn"></div>' +
+    '</div>'
+  : '<div class="sn">Only administrators can add a language. Missing one? Ask an administrator.</div>';
+function lgValidate() {
+  if ($("#lgAdd")) $("#lgAdd").disabled = !($("#lgCode").value.trim() && $("#lgName").value.trim());
+}
+function lgOpenForm() {
+  $("#lgOpen") && ($("#lgOpen").hidden = true);
+  $("#lgForm") && ($("#lgForm").hidden = false);
+  lgValidate();
+}
+function lgCloseForm() {
+  $("#lgOpen") && ($("#lgOpen").hidden = false);
+  $("#lgForm") && ($("#lgForm").hidden = true);
+}
+if ($("#lgOpen")) $("#lgOpen").addEventListener("click", () => { lgFill(null); lgOpenForm(); });
+if ($("#lgCode")) $("#langAdmin").addEventListener("input", lgValidate);
 function lgFill(l) {
   lgEditing = l ? l.code : null;
   $("#lgCode").value = l ? l.code : "";
-  $("#lgCode").readOnly = !!l; // the code is what names and notes refer to, so it never changes
+  $("#lgCode").readOnly = !!l;
   $("#lgName").value = l ? l.name : "";
   $("#lgNative").value = l ? l.native || "" : "";
   $("#lgMode").innerHTML = l ? ICON_PENCIL : ICON_PLUS;
   $("#lgErr").textContent = "";
+  lgValidate();
 }
-$("#langAdmin").innerHTML = AHM_CONFIG.canLanguage
-  ? '<div class="tr tr-edit"><span class="tc-btn"><span class="tc-mode" id="lgMode">' + ICON_PLUS + "</span></span>" +
-    '<input id="lgCode" maxlength="8" placeholder="code, e.g. hy" aria-label="Language code">' +
-    '<input id="lgName" placeholder="Name in English" aria-label="Name in English">' +
-    '<input id="lgNative" placeholder="Name in the language" aria-label="Name in the language itself"></div>' +
-    '<div class="btn-pair"><button id="lgAdd" class="primary">Save</button><button id="lgCancel">Cancel</button></div><div id="lgErr" class="sn"></div>'
-  : '<div class="sn">Only administrators can add a language. Missing one? Ask an administrator.</div>';
 $("#langList").addEventListener("click", (e) => {
   const b = e.target.closest("[data-lgedit]");
   if (!b) return;
   lgFill(languages.find((l) => l.code === b.dataset.lgedit));
+  lgOpenForm();
   $("#lgName").focus();
 });
 $("#langAdmin").addEventListener("click", async (e) => {
-  if (e.target.id === "lgCancel") return lgFill(null);
+  if (e.target.id === "lgCancel") { lgFill(null); lgCloseForm(); return; }
   if (e.target.id !== "lgAdd") return;
   const err = $("#lgErr");
   try {
@@ -671,6 +696,7 @@ $("#langAdmin").addEventListener("click", async (e) => {
     renderLangs();
     fillLangs();
     lgFill(null);
+    lgCloseForm();
   } catch (x) {
     err.textContent = x.message;
   }

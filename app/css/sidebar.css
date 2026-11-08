@@ -405,11 +405,18 @@ li:first-child {
 li:hover {
   background: var(--li-row-hover);
 }
-li b {
+li > .t > b,
+li > div > b {
   color: var(--a);
 }
-li:hover b {
+li[data-id]:hover > .t > b,
+li[data-lid]:hover > .t > b {
   color: var(--a-hover);
+}
+/* prevent text selection on fast double-click */
+#list li[data-id],
+#lyList li[data-lid] {
+  user-select: none;
 }
 li .t {
   display: flex;
@@ -730,6 +737,11 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 #catList li.tr {
   border: 0;
+}
+#catList li.cat-renaming {
+  outline: 2px solid var(--a);
+  outline-offset: -2px;
+  border-radius: var(--radius-s);
 }
 
 /* ---- sidebar v2: three tabs, sheets over the list, folds, one button language ---- */

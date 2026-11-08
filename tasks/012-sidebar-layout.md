@@ -1,0 +1,14 @@
+# Task 012: sidebar layout: split panel, place card, Add layer, toggle, point menu
+
+- **Domain:** sidebar. **Branch:** `sidebar/layout`. **Depends on:** 007, 009 and 010 merged. **Interface touched:** uses `AHM.icons` (I-7), `AHM.map.showMenu` and `map:menu` (I-2).
+- **Test file:** `tests/js/sidebar.test.js`.
+- **Goal:** a calmer sidebar where opening a place does not move the list.
+- **Acceptance** (numbers are the owner's points):
+  1. **Split (2).** The sidebar body is the tab bar, a list pane that scrolls, and a detail dock at the bottom (about 50% of the height, at least 220 px, its own scroll). The dock exists only while a place is selected; with none, the list uses the full height. Click on a place opens its detail in the dock; click on the selected place again closes the dock. Opening or closing never changes the list scroll position, except: if the selected row would be hidden by the dock, the list scrolls just enough to centre it in the visible part. Selecting another place replaces the dock content without closing, jumping or animation of the list. The Layers tab detail of a layer uses the same dock (the owner can say no).
+  2. **Place card (18).** Header: the type marker only at the left (the type name is the `title`), then the name, and at the right three icon buttons: edit, route from, route to (`AHM.icons`, `title` and `aria-label`). The text buttons Edit, Route from, Route to are gone; "Add note" stays as the only text button under the notes. List rows show the marker at the left and no type pill.
+  3. **Add layer (8).** The fold "Add layer" is replaced by one full-width button "+ Add layer"; click opens the form in its place with Save (disabled until the name is valid) and Cancel; both close it.
+  4. **Toggle (9).** The empty header strip is removed. The collapse button is a small handle on the right edge of the sidebar, vertically centred (icon `panel-left`/`panel-right`, `aria-label` "Collapse sidebar" / "Expand sidebar"); when collapsed it stays visible at the left edge of the map; `sidebar:resized` is emitted as before; reachable with Tab.
+  5. **Point menu (15).** On `map:click` the sidebar calls `AHM.map.showMenu` with the three actions `add` (icon `plus`, "Add place here"), `from` (`route-from`, "Route from here"), `to` (`route-to`, "Route to here") and the base-map name as the title; `map:menu` runs the same code the old buttons ran; the strip above the tabs is removed; `setPick` still marks the point.
+  6. **Map double click (4, sidebar half).** `place:dblclick` runs the same function as a double click on the list row (select and `focusPlace`).
+  - `changes/sidebar.md` entry. Create the dock and the handle from JS; `app/index.html` is shared, so a needed change there is a request.
+- **Out of scope:** types and shapes UI (014), map files.

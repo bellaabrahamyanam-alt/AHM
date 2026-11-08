@@ -273,3 +273,674 @@ test('map: highlight: adds no AHM.map command (INTERFACES.md I-2 stays as it is)
     p.X('Object.keys(AHM.map).sort()'),
   );
 });
+
+// ====================================================================================================================
+// Task 008: map markers (selected look, hover, tooltip, double click, clusters), written first (TDD) from
+// tasks/008-map-marker-ux.md. Red until `map-dev: task 008` is done. Real MapLibre is not available here, so the
+// tests use a richer recording stand-in (makeUx, built on makeMapLibre) and a fake clock. Where the spec leaves the
+// drawing to the implementer, this is what a test can observe (the dev may pick any look inside these limits):
+//   Selected look (point 5): every layer whose source is `ahm-highlight` belongs to it: circle layers (shadow with
+//     circle-blur, white outline = circle-stroke-color white >= 1.5 px, thin dark ring = stroke 0.5-2.5 px at 40-60%
+//     opacity) and one symbol layer that draws the place's own type symbol (icon-image from properties.type_code) with
+//     icon-size 1.3, icon-allow-overlap and icon-ignore-placement. The source's Point feature carries id and type_code.
+//     Only neutral colours (no accent, no #ff9f1c); one paint `*-transition` of 100-200 ms; the layers are added after
+//     every layer of the sources `ahm-places` and `ahm-label-src`, and their ids start with `ahm-`.
+//   Clusters (point 21): the source `ahm-places` has cluster true, clusterRadius 50, clusterMaxZoom 11; both numbers are
+//     constants in the first 40 lines of map.js (names contain CLUSTER and RADIUS / ZOOM). The selected place is NOT in
+//     that source's data (so it is never inside a bubble; it is drawn from `ahm-highlight`); `ahm-label-src` keeps all
+//     places. Layers: `ahm-clusters` (circle, filter on point_count, radius = a 3-step `step` expression, neutral dark
+//     circle-color) and `ahm-cluster-count` (symbol, text-field from point_count, white text). `ahm-places` and
+//     `ahm-halo` get a filter that excludes clusters (point_count); hidePlace keeps its filter on top of that.
+//   Hover (point 6): events are the layer events `mouseenter` / `mouseleave` of `ahm-places`, `ahm-clusters` and of the
+//     selected symbol layer. A hovered place gets paint `icon-opacity` 0.85 (an expression that names its id) on layer
+//     `ahm-places` (set with setPaintProperty), a hovered bubble a lighter `circle-color` expression that names its
+//     cluster_id; both are restored on leave; the cursor is 'pointer' on the canvas. The selected place is never lifted.
+//   Tooltip (point 7): a Popup with `anchor` 'bottom' (above the bullet, arrow down) or 'top' (no room above:
+//     the bullet's screen y is too small), `offset` = TYPE_STYLE[type_code or settlement].r + 6 px, at the place's
+//     coordinates (not at the mouse); one active popup at a time; removed on leave and on the map event `movestart`.
+//   Clicks: the map's generic `click` and `dblclick` events. A click on a place emits place:click only after the
+//     double-click window (setTimeout), a double click cancels it. A bubble click zooms to getClusterExpansionZoom of
+//     the source `ahm-places` (easeTo / flyTo with center and that zoom) and emits neither place:* nor map:click.
+//     The selected symbol layer answers clicks, double clicks and hover like `ahm-places` does.
+const fs = require('fs');
+const path = require('path');
+const MAP_SRC = fs.readFileSync(path.join(__dirname, '..', '..', 'app', 'js', 'map', 'map.js'), 'utf8');
+const SPLIT_ZOOM = 9; // what the stand-in's getClusterExpansionZoom answers
+const PLACES = 'ahm-places';
+const CLUSTERS = 'ahm-clusters';
+const CLUSTER_COUNT = 'ahm-cluster-count';
+
+const json = (x) => JSON.stringify(x === undefined ? null : x);
+const NAMED = { white: [255, 255, 255, 1], black: [0, 0, 0, 1], transparent: [0, 0, 0, 0] };
+/** '#abc', '#aabbcc', 'rgb(...)', 'rgba(...)', 'white' ... -> [r, g, b, a] (null when it is not a plain colour). */
+function rgba(c) {
+  if (typeof c !== 'string') return null;
+  const s = c.trim().toLowerCase();
+  if (NAMED[s]) return NAMED[s];
+  let m = /^#([0-9a-f]{3})$/.exec(s);
+  if (m) return [...m[1]].map((h) => parseInt(h + h, 16)).concat(1);
+  m = /^#([0-9a-f]{6})$/.exec(s);
+  if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)).concat(1);
+  m = /^rgba?\(([^)]+)\)$/.exec(s);
+  if (m) {
+    const v = m[1].split(',').map(Number);
+    return [v[0], v[1], v[2], v.length > 3 ? v[3] : 1];
+  }
+  return null;
+}
+const lum = (c) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+const neutral = (c) => Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]) <= 30;
+/** Every plain colour that appears anywhere in x (a layer, a paint value, an expression). */
+const colorsIn = (x) =>
+  (json(x).match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|"(?:white|black)"/gi) || []).map((s) => rgba(s.replace(/"/g, ''))).filter(Boolean);
+
+const layer = (rec, id) => rec.layers.find((l) => l.id === id);
+const orderOf = (rec, id) => rec.layers.findIndex((l) => l.id === id);
+const selLayers = (rec) => rec.layers.filter((l) => l.source === HL);
+const selSymbol = (rec) => selLayers(rec).find((l) => l.type === 'symbol');
+const active = (rec) => rec.popups.filter((x) => x.added);
+const lngLatOf = (x) => (Array.isArray(x) ? x : [x.lng !== undefined ? x.lng : x.lon, x.lat]);
+/** The popup's offset as {x, y} (distance away from the bullet), whatever form of MapLibre's `offset` option was used. */
+function offsetOf(pop) {
+  let o = pop.options.offset;
+  if (o && typeof o === 'object' && !Array.isArray(o)) o = o[pop.options.anchor];
+  if (Array.isArray(o)) return { x: o[0], y: Math.abs(o[1]) };
+  return { x: 0, y: Math.abs(o) };
+}
+const lift = (rec) => json((layer(rec, PLACES).paint || {})['icon-opacity']);
+const flush = () => new Promise((r) => setImmediate(r));
+
+function makeClock() {
+  let now = 0;
+  let seq = 0;
+  const q = [];
+  return {
+    setTimeout(fn, ms = 0) {
+      const id = ++seq;
+      q.push({ id, at: now + ms, fn });
+      return id;
+    },
+    clearTimeout(id) {
+      const i = q.findIndex((t) => t.id === id);
+      if (i >= 0) q.splice(i, 1);
+    },
+    tick(ms) {
+      const end = now + ms;
+      for (;;) {
+        q.sort((a, b) => a.at - b.at || a.id - b.id);
+        if (!q.length || q[0].at > end) break;
+        const t = q.shift();
+        now = Math.max(now, t.at);
+        t.fn();
+      }
+      now = end;
+    },
+  };
+}
+
+/** makeMapLibre plus what task 008 needs: layer order with beforeId, source definitions, cluster zoom, popups that
+ *  record their options, a canvas that keeps its cursor, hits for queryRenderedFeatures, recorded camera moves. */
+function makeUx(glyphs) {
+  const ml = makeMapLibre();
+  const { rec } = ml;
+  Object.assign(rec, { popups: [], hits: [], moves: [], zoomCalls: [], projectY: 300, canvas: { style: {}, clientWidth: 900, clientHeight: 700 } });
+  const map = ml.maplibregl.Map();
+  const addLayer0 = map.addLayer;
+  const addSource0 = map.addSource;
+  const getStyle0 = map.getStyle;
+  Object.assign(map, {
+    addLayer(def, before) {
+      const at = before ? rec.layers.findIndex((l) => l.id === before) : -1;
+      addLayer0(def);
+      if (at >= 0) rec.layers.splice(at, 0, rec.layers.pop());
+    },
+    addSource(id, def) {
+      addSource0(id, def);
+      Object.assign(rec.sources[id], {
+        def,
+        getClusterExpansionZoom(cid, cb) {
+          rec.zoomCalls.push(cid);
+          if (typeof cb === 'function') cb(null, SPLIT_ZOOM);
+          return Promise.resolve(SPLIT_ZOOM);
+        },
+      });
+    },
+    getStyle: () => (glyphs ? { ...getStyle0(), glyphs: 'stub://{fontstack}/{range}.pbf' } : getStyle0()),
+    getCanvas: () => rec.canvas,
+    getContainer: () => rec.canvas,
+    queryRenderedFeatures: (pt, o) => rec.hits.filter((f) => !(o && o.layers) || o.layers.includes(f.layer.id)),
+    project: () => ({ x: 300, y: rec.projectY }),
+    easeTo: (o) => rec.moves.push({ how: 'easeTo', ...o }),
+    flyTo: (o) => rec.moves.push({ how: 'flyTo', ...o }),
+    jumpTo: (o) => rec.moves.push({ how: 'jumpTo', ...o }),
+    zoomTo: (z, o) => rec.moves.push({ how: 'zoomTo', zoom: z, ...o }),
+    fitBounds: (b, o) => rec.moves.push({ how: 'fitBounds', bounds: b, ...o }),
+    isMoving: () => false,
+  });
+  ml.maplibregl.LngLatBounds = function (a, b) {
+    const pts = [a, b].filter(Boolean);
+    return { pts, extend(x) { pts.push(x); return this; } };
+  };
+  ml.maplibregl.Popup = function (options) {
+    const pop = {
+      options: { ...(options || {}) },
+      added: false,
+      html: '',
+      lngLat: null,
+      setLngLat(ll) { this.lngLat = ll; return this; },
+      setHTML(h) { this.html = h; return this; },
+      setText(t) { this.html = t; return this; },
+      setOffset(o) { this.options.offset = o; return this; },
+      setMaxWidth() { return this; },
+      addClassName() { return this; },
+      removeClassName() { return this; },
+      trackPointer() { return this; },
+      getLngLat() { return this.lngLat; },
+      addTo() { this.added = true; return this; },
+      remove() { this.added = false; return this; },
+      isOpen() { return this.added; },
+      getElement: () => ({ offsetHeight: 40, offsetWidth: 120 }),
+    };
+    rec.popups.push(pop);
+    return pop;
+  };
+  return ml;
+}
+
+/** map.js (with typeicons.js, for TYPE_STYLE) in a page of its own, on the richer stand-in and a fake clock. */
+function bootUx({ ready = true, glyphs = true } = {}) {
+  const p = load(['typeicons.js', 'map.js']);
+  const ml = makeUx(glyphs);
+  const clock = makeClock();
+  const errors = [];
+  const events = [];
+  Object.assign(p.ctx, {
+    maplibregl: ml.maplibregl,
+    AHM_CONFIG: CONFIG,
+    esc: String,
+    registerTypeIcons() {},
+    overlaysInit() {},
+    syncOverlays() {},
+    setTimeout: clock.setTimeout,
+    clearTimeout: clock.clearTimeout,
+    console: { log() {}, warn() {}, error: (...a) => errors.push(a.map(String).join(' ')) },
+    __events: events,
+  });
+  p.X('{ const real = AHM.emit.bind(AHM); AHM.emit = (n, d) => (__events.push([n, JSON.parse(JSON.stringify(d === undefined ? null : d))]), real(n, d)); }');
+  let onBasemap = null;
+  p.el('#basemap').addEventListener = (name, fn) => {
+    if (name === 'change') onBasemap = fn;
+  };
+  p.X('initMap()');
+  if (ready) ml.fire('load');
+  return {
+    p,
+    ml,
+    rec: ml.rec,
+    clock,
+    errors,
+    evs: (name) => events.filter(([n]) => n === name).map(([, d]) => d),
+    switchBasemap: (value) => onBasemap({ target: { value } }),
+  };
+}
+
+const hitPlace = (id, lon, lat, extra = {}, layerId = PLACES) => ({
+  layer: { id: layerId },
+  properties: { id, name: id, type: 'City', type_code: 'city', dates: '', halo: '', ...extra },
+  geometry: { type: 'Point', coordinates: [lon, lat] },
+});
+const hitBubble = (cid, n, lon, lat) => ({
+  id: cid,
+  layer: { id: CLUSTERS },
+  properties: { cluster: true, cluster_id: cid, point_count: n, point_count_abbreviated: String(n) },
+  geometry: { type: 'Point', coordinates: [lon, lat] },
+});
+/** A map mouse event; the mouse is a little beside the bullet on purpose. */
+const mouse = (f, y = 300) => {
+  const c = f ? f.geometry.coordinates : [44.5, 40];
+  return {
+    features: f ? [f] : [],
+    point: { x: 300, y },
+    lngLat: { lng: c[0] + 0.02, lat: c[1] + 0.02 },
+    prevented: 0,
+    preventDefault() {
+      this.prevented++;
+    },
+  };
+};
+const clickAt = (u, f) => {
+  u.rec.hits = f ? [f] : [];
+  const e = mouse(f);
+  u.ml.fire('click', e);
+  return e;
+};
+const dblAt = (u, f) => {
+  u.rec.hits = f ? [f] : [];
+  const e = mouse(f);
+  u.ml.fire('dblclick', e);
+  return e;
+};
+const enter = (u, layerId, f, y) => u.ml.fire('mouseenter:' + layerId, mouse(f, y));
+const leave = (u, layerId) => u.ml.fire('mouseleave:' + layerId);
+
+// ---- selected look (point 5) ------------------------------------------------------------------------------------
+
+test('map: selected look: no orange ring and no accent colour; the look is made of several layers on ahm-highlight', () => {
+  const { p, rec, errors } = bootUx();
+  setFeatures(p, fc(P1, P2));
+  select(p, 'p1');
+  const mine = selLayers(rec);
+  ok(mine.length >= 3, 'shadow, outline/ring and symbol: ' + mine.map((l) => l.id));
+  ok(mine.every((l) => l.id.startsWith('ahm-')), 'ids start with ahm- (applyVis leaves them alone)');
+  ok(!/ff9f1c/i.test(json(mine)), 'the orange stroke #ff9f1c is gone');
+  const cols = colorsIn(mine);
+  ok(cols.length >= 3, 'colours found: ' + cols.length);
+  ok(cols.every(neutral), 'only neutral colours (white, grey, black), no accent colour: ' + json(cols));
+  eq([], errors);
+});
+
+test('map: selected look: the place symbol is drawn about 30% larger, in a layer that never drops it', () => {
+  const { p, rec, ml } = bootUx();
+  const c = fc(P1, P3);
+  c.features[1].properties.type_code = 'mountain';
+  setFeatures(p, c);
+  select(p, 'p3');
+  const sym = selSymbol(rec);
+  ok(sym, 'a symbol layer on the ahm-highlight source');
+  const size = sym.layout && sym.layout['icon-size'];
+  ok(typeof size === 'number' && size >= 1.25 && size <= 1.35, 'icon-size about 1.3, got ' + json(size));
+  const img = json(sym.layout['icon-image']);
+  ok(img.includes('ahm-type-') && img.includes('type_code'), 'the place type symbol: ' + img);
+  eq(true, sym.layout['icon-allow-overlap'], 'no gaps from collisions');
+  eq(true, sym.layout['icon-ignore-placement'], 'no gaps from collisions');
+  const f = ring(ml)[0];
+  eq('p3', f.properties.id);
+  eq('mountain', f.properties.type_code, 'the feature carries the type of the place');
+});
+
+test('map: selected look: drawn above labels and all other symbols, at every zoom', () => {
+  const { p, rec } = bootUx();
+  setFeatures(p, fc(P1, P2));
+  select(p, 'p1');
+  const lowest = Math.min(...selLayers(rec).map((l) => orderOf(rec, l.id)));
+  const below = rec.layers.filter((l) => l.source === PLACES || l.source === 'ahm-label-src');
+  ok(below.length >= 3, 'halo, symbols and labels exist: ' + below.map((l) => l.id));
+  ok(
+    below.every((l) => orderOf(rec, l.id) < lowest),
+    'the selected look is above ' + below.map((l) => l.id + '@' + orderOf(rec, l.id)) + ' (lowest of its own: ' + lowest + ')',
+  );
+});
+
+test('map: selected look: white outline, thin dark outer ring at about 50% opacity, soft shadow', () => {
+  const { p, rec } = bootUx();
+  setFeatures(p, fc(P1, P2));
+  select(p, 'p1');
+  const circles = selLayers(rec).filter((l) => l.type === 'circle');
+  const pt = (l, k) => (l.paint || {})[k];
+  const white = circles.filter((l) => {
+    const c = rgba(pt(l, 'circle-stroke-color'));
+    return c && c[0] === 255 && c[1] === 255 && c[2] === 255 && pt(l, 'circle-stroke-width') >= 1.5;
+  });
+  ok(white.length, 'a circle layer with a white stroke of at least 1.5 px (the white outline)');
+  const thin = circles.filter((l) => {
+    const c = rgba(pt(l, 'circle-stroke-color'));
+    const w = pt(l, 'circle-stroke-width');
+    const a = c ? c[3] * (pt(l, 'circle-stroke-opacity') === undefined ? 1 : pt(l, 'circle-stroke-opacity')) : 0;
+    return c && lum(c) < 0.35 && w >= 0.5 && w <= 2.5 && a >= 0.4 && a <= 0.6;
+  });
+  ok(thin.length, 'a circle layer with a dark stroke of 0.5-2.5 px at 40-60% opacity (the thin outer ring)');
+  const shadow = circles.filter((l) => {
+    const c = rgba(pt(l, 'circle-color'));
+    const a = c ? c[3] * (pt(l, 'circle-opacity') === undefined ? 1 : pt(l, 'circle-opacity')) : 0;
+    return c && lum(c) < 0.35 && pt(l, 'circle-blur') >= 0.5 && a > 0.05 && a <= 0.6;
+  });
+  ok(shadow.length, 'a dark, blurred (circle-blur >= 0.5), translucent circle layer (the soft shadow)');
+});
+
+test('map: selected look: changes with a short transition of about 150 ms', () => {
+  const { rec } = bootUx();
+  const fades = selLayers(rec).filter((l) =>
+    Object.entries(l.paint || {}).some(([k, v]) => /-transition$/.test(k) && v && v.duration >= 100 && v.duration <= 200),
+  );
+  ok(fades.length, 'a paint property of the selected look has a transition of 100-200 ms');
+});
+
+test('map: selected look: the new layers survive base-map switches and re-draws (none is hidden)', () => {
+  const { p, rec, ml, switchBasemap } = bootUx();
+  setFeatures(p, fc(P1, P2));
+  select(p, 'p1');
+  const visible = () =>
+    rec.layers.filter((l) => [PLACES, 'ahm-label-src', HL].includes(l.source)).every((l) => !(l.layout && l.layout.visibility === 'none'));
+  switchBasemap('sat1');
+  ok(visible(), 'visible on the satellite map');
+  setFeatures(p, fc(P1, P3));
+  switchBasemap('');
+  ok(visible(), 'visible after a re-draw and back on the vector map');
+  eq([[44.5, 39.9]], ring(ml).map((f) => f.geometry.coordinates));
+});
+
+// ---- clusters (point 21) ----------------------------------------------------------------------------------------
+
+test('map: clusters: ahm-places is a clustered GeoJSON source (radius 50, none from zoom 12); labels and selection are not', () => {
+  const { rec } = bootUx();
+  const def = rec.sources[PLACES].def;
+  eq('geojson', def.type);
+  eq(true, def.cluster, 'cluster: true');
+  eq(50, def.clusterRadius);
+  eq(11, def.clusterMaxZoom, 'clusters up to zoom 11, none from zoom 12');
+  ok(!rec.sources['ahm-label-src'].def.cluster, 'labels are not clustered');
+  ok(!rec.sources[HL].def.cluster, 'the selected place is not clustered');
+});
+
+test('map: clusters: radius and last clustered zoom are named constants at the top of map.js', () => {
+  const top = MAP_SRC.split('\n').slice(0, 40).join('\n');
+  ok(/^\s*(const|let)\s+\w*CLUSTER\w*RADIUS\w*\s*=\s*50\b/im.test(top), 'const ...CLUSTER...RADIUS... = 50 in the first 40 lines');
+  ok(/^\s*(const|let)\s+\w*CLUSTER\w*ZOOM\w*\s*=\s*(11|12)\b/im.test(top), 'const ...CLUSTER...ZOOM... = 11 (or 12) in the first 40 lines');
+  ok(!/clusterRadius\s*:\s*\d/.test(MAP_SRC), 'clusterRadius is given by the constant, not a literal');
+  ok(!/clusterMaxZoom\s*:\s*\d/.test(MAP_SRC), 'clusterMaxZoom is given by the constant, not a literal');
+});
+
+test('map: clusters: the selected place is never inside a bubble (it leaves the clustered data, labels keep all)', () => {
+  const { p, rec, errors } = bootUx();
+  const ids = (src) => ((rec.sources[src].data || {}).features || []).map((f) => f.properties.id).sort();
+  setFeatures(p, fc(P1, P2, P3));
+  eq(['p1', 'p2', 'p3'], ids(PLACES), 'nothing selected: all places are clustered');
+  select(p, 'p2');
+  eq(['p1', 'p3'], ids(PLACES), 'p2 is drawn by the selected look, not by the cluster source');
+  eq(['p1', 'p2', 'p3'], ids('ahm-label-src'), 'the labels keep every place');
+  select(p, 'p1', 'p2');
+  eq(['p2', 'p3'], ids(PLACES), 'the selection moved: p2 is back, p1 is out');
+  select(p, 'ghost', 'p1');
+  eq(['p1', 'p2', 'p3'], ids(PLACES), 'an unknown id removes nothing');
+  select(p, null, 'ghost');
+  eq(['p1', 'p2', 'p3'], ids(PLACES));
+  select(p, 'p3');
+  setFeatures(p, fc(P1, P2, P3));
+  eq(['p1', 'p2'], ids(PLACES), 'a re-draw keeps the selected place out');
+  eq([], errors);
+});
+
+test('map: clusters: bubbles are 3 size steps, neutral dark, with a white count; halos and symbols leave clusters alone', () => {
+  const { rec } = bootUx();
+  const b = layer(rec, CLUSTERS);
+  ok(b && b.type === 'circle', 'a circle layer ahm-clusters');
+  eq(PLACES, b.source);
+  ok(json(b.filter).includes('point_count'), 'only clusters: ' + json(b.filter));
+  const r = b.paint['circle-radius'];
+  ok(Array.isArray(r) && r[0] === 'step', 'circle-radius is a step expression: ' + json(r));
+  eq(7, r.length, 'three sizes: step, input, size, stop, size, stop, size');
+  ok(typeof r[2] === 'number' && r[2] < r[4] && r[4] < r[6], 'sizes grow: ' + json([r[2], r[4], r[6]]));
+  ok(r[3] < r[5], 'the stops grow too');
+  const cols = colorsIn(b.paint['circle-color']);
+  ok(cols.length && cols.every(neutral) && cols.some((c) => lum(c) < 0.4), 'neutral dark colour: ' + json(b.paint['circle-color']));
+  const n = layer(rec, CLUSTER_COUNT);
+  ok(n && n.type === 'symbol', 'a symbol layer ahm-cluster-count');
+  eq(PLACES, n.source);
+  ok(json(n.layout['text-field']).includes('point_count'), 'the count: ' + json(n.layout['text-field']));
+  const tc = rgba((n.paint || {})['text-color']);
+  ok(tc && tc[0] === 255 && tc[1] === 255 && tc[2] === 255, 'white count');
+  ok(orderOf(rec, CLUSTER_COUNT) > orderOf(rec, CLUSTERS), 'the count is above the bubble');
+  ok(json(layer(rec, PLACES).filter).includes('point_count'), 'ahm-places draws no cluster: ' + json(layer(rec, PLACES).filter));
+  ok(json(layer(rec, 'ahm-halo').filter).includes('point_count'), 'ahm-halo draws no cluster: ' + json(layer(rec, 'ahm-halo').filter));
+});
+
+test('map: clusters: hidePlace, focusPlace and fitTo keep working', () => {
+  const { p, rec } = bootUx();
+  setFeatures(p, fc(P1, P2, P3));
+  select(p, 'p2');
+  p.X("AHM.map.hidePlace('p1')");
+  ok(json(layer(rec, PLACES).filter).includes('"p1"'), 'hidden in the symbols');
+  ok(json(layer(rec, PLACES).filter).includes('point_count'), 'and still no clusters among the symbols');
+  ok(json(layer(rec, 'ahm-labels').filter).includes('"p1"'), 'hidden in the labels');
+  p.X('AHM.map.hidePlace(null)');
+  ok(!json(layer(rec, PLACES).filter).includes('p1'), 'shown again');
+  ok(json(layer(rec, PLACES).filter).includes('point_count'), 'cluster filter stays');
+  ok(!json(layer(rec, 'ahm-labels').filter).includes('p1'), 'labels shown again');
+  p.X("AHM.map.focusPlace('p2')");
+  const fly = rec.moves.filter((m) => m.how === 'flyTo');
+  eq(1, fly.length, 'focusPlace of the selected place (it is not in the cluster data)');
+  eq([44.5, 40.1], lngLatOf(fly[0].center));
+  eq(8, fly[0].zoom);
+  p.X('AHM.map.fitTo(__0)', [[44.1, 39.5], [44.9, 40.5]]);
+  eq(1, rec.moves.filter((m) => m.how === 'fitBounds').length);
+});
+
+test('map: clusters: hovering a bubble makes it lighter and the cursor a pointer; restored on leave; no tooltip', () => {
+  const u = bootUx();
+  const { rec } = u;
+  setFeatures(u.p, fc(P1, P2));
+  const rest = json(layer(rec, CLUSTERS).paint['circle-color']);
+  enter(u, CLUSTERS, hitBubble(31337, 5, 44.5, 40));
+  eq('pointer', rec.canvas.style.cursor);
+  const hov = json(layer(rec, CLUSTERS).paint['circle-color']);
+  ok(hov.includes('31337'), 'the colour expression names the hovered cluster_id: ' + hov);
+  const top = (s) => Math.max(...colorsIn(s).map(lum));
+  ok(top(hov) > top(rest), 'lighter: ' + top(hov) + ' vs ' + top(rest));
+  eq(0, active(rec).length, 'a bubble has no tooltip');
+  leave(u, CLUSTERS);
+  eq(rest, json(layer(rec, CLUSTERS).paint['circle-color']), 'restored');
+  eq('', rec.canvas.style.cursor);
+});
+
+test('map: clusters: click on a bubble zooms to where it splits; no place:click, no map:click', async () => {
+  const u = bootUx();
+  const { rec } = u;
+  setFeatures(u.p, fc(P1, P2));
+  clickAt(u, hitBubble(31337, 5, 44.5, 40));
+  await flush();
+  u.clock.tick(1000);
+  eq([31337], rec.zoomCalls, 'getClusterExpansionZoom of the clicked cluster');
+  const mv = rec.moves.filter((m) => m.center);
+  ok(mv.length >= 1, 'the camera moved');
+  eq(SPLIT_ZOOM, mv[mv.length - 1].zoom);
+  eq([44.5, 40], lngLatOf(mv[mv.length - 1].center));
+  eq([], u.evs('place:click'));
+  eq([], u.evs('place:dblclick'));
+  eq([], u.evs('map:click'), 'a bubble is not empty map');
+});
+
+test('map: clusters: double click on a bubble zooms too and cancels the map zoom; no place events', async () => {
+  const u = bootUx();
+  const { rec } = u;
+  setFeatures(u.p, fc(P1, P2));
+  const b = hitBubble(31337, 5, 44.5, 40);
+  clickAt(u, b);
+  u.clock.tick(100);
+  clickAt(u, b);
+  const e = dblAt(u, b);
+  await flush();
+  u.clock.tick(1000);
+  eq(1, e.prevented, 'the default double-click zoom is cancelled');
+  ok(rec.moves.some((m) => m.center && m.zoom === SPLIT_ZOOM), 'zoomed to where the bubble splits');
+  eq([], u.evs('place:click'));
+  eq([], u.evs('place:dblclick'));
+});
+
+// ---- hover (point 6) --------------------------------------------------------------------------------------------
+
+test('map: hover: a hovered place symbol is about 15% lighter, the cursor a pointer; restored on leave', () => {
+  const u = bootUx();
+  const { rec } = u;
+  setFeatures(u.p, fc(P1, P2));
+  const rest = lift(rec);
+  ok(!rest.includes('p1') && !rest.includes('p2'), 'nothing lifted at rest: ' + rest);
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
+  eq('pointer', rec.canvas.style.cursor);
+  ok(lift(rec).includes('"p1"') && !lift(rec).includes('"p2"'), 'p1 lifted: ' + lift(rec));
+  const nums = (lift(rec).match(/\d*\.\d+|\d+/g) || []).map(Number);
+  ok(nums.some((n) => n >= 0.8 && n <= 0.9), 'icon-opacity about 0.85: ' + lift(rec));
+  enter(u, PLACES, hitPlace('p2', 44.5, 40.1));
+  ok(lift(rec).includes('"p2"') && !lift(rec).includes('"p1"'), 'only the place under the mouse is lifted: ' + lift(rec));
+  leave(u, PLACES);
+  eq(rest, lift(rec), 'restored');
+  eq('', rec.canvas.style.cursor);
+});
+
+test('map: hover: not applied on top of the selected look (hover the selected place, or select the hovered one)', () => {
+  const u = bootUx();
+  const { p, rec } = u;
+  setFeatures(p, fc(P1, P2));
+  select(p, 'p1');
+  const sym = selSymbol(rec);
+  ok(sym, 'the selected symbol layer');
+  enter(u, sym.id, hitPlace('p1', 44.5, 39.9, {}, sym.id));
+  eq('pointer', rec.canvas.style.cursor, 'the selected place still shows the pointer');
+  ok(!lift(rec).includes('p1'), 'but it is not lifted: ' + lift(rec));
+  leave(u, sym.id);
+  eq('', rec.canvas.style.cursor);
+  enter(u, PLACES, hitPlace('p2', 44.5, 40.1));
+  ok(lift(rec).includes('"p2"'), 'p2 hovered and lifted');
+  select(p, 'p2', 'p1');
+  ok(!lift(rec).includes('p2'), 'p2 got selected under the mouse: no lift on top of the selected look: ' + lift(rec));
+});
+
+test('map: hover: still right after setFeatures', () => {
+  const u = bootUx();
+  const { p, rec } = u;
+  setFeatures(p, fc(P1, P2));
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
+  setFeatures(p, fc(['p1', 44.6, 39.95], P3));
+  ok(lift(rec).includes('"p1"'), 'p1 is still the lifted place after the re-draw: ' + lift(rec));
+  leave(u, PLACES);
+  ok(!lift(rec).includes('p1'), 'restored');
+  eq('', rec.canvas.style.cursor);
+});
+
+// ---- tooltip (point 7) ------------------------------------------------------------------------------------------
+
+test('map: tooltip: name and type at the top centre of the bullet, arrow down, at the place and not at the mouse', () => {
+  const u = bootUx();
+  const { rec } = u;
+  setFeatures(u.p, fc(P1, P2));
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
+  const pop = active(rec);
+  eq(1, pop.length, 'one popup');
+  ok(pop[0].html.includes('p1') && pop[0].html.includes('City'), 'name and type: ' + pop[0].html);
+  eq([44.5, 39.9], lngLatOf(pop[0].lngLat), 'anchored at the place, not at the mouse');
+  eq('bottom', pop[0].options.anchor, 'above the bullet, the arrow points down at it');
+  eq(0, offsetOf(pop[0]).x, 'centred');
+});
+
+test('map: tooltip: offset is the marker radius of the place type plus 6 px (it never covers the bullet)', () => {
+  const u = bootUx();
+  const { p, rec } = u;
+  setFeatures(p, fc(P1));
+  const seen = new Set();
+  for (const code of ['city', 'village', 'mountain', 'zzz']) {
+    const r = p.X("(TYPE_STYLE['" + code + "'] || TYPE_STYLE.settlement).r");
+    enter(u, PLACES, hitPlace('p1', 44.5, 39.9, { type_code: code }));
+    const pop = active(rec);
+    eq(1, pop.length, code);
+    eq(r + 6, offsetOf(pop[0]).y, 'offset for type ' + code + ' (radius ' + r + ')');
+    seen.add(r);
+    leave(u, PLACES);
+  }
+  ok(seen.size >= 3, 'the radii differ between types, so the offset cannot be one constant');
+});
+
+test('map: tooltip: moves below the bullet when there is no room above', () => {
+  const u = bootUx();
+  const { rec } = u;
+  setFeatures(u.p, fc(P1));
+  rec.projectY = 4;
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9), 4);
+  eq('top', active(rec)[0].options.anchor, 'bullet at the top edge: the popup goes below it, the arrow points up');
+  eq(16, offsetOf(active(rec)[0]).y, 'same distance');
+  leave(u, PLACES);
+  rec.projectY = 500;
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9), 500);
+  eq('bottom', active(rec)[0].options.anchor, 'room above again');
+});
+
+test('map: tooltip: one popup at a time; it closes on leave and when the map starts moving', () => {
+  const u = bootUx();
+  const { rec, ml } = u;
+  setFeatures(u.p, fc(P1, P2));
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
+  enter(u, PLACES, hitPlace('p2', 44.5, 40.1));
+  eq(1, active(rec).length, 'entering another place without leaving: still one popup');
+  eq([44.5, 40.1], lngLatOf(active(rec)[0].lngLat), 'and it is the new one');
+  leave(u, PLACES);
+  eq(0, active(rec).length, 'closed on leave');
+  leave(u, PLACES);
+  enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
+  eq(1, active(rec).length);
+  ml.fire('movestart');
+  eq(0, active(rec).length, 'closed when the map starts moving');
+});
+
+// ---- double click (point 4, map half) ---------------------------------------------------------------------------
+
+test('map: double click: a single click on a place emits place:click once, after the double-click window', () => {
+  const u = bootUx();
+  setFeatures(u.p, fc(P1, P2));
+  const f = hitPlace('p1', 44.5, 39.9);
+  clickAt(u, f);
+  u.clock.tick(1000);
+  eq([{ id: 'p1' }], u.evs('place:click'));
+  clickAt(u, f);
+  u.clock.tick(1000);
+  eq(2, u.evs('place:click').length, 'two slow clicks are two clicks');
+  eq([], u.evs('place:dblclick'));
+});
+
+test('map: double click: on a place symbol or label: place:dblclick once, no place:click, the map zoom is cancelled', () => {
+  for (const layerId of [PLACES, 'ahm-labels']) {
+    const u = bootUx();
+    setFeatures(u.p, fc(P1, P2));
+    const f = hitPlace('p1', 44.5, 39.9, {}, layerId);
+    clickAt(u, f);
+    u.clock.tick(100);
+    clickAt(u, f);
+    const e = dblAt(u, f);
+    u.clock.tick(1000);
+    eq([{ id: 'p1' }], u.evs('place:dblclick'), 'emitted exactly once (' + layerId + ')');
+    eq([], u.evs('place:click'), 'no place:click for the two clicks of a double click (' + layerId + ')');
+    eq(1, e.prevented, 'the default double-click zoom is cancelled (' + layerId + ')');
+    eq([], u.errors);
+  }
+});
+
+test('map: double click: on empty map the normal zoom stays; a single click is still map:click', () => {
+  const u = bootUx();
+  setFeatures(u.p, fc(P1));
+  clickAt(u, null);
+  u.clock.tick(1000);
+  const one = u.evs('map:click');
+  eq(1, one.length, 'one click on empty map, one map:click');
+  ok(Math.abs(one[0].lon - 44.52) < 1e-9 && Math.abs(one[0].lat - 40.02) < 1e-9, 'with the position: ' + json(one[0]));
+  clickAt(u, null);
+  u.clock.tick(100);
+  clickAt(u, null);
+  const e = dblAt(u, null);
+  u.clock.tick(1000);
+  eq(0, e.prevented, 'the default zoom is not cancelled on empty map');
+  eq([], u.evs('place:dblclick'));
+  eq([], u.evs('place:click'));
+});
+
+test('map: selected place: its own layer answers click, double click and hover (it is not in the cluster source)', () => {
+  const u = bootUx();
+  const { p, rec } = u;
+  setFeatures(p, fc(P1, P2));
+  select(p, 'p2');
+  const sym = selSymbol(rec);
+  ok(sym, 'the selected symbol layer');
+  const f = hitPlace('p2', 44.5, 40.1, {}, sym.id);
+  clickAt(u, f);
+  u.clock.tick(1000);
+  eq([{ id: 'p2' }], u.evs('place:click'), 'click on the selected place');
+  clickAt(u, f);
+  u.clock.tick(100);
+  clickAt(u, f);
+  const e = dblAt(u, f);
+  u.clock.tick(1000);
+  eq([{ id: 'p2' }], u.evs('place:dblclick'), 'double click on the selected place');
+  eq(1, e.prevented);
+  eq(1, u.evs('place:click').length, 'still only the first single click');
+  enter(u, sym.id, f);
+  eq('pointer', rec.canvas.style.cursor);
+  eq(1, active(rec).length, 'tooltip on the selected place');
+  eq('bottom', active(rec)[0].options.anchor);
+  ok(offsetOf(active(rec)[0]).y >= 16, 'clear of the (larger) selected symbol: ' + offsetOf(active(rec)[0]).y);
+});

@@ -5,6 +5,7 @@
 /app/js/sidebar/ @bellaabrahamyan.am
 /app/css/sidebar.css @bellaabrahamyan.am
 /tests/js/layers.test.js @bellaabrahamyan.am
+/tests/js/sidebar.test.js @bellaabrahamyan.am
 /changes/sidebar.md @bellaabrahamyan.am
 /todo/sidebar.md @bellaabrahamyan.am
 /diffs/sidebar/ @bellaabrahamyan.am

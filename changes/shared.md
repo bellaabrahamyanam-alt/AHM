@@ -265,4 +265,10 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of this merge request (only the job `domain`). Read the proposal.
 **Follow-ups:** the owner writes `Status: approved` in the proposal (or asks for changes); then task 005, 006, 009 (architect), and the waves: 007 and 008 first, then 010 and 011, then 012 and 013, then 014.
 
+## 2026-11-08 — #25 Task 006: the sidebar domain gets a test file
+**What:** `tests/js/sidebar.test.js` (comments-only placeholder) is registered for the sidebar domain in `tools/domains.json`, `.gitlab/CODEOWNERS` and `context/sidebar.md` (same text as the generators make), and named in the test-ownership line of `DOMAINS.md`. The branch names the sidebar domain because the placeholder is a sidebar file (same method as proposal 009). The existence test is not relaxed.
+**Why:** proposal 010 A (approved 2026-11-08, `tasks/006-sidebar-test-file.md`): `sidebar-tdd` needs a test file of its own for tasks 007, 012 and 014.
+**Verify:** `node tests/js/run.js` (CI job `tests`: `domains.test.js`, `context.test.js`).
+**Follow-ups:** `sidebar-tdd: task 007`.
+
 

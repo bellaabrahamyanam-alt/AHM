@@ -6,7 +6,7 @@ reinterpreted by any agent.
 
 **Status (step 2 done):** I-1, I-2 and I-3 are implemented. The sidebar and the map no longer call each other: they use only
 `window.AHM` (`app/js/ahm.js`, `app/js/map/map.js`). Version 1.1 added, during step 2, the items marked **[1.1]** below because the
-refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). See "Known violations" for what is still open.
+refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). The roll-out of I-6 is finished (tasks 002-004 merged, 2026-11-08): Known violation 1 is closed. See "Known violations" for what is still open.
 
 ---
 

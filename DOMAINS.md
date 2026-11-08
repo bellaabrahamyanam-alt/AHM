@@ -118,7 +118,7 @@ does not build the archive when several agents work in parallel.
 - `boundaries.test.js`: a script may not use a top-level name declared by another domain (the two written-down exceptions are in the test).
 - `context.test.js`: the starter contexts in `context/` are current and short; the architect package has no application code.
 - `features.test.js`: the feature flag, the loader, and the isolation rules of every `app/features/<name>/` folder (I-5).
-- `contract.test.js`: the endpoint names (I-1), `AHM.map` commands and events (I-2), core function names (I-3), `typeIcon` (I-4).
+- `contract.test.js`: the endpoint names (I-1), `AHM.map` commands and events (I-2), core function names (I-3), `typeIcon` (I-4), the state manager and its keys (I-6; the map must handle `state:selected`).
 - A new file needs an owner line in `tools/domains.json` (shared domain, owner approval) or the tests fail.
 - Test ownership: `layers.test.js` is sidebar's; `dates`, `data`, `search` tests and `dates-vectors.json` are core's; `php`, `data` tests, `parity.test.js`
   and `rules.json` are data's; `browser`, `lint` and the five tests above (`features` and `context` too), the runner and `tests/js/lib` are shared.

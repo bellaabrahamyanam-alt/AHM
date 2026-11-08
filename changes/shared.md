@@ -265,4 +265,10 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of this merge request (only the job `domain`). Read the proposal.
 **Follow-ups:** the owner writes `Status: approved` in the proposal (or asks for changes); then task 005, 006, 009 (architect), and the waves: 007 and 008 first, then 010 and 011, then 012 and 013, then 014.
 
+## 2026-11-08 — #24 Task 005: contract I-6 closed
+**What:** tasks 002-004 are merged, so `INTERFACES.md` no longer lists Known violation 1 (`lyState`); the item is replaced by a one-line note and the numbers of the other items stay. The obsolete remark in I-3 ("one exception is still open") is removed. `tests/js/contract.test.js` now requires the map to handle exactly `sidebar:resized` and `state:selected` (the owner approved this tightening on 2026-11-08); the key list and the API names of I-6 were already checked there (#15). `DOMAINS.md` names I-6 among the contract tests.
+**Why:** closes the state roll-out (`tasks/005-contract-i6.md`).
+**Verify:** `node tests/js/run.js` (CI job `tests`).
+**Follow-ups:** task 009 (contract v1.5) edits the same file and starts after this one.
+
 

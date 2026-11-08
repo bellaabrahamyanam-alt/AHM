@@ -5,6 +5,7 @@ let map, popup;
 let mapReady = false,
   featuresNow = null, // the last feature collection received (drawn as soon as the map is ready)
   hiddenId = null,
+  selectedId = null, // id of the selected place (event state:selected), drawn as a ring
   pickMarker = null,
   routeMarkers = {};
 const EMPTY = { type: "FeatureCollection", features: [] };
@@ -125,6 +126,19 @@ function initMap() {
         "icon-ignore-placement": true,
       },
     });
+    map.addSource("ahm-highlight", { type: "geojson", data: EMPTY }); // one Point: the selected place
+    map.addLayer({
+      id: "ahm-highlight",
+      type: "circle",
+      source: "ahm-highlight",
+      paint: {
+        "circle-radius": 22,
+        "circle-color": "rgba(255,255,255,0)",
+        "circle-stroke-width": 4,
+        "circle-stroke-color": "#ff9f1c",
+        "circle-stroke-opacity": 0.9,
+      },
+    });
     if (map.getStyle().glyphs) {
       // name labels next to the markers, using a font the base map already provides
       const ops = [
@@ -217,9 +231,14 @@ function initMap() {
     mapReady = true;
     applyFeatures();
     applyHidden();
+    applyHighlight();
     AHM.emit("map:ready");
   });
   AHM.on("sidebar:resized", () => map.resize());
+  AHM.on("state:selected", ({ value }) => {
+    selectedId = value == null ? null : value;
+    applyHighlight();
+  });
   $("#groups").addEventListener("change", (e) => {
     e.target.checked
       ? view.off.delete(e.target.dataset.g)
@@ -244,11 +263,33 @@ function applyHidden() {
   const f = hiddenId ? ["!=", ["get", "id"], hiddenId] : null; // hide the old symbol while its pin is edited
   ["ahm-places", "ahm-labels"].forEach((id) => map.getLayer(id) && map.setFilter(id, f));
 }
+function applyHighlight() {
+  // the ring follows the remembered selection: it is redrawn after every setFeatures and once the map is ready
+  const src = mapReady && map.getSource("ahm-highlight");
+  if (!src) return;
+  const f =
+    selectedId != null && featuresNow && featuresNow.features.find((x) => x.properties.id === selectedId);
+  src.setData(
+    f
+      ? {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: { type: "Point", coordinates: f.geometry.coordinates },
+              properties: { id: selectedId },
+            },
+          ],
+        }
+      : EMPTY,
+  );
+}
 const lngLatOf = (p) => [p.lon, p.lat];
 Object.assign(AHM.map, {
   setFeatures(fc) {
     featuresNow = fc;
     applyFeatures();
+    applyHighlight();
   },
   hidePlace(id) {
     hiddenId = id;

@@ -18,7 +18,7 @@ work at the same time, one per domain, as described in "Parallel work" below. Th
 | **core** | functions with no DOM and no map: dates, search and filtering, layer rules, loading and normalising data in the browser, the outside services (place search, directions) | `app/js/core/*` (`dates.js`, `data.js`, `search.js`, `layer-rules.js`, `providers.js`), `tests/fixtures/dates-vectors.json` |
 | **state** | the state manager: the one module that holds state shared between domains (selected place, layer state), provided as `AHM.state` (I-6, proposal 003, approved; built, `changes/state.md` #1) | `app/js/state/**`, `tests/js/state.test.js` |
 | **campaigns** | the military-campaigns feature, a switchable add-on (see "Features") | `app/features/campaigns/**`, `tests/js/campaigns.test.js` |
-| **shared** (owner only) | the shell and the contracts: no agent edits these without an approved proposal | `app/index.html` (script and style list, page skeleton), `app/js/config.js`, `app/js/ahm.js`, `app/js/features.js`, `app/css/base.css`, `INTERFACES.md`, `DOMAINS.md`, `AGENTS.md`, `tests/js/run.js` and `tests/js/lib/**`, `tools/**`, `CODEOWNERS` |
+| **shared** (owner only) | the shell and the contracts: no agent edits these without an approved proposal | `app/index.html` (script and style list, page skeleton), `app/js/config.js`, `app/js/ahm.js`, `app/js/features.js`, `app/js/icons.js` (icons, I-7), `app/css/base.css`, `INTERFACES.md`, `DESIGN.md` (UI rules), `DOMAINS.md`, `AGENTS.md`, `tests/js/run.js` and `tests/js/lib/**`, `tools/**`, `CODEOWNERS` |
 
 Notes:
 - **data** includes the PHP/Node mirror: a rule changed in `service/store.php` is changed in `dev/save-handler.js` and in
@@ -118,10 +118,11 @@ does not build the archive when several agents work in parallel.
 - `boundaries.test.js`: a script may not use a top-level name declared by another domain (the two written-down exceptions are in the test).
 - `context.test.js`: the starter contexts in `context/` are current and short; the architect package has no application code.
 - `features.test.js`: the feature flag, the loader, and the isolation rules of every `app/features/<name>/` folder (I-5).
-- `contract.test.js`: the endpoint names (I-1), `AHM.map` commands and events (I-2), core function names (I-3), `typeIcon` (I-4), the state manager and its keys (I-6; the map must handle `state:selected`).
+- `contract.test.js`: the endpoint names (I-1), `AHM.map` commands and events (I-2), core function names (I-3), `typeIcon` (I-4), the state manager and its keys (I-6; the map must handle `state:selected`); the names added in 1.5 (I-1, I-2, I-3) are accepted but not yet required.
+- `icons.test.js`: the icon set of I-7 (names, markup, size, load order in `index.html`).
 - A new file needs an owner line in `tools/domains.json` (shared domain, owner approval) or the tests fail.
 - Test ownership: `layers.test.js` and `sidebar.test.js` are sidebar's; `dates`, `data`, `search` tests and `dates-vectors.json` are core's; `php`, `data` tests, `parity.test.js`
-  and `rules.json` are data's; `browser`, `lint` and the five tests above (`features` and `context` too), the runner and `tests/js/lib` are shared.
+  and `rules.json` are data's; `browser`, `lint`, `icons` and the five tests above (`features` and `context` too), the runner and `tests/js/lib` are shared.
 
 ## Roll-out (each step needs the owner's "go")
 

@@ -10,3 +10,12 @@ Each spec: goal, domain, depends on, interface touched, acceptance criteria, out
 | 003 | Sidebar publishes the state | `sidebar/publish-state` | 001 |
 | 004 | Map highlights the selected place | `map/highlight` | 001 (003 for a visible effect) |
 | 005 | Contract I-6 (v1.4) | `shared/contract-i6` | 001-004 |
+| 006 | Sidebar test file | `shared+sidebar/sidebar-test-file` | proposal 010 approved |
+| 007 | Sidebar fixes (hover, selection, flicker, forms) | `sidebar/fixes` | 006 |
+| 008 | Map markers (selected look, hover, tooltip, double click, clusters) | `map/marker-ux` | 004 |
+| 009 | Contract v1.5 and design rules | `shared/ui-contract` | 005, proposal 010 approved |
+| 010 | Map point menu | `map/point-menu` | 009 |
+| 011 | Types dictionary and shapes: storage and loading | `data+core/types-and-shapes` | 009 |
+| 012 | Sidebar layout (split, place card, Add layer, toggle, point menu) | `sidebar/layout` | 007, 009, 010 |
+| 013 | Map draws types and shapes, edits shapes | `map/types-and-shapes` | 008, 011 |
+| 014 | Sidebar: types editor and shapes | `sidebar/types-and-shapes` | 011, 012, 013 |

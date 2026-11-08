@@ -259,3 +259,10 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of this merge request (`contract.test.js`).
 **Follow-ups:** `map-tdd: task 004`. Once the map handles the event, the test may be tightened to require it (owner decides).
 
+## 2026-11-08 — #23 UI roadmap: proposal 010 and tasks 006-014
+**What:** the owner's 21 requests (screenshots, 2026-11-08) are grouped into 9 tasks in 5 waves: `tasks/006` to `tasks/014`. `proposals/010-ui-contract.md` (Status: pending) holds the interface changes: icons (I-7), one types dictionary for points, lines and areas (I-8), shapes with layer membership (I-9), map commands and events for shapes and a point menu (I-2), the UI rules. `tasks/README.md` lists them. Documents only; nothing is built.
+**Why:** points 15, 16, 19, 20, 21 need new interfaces, and only the owner can approve them. The other points are fixes inside one domain.
+**Verify:** CI of this merge request (only the job `domain`). Read the proposal.
+**Follow-ups:** the owner writes `Status: approved` in the proposal (or asks for changes); then task 005, 006, 009 (architect), and the waves: 007 and 008 first, then 010 and 011, then 012 and 013, then 014.
+
+

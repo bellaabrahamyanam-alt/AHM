@@ -87,7 +87,7 @@ colour, so the list shows the same symbol as the map. The sidebar only calls `ty
 
 ## I-3 Core functions. Provider: **core**. Consumers: **sidebar**, **map**, **data's** dev tools
 
-The names and argument lists below are stable. Core never reads the DOM or the map. (One exception is still open: Known violation 1, `run()`.)
+The names and argument lists below are stable. Core never reads the DOM or the map.
 
 - **Dates** (`dates.js`): `isoToSec`, `secToIso`, `dateToTs`, `dateFromTs`, `dateClean`, `dateUpgrade`, `dateBounds`, `spanBounds`,
   `dateKey`, `dateOrderCheck`, `dateText`, `spanText`, `periodEndSec`, `datePeriodEnd`, `legacyToDate`, `DATE_FORMATS`.

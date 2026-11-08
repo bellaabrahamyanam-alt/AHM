@@ -1,6 +1,6 @@
 # Proposal 010: UI contract for marker types, shapes, point menu and icons (INTERFACES.md v1.5)
 
-Status: pending (the owner writes "approved" here; nothing below is built before)
+Status: approved (the owner, 2026-11-08, in the chat: "I approve everything")
 From: shared (architect). Roll-out: `tasks/006` to `tasks/014`. Owner's requests of 2026-11-08: points 15 (point menu), 16 (marker dictionary), 19 and 20 (borders and routes, reusable styles, territories with names), 21 (clusters), 18 (icon buttons).
 Owner's decisions: double click on a place marker works like the list; borders are lines OR filled areas, chosen per shape; shapes have NO dates; styles are reusable and editable (colour, line weight and pattern, area fill); an area has a name shown on the map.
 

@@ -253,3 +253,9 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Fix after CI of !8 (2026-11-08):** `tests/js/domains.test.js` failed twice: `tests/js/map.test.js` was registered but did not exist, and `.gitlab/CODEOWNERS` was stale. Fixed in !9 (branch `shared+map/map-test-file`, replaces !8): comments-only placeholder `tests/js/map.test.js` (a map file, so the branch names `map`) and the new CODEOWNERS line (same text as `node tools/check-domain.js --codeowners`, added by hand). The existence test is NOT relaxed.
 **Follow-ups:** `map-tdd: task 004`.
 
+## 2026-11-08 — #22 I-2 event list: the map handles `state:selected` (I-6)
+**What:** `INTERFACES.md` I-2: the table of events handled by the map has a new row `state:selected` (`{ value, old }`, emitted by `AHM.state`; the map highlights the selected place and never writes `selected`). `tests/js/contract.test.js`: the check "events handled by the map" accepts `state:selected` besides `sidebar:resized`; the test stays green before and after the map implements it. No code change.
+**Why:** the roll-out of I-6 (`tasks/004-map-highlight.md`) makes the map listen to `state:selected`; the contract must name it first.
+**Verify:** CI of this merge request (`contract.test.js`).
+**Follow-ups:** `map-tdd: task 004`. Once the map handles the event, the test may be tightened to require it (owner decides).
+

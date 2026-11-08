@@ -67,10 +67,11 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `map:click` | `{ lon, lat, name? }` | click on empty map (`name` = the base map's label under the cursor, if any) |
 | `map:show-controls` **[1.1]** | none | the map asks the sidebar to open the Maps fold (when an historical map is edited) |
 
-### Events, emitted by the sidebar, handled by the map
+### Events handled by the map (from the sidebar and from the state manager)
 | Event | Payload | When |
 |---|---|---|
-| `sidebar:resized` | none | the panel was resized or collapsed (the map calls its own `resize()`) |
+| `sidebar:resized` | none | emitted by the sidebar: the panel was resized or collapsed (the map calls its own `resize()`) |
+| `state:selected` **(I-6)** | `{ value, old }` | emitted by `AHM.state`: the selected place changed (`value` = place id or `null`). The map handles it to highlight the place; it never writes `selected`. |
 
 Rules: handlers are synchronous and must not throw; payloads are plain data (no DOM nodes, no library objects); an event is
 never renamed, only added (by proposal).

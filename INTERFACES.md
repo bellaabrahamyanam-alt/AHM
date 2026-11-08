@@ -132,7 +132,7 @@ state domain writes `app/js/state/`. Spec: `proposals/003-state-manager.md` (app
 
 ## Known violations (open; agents must not add new ones)
 
-1. `core/layer-rules.js` holds `lyState`, which also carries sidebar state (`open`, `editing`, `staged`, `noteAll`). Closes when `tasks/002` (core reads it from `AHM.state`) and `tasks/003` (sidebar announces changes) are merged; then delete this item.
+1. (Closed 2026-11-08: the former `lyState` is `AHM.state.get('layers')`, I-6. The numbers of the other items stay.)
 2. The sidebar and the map share HTML ids by design inside the Maps fold (`#more-maps`, owned by the map); outside it neither touches
    the other's ids.
 3. `app/index.html` is edited by several domains (script list: shared; the sidebar parts and the Maps fold by their domains); step 4 may need markers or a split.

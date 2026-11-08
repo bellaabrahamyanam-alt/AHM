@@ -484,9 +484,9 @@ function lyRenderCats() {
     $('#catAdmin').innerHTML = catEditorHTML(lyCatOpen === 'new' ? 'New category' : 'Rename category');
     placeFormWire($('#catForm'));
     catFill(lyCatOpen === 'new' ? null : catById(lyCatOpen));
-    // wire Save validation
+    // wire Save validation: on input (typing) and on click (add-name button adds a row)
     $('#catForm').addEventListener('input', catValidateSave);
-    new MutationObserver(catValidateSave).observe($('#catForm .pf-names'), { childList: true });
+    $('#catForm').addEventListener('click', catValidateSave);
     catValidateSave();
   } else {
     $('#catAdmin').innerHTML = '<button id="catAdd" class="wide">Add</button>';
@@ -504,6 +504,9 @@ $('#lyCat').addEventListener('change', lyRenderList);
 $('#lang').addEventListener('input', () => {
   lyFillCats();
   lyRender();
+});
+$('#lyList').addEventListener('mousedown', (e) => {
+  if (e.detail > 1) e.preventDefault(); // suppress text selection on double-click; dragging still selects
 });
 $('#lyNew').onclick = () => lyOpenForm(null);
 $('#ly-add').hidden = !AHM_CONFIG.canEdit;

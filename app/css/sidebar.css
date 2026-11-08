@@ -410,13 +410,11 @@ li > div > b {
   color: var(--a);
 }
 li[data-id]:hover > .t > b,
-li[data-lid]:hover > .t > b {
+li[data-lid]:hover:not(:has(.ly-btns *:hover)) > .t > b {
   color: var(--a-hover);
 }
-/* prevent text selection on fast double-click */
-#list li[data-id],
-#lyList li[data-lid] {
-  user-select: none;
+li[data-lid]:has(.ly-btns button:hover) {
+  background: none;
 }
 li .t {
   display: flex;

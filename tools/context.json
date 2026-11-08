@@ -4,11 +4,11 @@
   "domains": {
     "sidebar": {
       "brief": "The left panel: place list and details, search and period, layers, categories, languages, place editing. Talks to the map only through AHM.map.* and events (INTERFACES.md I-2).",
-      "read": ["app/js/sidebar/ui.js", "app/js/sidebar/layers.js", "app/index.html"]
+      "read": ["app/js/sidebar/ui.js", "app/js/sidebar/layers.js", "app/index.html", "DESIGN.md"]
     },
     "map": {
       "brief": "The MapLibre map: base maps, place symbols, overlays, route, pins. Provides the AHM.map commands and map events (I-2) and typeIcon (I-4).",
-      "read": ["app/js/map/map.js", "app/js/map/overlays.js", "app/js/map/typeicons.js"]
+      "read": ["app/js/map/map.js", "app/js/map/overlays.js", "app/js/map/typeicons.js", "DESIGN.md"]
     },
     "core": {
       "brief": "Pure logic without DOM: data loading, dates, search/sort/filter, layer rules, providers. Provides the core functions of I-3.",

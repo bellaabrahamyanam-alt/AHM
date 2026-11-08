@@ -11,6 +11,7 @@ The left panel: place list and details, search and period, layers, categories, l
 - `app/js/sidebar/ui.js`
 - `app/js/sidebar/layers.js`
 - `app/index.html`
+- `DESIGN.md`
 - `changes/sidebar.md`
 - `todo/sidebar.md`
 

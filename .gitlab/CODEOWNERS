@@ -66,6 +66,7 @@
 /AGENTS.md @bellaabrahamyan.am
 /DOMAINS.md @bellaabrahamyan.am
 /INTERFACES.md @bellaabrahamyan.am
+/DESIGN.md @bellaabrahamyan.am
 /AGENT_CHANGES.md @bellaabrahamyan.am
 /TODO.md @bellaabrahamyan.am
 /tools/ @bellaabrahamyan.am
@@ -76,6 +77,7 @@
 /app/js/config.js @bellaabrahamyan.am
 /app/js/ahm.js @bellaabrahamyan.am
 /app/js/features.js @bellaabrahamyan.am
+/app/js/icons.js @bellaabrahamyan.am
 /app/css/base.css @bellaabrahamyan.am
 /app/package.json @bellaabrahamyan.am
 /app/bun.lock @bellaabrahamyan.am
@@ -93,6 +95,7 @@
 /tests/js/domains.test.js @bellaabrahamyan.am
 /tests/js/boundaries.test.js @bellaabrahamyan.am
 /tests/js/features.test.js @bellaabrahamyan.am
+/tests/js/icons.test.js @bellaabrahamyan.am
 /context/ @bellaabrahamyan.am
 /tests/js/context.test.js @bellaabrahamyan.am
 /tests/js/ci.test.js @bellaabrahamyan.am

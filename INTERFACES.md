@@ -126,7 +126,7 @@ state domain writes `app/js/state/`. Spec: `proposals/003-state-manager.md` (app
 - Events: `AHM.emit('state:<key>', { value, old })`. `set` emits only when the value is not identical (`!==`); `patch` always emits once (`old` = shallow copy from before the patch).
 - Errors (thrown): unknown key (message contains "unknown key"); `patch` on a value that is not an object, or with a non-object argument; `set('layers', x)` with anything but an object that has the same fields.
 - Rules: nobody but `state.js` assigns `AHM.state`; state events are named `state:<key>`; the sidebar and the map may use `AHM.state` besides `AHM.map`, `AHM.on` and `AHM.emit`.
-- Roll-out (tasks `tasks/002`-`004`): core reads `lyState` from `AHM.state.get('layers')`; the sidebar writes `selected` and announces layer changes; the map listens to `state:selected`.
+- Roll-out (tasks `tasks/002`-`004`, merged 2026-11-08): core reads `lyState` from `AHM.state.get('layers')`; the sidebar writes `selected` and announces layer changes; the map listens to `state:selected`.
 
 ---
 

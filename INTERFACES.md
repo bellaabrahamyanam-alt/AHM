@@ -6,7 +6,7 @@ reinterpreted by any agent.
 
 **Status (step 2 done):** I-1, I-2 and I-3 are implemented. The sidebar and the map no longer call each other: they use only
 `window.AHM` (`app/js/ahm.js`, `app/js/map/map.js`). Version 1.1 added, during step 2, the items marked **[1.1]** below because the
-refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). See "Known violations" for what is still open.
+refactor needed them; **the owner confirmed them on 2026-11-06**. Version 1.2 (2026-11-06) implements proposal 001: `run(options)`. Version 1.3 (2026-11-06, step 4, requested by the owner for the campaigns feature) adds I-5 (optional features). Version 1.4 (2026-11-07, proposal 003, approved) adds I-6 (the state manager `AHM.state`). The roll-out of I-6 is finished (tasks 002-004 merged, 2026-11-08): Known violation 1 is closed. See "Known violations" for what is still open.
 
 ---
 
@@ -87,7 +87,7 @@ colour, so the list shows the same symbol as the map. The sidebar only calls `ty
 
 ## I-3 Core functions. Provider: **core**. Consumers: **sidebar**, **map**, **data's** dev tools
 
-The names and argument lists below are stable. Core never reads the DOM or the map. (One exception is still open: Known violation 1, `run()`.)
+The names and argument lists below are stable. Core never reads the DOM or the map.
 
 - **Dates** (`dates.js`): `isoToSec`, `secToIso`, `dateToTs`, `dateFromTs`, `dateClean`, `dateUpgrade`, `dateBounds`, `spanBounds`,
   `dateKey`, `dateOrderCheck`, `dateText`, `spanText`, `periodEndSec`, `datePeriodEnd`, `legacyToDate`, `DATE_FORMATS`.
@@ -126,13 +126,13 @@ state domain writes `app/js/state/`. Spec: `proposals/003-state-manager.md` (app
 - Events: `AHM.emit('state:<key>', { value, old })`. `set` emits only when the value is not identical (`!==`); `patch` always emits once (`old` = shallow copy from before the patch).
 - Errors (thrown): unknown key (message contains "unknown key"); `patch` on a value that is not an object, or with a non-object argument; `set('layers', x)` with anything but an object that has the same fields.
 - Rules: nobody but `state.js` assigns `AHM.state`; state events are named `state:<key>`; the sidebar and the map may use `AHM.state` besides `AHM.map`, `AHM.on` and `AHM.emit`.
-- Roll-out (tasks `tasks/002`-`004`): core reads `lyState` from `AHM.state.get('layers')`; the sidebar writes `selected` and announces layer changes; the map listens to `state:selected`.
+- Roll-out (tasks `tasks/002`-`004`, merged 2026-11-08): core reads `lyState` from `AHM.state.get('layers')`; the sidebar writes `selected` and announces layer changes; the map listens to `state:selected`.
 
 ---
 
 ## Known violations (open; agents must not add new ones)
 
-1. `core/layer-rules.js` holds `lyState`, which also carries sidebar state (`open`, `editing`, `staged`, `noteAll`). Closes when `tasks/002` (core reads it from `AHM.state`) and `tasks/003` (sidebar announces changes) are merged; then delete this item.
+1. (Closed 2026-11-08: the former `lyState` is `AHM.state.get('layers')`, I-6. The numbers of the other items stay.)
 2. The sidebar and the map share HTML ids by design inside the Maps fold (`#more-maps`, owned by the map); outside it neither touches
    the other's ids.
 3. `app/index.html` is edited by several domains (script list: shared; the sidebar parts and the Maps fold by their domains); step 4 may need markers or a split.

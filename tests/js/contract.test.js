@@ -60,7 +60,7 @@ test('contract I-2: the events emitted and handled match the lists, and each sid
   eq(MAP_EVENTS, emit(map), 'events emitted by the map');
   eq(SIDEBAR_EVENTS, emit(side), 'events emitted by the sidebar');
   eq(MAP_EVENTS.filter((e) => e !== 'map:ready'), on(side), 'events handled by the sidebar (map:ready needs no handler: features are queued)');
-  eq(SIDEBAR_EVENTS, on(map).filter((e) => e !== 'state:selected'), 'events handled by the map (besides state:selected of I-6, which the map may handle)');
+  eq([...SIDEBAR_EVENTS, 'state:selected'].sort(), on(map), 'events handled by the map: sidebar:resized, and state:selected of I-6 (the map highlights the selected place)');
   const used = uniq(names(side, /AHM\.map\.(\w+)/g));
   ok(used.every((k) => MAP_COMMANDS.includes(k)), 'the sidebar calls an AHM.map command that is not in INTERFACES.md: ' + used.filter((k) => !MAP_COMMANDS.includes(k)));
   const props = uniq(names(map + side, /\bAHM\.(\w+)/g));

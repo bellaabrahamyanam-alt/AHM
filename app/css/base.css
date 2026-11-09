@@ -61,6 +61,9 @@
   --radius-m: 7px;
   --radius-pill: 14px;
   --gap: 4px;
+  /* buttons: the grey of the forum buttons is too close to the hover grey, so hover and press get their own steps */
+  --btn-hover-bg: #dde1e4;
+  --btn-press-bg: #cfd5d9;
   /* route markers (A = start, B = destination) */
   --route-a: #2a8f4f;
   --route-b: #1d6fd1;

@@ -15,9 +15,7 @@
   <body>
     <!-- region:sidebar -->
     <aside id="side">
-      <header>
-        <button id="collapse" class="icon-btn" title="Hide panel" aria-label="Hide panel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 15-3-3 3-3"/></svg></button>
-      </header>
+      <button id="collapse" class="icon-btn" title="Hide panel" aria-label="Hide panel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 15-3-3 3-3"/></svg></button>
       <div id="pick"></div>
       <nav class="tabs">
         <button data-tab="explore" class="on">Explore</button>
@@ -64,7 +62,7 @@
             </span>
           </div>
           <ul id="list"></ul>
-          <ul id="detailHome" hidden><li id="detail" class="place-open" hidden></li><li id="lyDetail" class="place-open" hidden></li></ul>
+          <div id="dock" hidden><div id="detail" hidden></div><div id="lyDetail" hidden></div></div>
           <div id="geo"></div>
         </section>
         <section id="tab-more" hidden>
@@ -145,9 +143,9 @@
             <select id="lyCat" aria-label="Category"></select>
             <div class="bar"><span id="lyCount"></span></div>
             <ul id="lyList"></ul>
-            <details class="fold" id="ly-add" open><summary>Add layer</summary><div class="fold-body">
-              <button id="lyNew" class="wide">Add layer</button>
-            </div></details>
+            <div id="ly-add">
+              <button id="lyNew" class="wide">+ Add layer</button>
+            </div>
           </div>
         </section>
         

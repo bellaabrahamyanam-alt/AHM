@@ -421,7 +421,7 @@ async function show(id) {
   const body = $("#detail .dock-body");
   if (body && keepScroll) body.scrollTop = keepScroll;
 }
-// ---- long notes: a folded preview with a "Show more" toggle, so one long note never buries the rest of the place ----
+// ---- long notes: a folded preview with a "more…" toggle, so one long note never buries the rest of the place ----
 const NOTE_LINES = 6; // lines of a folded note
 const noteOpen = new Set(); // ids of long notes the reader has opened; kept while the panel is redrawn
 let shownId = null; // the place whose details are drawn
@@ -440,7 +440,7 @@ const lineHeightOf = (el) => parseFloat(getComputedStyle(el).lineHeight) || pars
 function noteLabels(note) {
   const open = noteOpen.has(note.dataset.nid),
     btn = note.querySelector(".note-more");
-  btn.textContent = open ? "Show less" : "Show more";
+  btn.textContent = open ? "less" : "more…";
   btn.setAttribute("aria-expanded", String(open));
 }
 // Measure every note: only a note that is really longer than the fold gets the toggle (a short one is shown whole).

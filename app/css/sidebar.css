@@ -502,43 +502,30 @@ li.empty:hover {
   overflow: hidden;
   transition: max-height 0.28s ease;
 }
-/* the toggle sticks to the bottom of the visible panel while its note is open, so "Show less" is never far away */
+/* "more…" / "less": a quiet text link under the note, no box */
 #detail .note-more {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  display: block;
-  width: calc(100% + 20px);
+  display: inline-block;
   min-height: 0;
-  margin: 6px -10px -8px;
-  padding: 6px 10px;
+  margin: 2px 0 0;
+  padding: 2px 0;
   border: 0;
-  border-top: 1px solid var(--li-row-border-bottom-color);
-  border-radius: 0 0 var(--radius-m) var(--radius-m);
-  background: var(--bg1-bg-color);
+  background: none;
   box-shadow: none;
   color: var(--base-href-color);
   font-size: 13px;
   font-weight: 600;
-  text-align: center;
   cursor: pointer;
 }
 #detail .note-more[hidden] {
   display: none;
 }
-#detail .note-more::after {
-  content: " \25BE";
-}
-#detail .note-more[aria-expanded="true"]::after {
-  content: " \25B4";
-}
 #detail .note-more:hover {
-  background: var(--page-btn-bg-focus);
+  text-decoration: underline;
 }
 #detail .note-more:focus-visible,
 #detail .note-all:focus-visible {
   outline: 2px solid var(--base-href-color);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 #detail .note-tools {
   display: flex;

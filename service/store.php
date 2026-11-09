@@ -838,14 +838,24 @@ class store
             throw self::bad('unknown layer');
         }
         $places = $this->place_ids();
-        $members = array_column($d['layers'][$i]['members'], 'place');
+        $shapes = $this->shape_ids();
+        $members = [];
+        $kind = []; // id => 'place' | 'shape'
+        foreach ($d['layers'][$i]['members'] as $m) {
+            $mid = $m['place'] ?? ($m['shape'] ?? null);
+            if ($mid !== null) {
+                $members[] = $mid;
+                $kind[$mid] = isset($m['shape']) ? 'shape' : 'place';
+            }
+        }
         $changed = false;
         foreach ($add as $p) {
-            if (!is_string($p) || !isset($places[$p])) {
-                throw self::bad('unknown place');
+            if (!is_string($p) || !(isset($places[$p]) || isset($shapes[$p]))) {
+                throw self::bad('unknown place or border');
             }
             if (!in_array($p, $members, true)) {
                 $members[] = $p; // appended: the order of the list is the order of adding
+                $kind[$p] = isset($places[$p]) ? 'place' : 'shape';
                 $changed = true;
             }
         }
@@ -860,16 +870,20 @@ class store
         }
         if ($changed) {
             $list = [];
-            foreach ($members as $p) {
-                $list[] = ['place' => $p];
+            foreach ($members as $mid) {
+                $list[] = [$kind[$mid] => $mid];
             }
             $d['layers'][$i]['members'] = $list;
             $d['layers'][$i]['updated'] = self::now_utc();
             $this->put_list('layers.json', 'layers', $d);
+            $gone = false;
             foreach ($removed as $p) {
-                $this->untag_notes($lid, $p); // a place that left the layer keeps its notes, but they are no longer tied to it
+                if (($kind[$p] ?? '') === 'place') {
+                    $this->untag_notes($lid, $p); // a place that left the layer keeps its notes, but they are no longer tied to it
+                    $gone = true;
+                }
             }
-            if ($removed) {
+            if ($gone) {
                 $this->rebuild_index();
             }
         }
@@ -935,12 +949,17 @@ class store
     public function save_members(array $in)
     {
         return $this->locked(function () use ($in) {
-            foreach (['add', 'remove'] as $k) {
+            foreach (['add', 'remove', 'add_shapes', 'remove_shapes'] as $k) {
                 if (isset($in[$k]) && !is_array($in[$k])) {
-                    throw self::bad("\"$k\" must be a list of place ids");
+                    throw self::bad("\"$k\" must be a list of ids");
                 }
             }
-            return $this->change_members((string) ($in['id'] ?? ''), $in['add'] ?? [], $in['remove'] ?? []);
+            // places and borders are both given as ids (add_shapes / remove_shapes are the same lists, as INTERFACES I-9 names them)
+            return $this->change_members(
+                (string) ($in['id'] ?? ''),
+                array_merge($in['add'] ?? [], $in['add_shapes'] ?? []),
+                array_merge($in['remove'] ?? [], $in['remove_shapes'] ?? [])
+            );
         });
     }
 
@@ -1047,6 +1066,233 @@ class store
             return ['id' => $this->save_layer_note($in['layer_note'])];
         }
         throw self::bad('nothing to save');
+    }
+
+    // ------------------------------------------------------------------ shapes: borders (areas) and lines
+    // shapes.geojson: one feature per shape. Geometry: Polygon, MultiPolygon, LineString or MultiLineString. Properties: id, names, type,
+    // color, opacity (the fill of an area, the line of a line), label (draw the name on the map), date_from, date_to, source, created,
+    // updated. Same rules as dev/save-handler.js (the browser-sync handler).
+    const SHAPE_TYPES = ['country', 'kingdom', 'region', 'district', 'territory', 'disputed'];
+    const SHAPE_GEOMS = ['Polygon', 'MultiPolygon', 'LineString', 'MultiLineString'];
+    const MAX_SHAPE_POINTS = 20000;
+    const SHAPE_SOURCE = '/^[A-Za-z0-9:_.\/ -]{0,100}$/';
+
+    /** The shapes as the browser gets them: a GeoJSON collection (empty when there is no file yet). */
+    public function shapes()
+    {
+        return $this->locked(function () {
+            return $this->read_shapes();
+        });
+    }
+
+    private function read_shapes()
+    {
+        $f = $this->base . 'shapes.geojson';
+        $d = is_file($f) ? json_decode(file_get_contents($f), true) : null;
+        return is_array($d) && isset($d['features']) && is_array($d['features']) ? $d : ['type' => 'FeatureCollection', 'features' => []];
+    }
+
+    /** One feature per line: a change shows in git as a change of one line, not of thousands of numbers. The old file is archived first. */
+    private function put_shapes(array $d)
+    {
+        $f = $this->base . 'shapes.geojson';
+        if (is_file($f)) {
+            copy($f, $this->archive_path('shapes', 'geojson'));
+        }
+        $lines = [];
+        foreach ($d['features'] as $ft) {
+            $lines[] = json_encode($ft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        self::write_atomic($f, '{"type":"FeatureCollection","features":[' . "\n" . implode(",\n", $lines) . "\n]}\n");
+    }
+
+    /** [shape id => true] of every shape. */
+    private function shape_ids()
+    {
+        $out = [];
+        foreach ($this->read_shapes()['features'] as $f) {
+            $out[$f['properties']['id'] ?? ''] = true;
+        }
+        return $out;
+    }
+
+    /** Checks a geometry and returns it with coordinates rounded to 6 decimals (about 10 cm). */
+    private static function clean_geometry($g)
+    {
+        if (!is_array($g) || !in_array($g['type'] ?? '', self::SHAPE_GEOMS, true) || !isset($g['coordinates']) || !is_array($g['coordinates'])) {
+            throw self::bad('a border needs a Polygon, MultiPolygon, LineString or MultiLineString geometry');
+        }
+        $n = 0;
+        $num = function ($v) {
+            return is_int($v) || is_float($v);
+        };
+        $pt = function ($c) use (&$n, $num) {
+            if (!is_array($c) || !isset($c[0], $c[1]) || !$num($c[0]) || !$num($c[1]) || abs($c[0]) > 180 || abs($c[1]) > 90) {
+                throw self::bad('a coordinate is out of range (longitude -180..180, latitude -90..90)');
+            }
+            $n++;
+            return [round($c[0], 6), round($c[1], 6)];
+        };
+        $line = function ($l, $min) use ($pt) {
+            if (!is_array($l) || count($l) < $min) {
+                throw self::bad("a line needs at least $min points");
+            }
+            return array_map($pt, array_values($l));
+        };
+        $ring = function ($r) use ($line) {
+            $q = $line($r, 4);
+            $last = $q[count($q) - 1];
+            if ($q[0][0] !== $last[0] || $q[0][1] !== $last[1]) {
+                throw self::bad('an area outline must be closed');
+            }
+            return $q;
+        };
+        $poly = function ($p) use ($ring) {
+            if (!is_array($p) || !$p) {
+                throw self::bad('an area needs an outline');
+            }
+            return array_map($ring, array_values($p));
+        };
+        $many = function ($a, $f) {
+            if (!is_array($a) || !$a) {
+                throw self::bad('the geometry is empty');
+            }
+            return array_map($f, array_values($a));
+        };
+        $c = $g['coordinates'];
+        switch ($g['type']) {
+            case 'Polygon':
+                $co = $poly($c);
+                break;
+            case 'MultiPolygon':
+                $co = $many($c, $poly);
+                break;
+            case 'LineString':
+                $co = $line($c, 2);
+                break;
+            default:
+                $co = $many($c, function ($l) use ($line) {
+                    return $line($l, 2);
+                });
+        }
+        if ($n > self::MAX_SHAPE_POINTS) {
+            throw self::bad('a border can have at most ' . self::MAX_SHAPE_POINTS . " points (it has $n); simplify it");
+        }
+        return ['type' => $g['type'], 'coordinates' => $co];
+    }
+
+    /** Checks the fields of a shape (not the geometry) and returns them ready to store. */
+    private static function clean_shape(array $in, array $codes)
+    {
+        $names = self::clean_names($in['names'] ?? [], $codes, 'a border needs at least one name');
+        if (!in_array($in['type'] ?? '', self::SHAPE_TYPES, true)) {
+            throw self::bad('unknown border type');
+        }
+        $color = $in['color'] ?? null;
+        if (!is_string($color) || !preg_match(self::COLOR, $color)) {
+            throw self::bad('the colour must look like #aa3344');
+        }
+        $op = $in['opacity'] ?? null;
+        if (is_bool($op) || !is_numeric($op) || (float) $op < 0 || (float) $op > 1) {
+            throw self::bad('the opacity must be between 0 and 1');
+        }
+        if (!is_bool($in['label'] ?? null)) {
+            throw self::bad('"label" must be true or false');
+        }
+        $source = (string) ($in['source'] ?? '');
+        if (!preg_match(self::SHAPE_SOURCE, $source)) {
+            throw self::bad('the source is too long or has unusual characters');
+        }
+        $from = dates::clean($in['date_from'] ?? null, 'begin date');
+        $to = dates::clean($in['date_to'] ?? null, 'end date');
+        dates::order_check($from, $to);
+        return [
+            'names' => $names,
+            'type' => $in['type'],
+            'color' => strtolower($color),
+            'opacity' => round((float) $op, 2),
+            'label' => $in['label'],
+            'date_from' => $from,
+            'date_to' => $to,
+            'source' => $source
+        ];
+    }
+
+    /** Editors (checked by the controller): creates a shape (no id; geometry required) or changes one (geometry only when given). Returns the id. */
+    public function save_shape(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            $codes = array_column($this->lang_load(), 'code');
+            $c = self::clean_shape($in, $codes);
+            $d = $this->read_shapes();
+            $now = self::now_utc();
+            $id = (string) ($in['id'] ?? '');
+            if ($id !== '') {
+                $at = null;
+                if (preg_match(self::UUID, $id)) {
+                    foreach ($d['features'] as $k => $f) {
+                        if (($f['properties']['id'] ?? '') === $id) {
+                            $at = $k;
+                        }
+                    }
+                }
+                if ($at === null) {
+                    throw self::bad('unknown border');
+                }
+                if (array_key_exists('geometry', $in)) {
+                    $d['features'][$at]['geometry'] = self::clean_geometry($in['geometry']);
+                }
+                $d['features'][$at]['properties'] = array_merge($d['features'][$at]['properties'], $c, ['updated' => $now]);
+            } else {
+                $id = self::uuid4();
+                $d['features'][] = [
+                    'type' => 'Feature',
+                    'geometry' => self::clean_geometry($in['geometry'] ?? null),
+                    'properties' => ['id' => $id] + $c + ['created' => $now, 'updated' => $now]
+                ];
+            }
+            $this->put_shapes($d);
+            return $id;
+        });
+    }
+
+    /** Editors (checked by the controller): deletes a shape; the old file stays in archive/. The shape leaves every layer. */
+    public function delete_shape($id)
+    {
+        return $this->locked(function () use ($id) {
+            $d = $this->read_shapes();
+            $at = null;
+            if (preg_match(self::UUID, (string) $id)) {
+                foreach ($d['features'] as $k => $f) {
+                    if (($f['properties']['id'] ?? '') === $id) {
+                        $at = $k;
+                    }
+                }
+            }
+            if ($at === null) {
+                throw self::bad('unknown border');
+            }
+            array_splice($d['features'], $at, 1);
+            $this->put_shapes($d);
+            $ls = $this->layers_data();
+            $changed = false;
+            foreach ($ls['layers'] as $i => $l) {
+                $keep = array_values(
+                    array_filter($l['members'], function ($m) use ($id) {
+                        return ($m['shape'] ?? null) !== $id;
+                    })
+                );
+                if (count($keep) !== count($l['members'])) {
+                    $ls['layers'][$i]['members'] = $keep;
+                    $ls['layers'][$i]['updated'] = self::now_utc();
+                    $changed = true;
+                }
+            }
+            if ($changed) {
+                $this->put_list('layers.json', 'layers', $ls);
+            }
+            return true;
+        });
     }
 
     // ------------------------------------------------------------------ historical map images (overlays)

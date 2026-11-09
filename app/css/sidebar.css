@@ -213,7 +213,7 @@ hr {
   padding: 0;
 }
 .langs li.tr {
-  padding: 2px 0;
+  padding: 2px 4px 2px 10px;
   border: 0;
   cursor: default;
 }
@@ -936,8 +936,21 @@ li.on,
 li.on:hover,
 .langs li.tr.on,
 .langs li.tr.on:hover {
+  position: relative;
   background: var(--row-on-bg);
-  box-shadow: inset 3px 0 0 var(--a);
+}
+/* the bar is its own layer above the content: a button in the row (its hover box) can never cover it */
+li.on::before,
+.langs li.tr.on::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--a);
+  border-radius: 0 2px 2px 0;
+  pointer-events: none;
 }
 .tmark {
   display: inline-flex;

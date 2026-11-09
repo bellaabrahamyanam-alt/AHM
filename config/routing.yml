@@ -5,7 +5,7 @@ ahm_map_page:
 ahm_map_data:
   path: /map/data/{f}
   defaults: { _controller: ahm.map.controller:data }
-  requirements: { f: 'places|notes-index|overlays|languages|layers|layer-notes-index|categories' }
+  requirements: { f: 'places|notes-index|overlays|languages|layers|layer-notes-index|categories|shapes' }
 
 ahm_map_note:
   path: /map/note/{place}/{id}
@@ -30,6 +30,16 @@ ahm_map_layer_save:
 ahm_map_layer_delete:
   path: /map/layer-delete
   defaults: { _controller: ahm.map.controller:layer_delete }
+  methods: [POST]
+
+ahm_map_shape_save:
+  path: /map/shape-save
+  defaults: { _controller: ahm.map.controller:shape_save }
+  methods: [POST]
+
+ahm_map_shape_delete:
+  path: /map/shape-delete
+  defaults: { _controller: ahm.map.controller:shape_delete }
   methods: [POST]
 
 ahm_map_category_save:

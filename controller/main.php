@@ -104,7 +104,10 @@ class main
             'layerSave' => $this->helper->route('ahm_map_layer_save', [], false),
             'layerDelete' => $this->helper->route('ahm_map_layer_delete', [], false),
             'categorySave' => $this->helper->route('ahm_map_category_save', [], false),
-            'canLayerAdmin' => $this->can_admin() // delete layers, manage categories
+            'canLayerAdmin' => $this->can_admin(), // delete layers, manage categories
+            'shapes' => $this->helper->route('ahm_map_data', ['f' => 'shapes'], false),
+            'shapeSave' => $this->helper->route('ahm_map_shape_save', [], false),
+            'shapeDelete' => $this->helper->route('ahm_map_shape_delete', [], false)
         ];
         $html = file_get_contents(__DIR__ . '/../app/index.html');
         $html = str_replace(['href="css/', 'src="js/'], ['href="' . $ext . 'css/', 'src="' . $ext . 'js/'], $html);
@@ -122,14 +125,15 @@ class main
 
     public function data($f)
     {
-        $lists = ['overlays', 'languages', 'layers', 'layer-notes-index', 'categories'];
+        $lists = ['overlays', 'languages', 'layers', 'layer-notes-index', 'categories', 'shapes'];
         if (in_array($f, $lists, true)) {
             $d = [
                 'overlays' => 'overlays',
                 'languages' => 'languages',
                 'layers' => 'layers',
                 'layer-notes-index' => 'layer_notes_index',
-                'categories' => 'categories'
+                'categories' => 'categories',
+                'shapes' => 'shapes'
             ][$f];
             return new Response(
                 json_encode($this->store->$d(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -246,6 +250,40 @@ class main
         }
         return $this->overlay_run(function () use ($in) {
             return ['ok' => true] + $this->store->layer_save($in);
+        });
+    }
+
+    /** POST JSON {names, type, color, opacity, label, date_from?, date_to?, source?, geometry, id?}: creates or changes a border or line. Editors. */
+    public function shape_save()
+    {
+        if ($g = $this->editor_guard()) {
+            return $g;
+        }
+        if (!$this->is_json()) {
+            return $this->json(['error' => 'JSON required'], 415);
+        }
+        if (($in = $this->json_body()) === null) {
+            return $this->json(['error' => 'bad request'], 400);
+        }
+        return $this->overlay_run(function () use ($in) {
+            return ['ok' => true, 'id' => $this->store->save_shape($in)];
+        });
+    }
+
+    /** POST JSON {id}: deletes a border (it leaves its layers; a copy of the old file is archived). Editors, like places. */
+    public function shape_delete()
+    {
+        if ($g = $this->editor_guard()) {
+            return $g;
+        }
+        if (!$this->is_json()) {
+            return $this->json(['error' => 'JSON required'], 415);
+        }
+        if (($in = $this->json_body()) === null) {
+            return $this->json(['error' => 'bad request'], 400);
+        }
+        return $this->overlay_run(function () use ($in) {
+            return ['ok' => $this->store->delete_shape((string) ($in['id'] ?? ''))];
         });
     }
 

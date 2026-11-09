@@ -409,8 +409,29 @@ const placeHeadHTML = (p, l) =>
   (AHM_CONFIG.canEdit ? iconBtn("editplace", "pencil", "Edit place") : "") +
   iconBtn("from", "route-from", "Route from here") +
   iconBtn("to", "route-to", "Route to here") +
+  iconBtn("dockmax", "chevron-down", dockFull ? "Smaller panel" : "Larger panel") +
   iconBtn("closedetail", "close", "Close") +
   "</span></div>";
+// The dock can take the whole panel (hiding the list) while a long note is read; the choice is remembered.
+// (dockFull, not dockMax: dockMax() is the height limit of the drag-handle above.)
+let dockFull = false;
+try {
+  dockFull = localStorage.getItem("ahm-dock-max") === "1";
+} catch (e) {}
+$("#dock").classList.toggle("max", dockFull);
+function setDockFull(v) {
+  dockFull = v;
+  $("#dock").classList.toggle("max", v);
+  try {
+    localStorage.setItem("ahm-dock-max", v ? "1" : "0");
+  } catch (e) {}
+  const b = $("#detail [data-act=dockmax]");
+  if (b) {
+    b.title = v ? "Smaller panel" : "Larger panel";
+    b.setAttribute("aria-label", b.title);
+    requestAnimationFrame(fitNotes);
+  }
+}
 let showSeq = 0;
 async function show(id) {
   const p = places.find((x) => x.id === id);
@@ -428,6 +449,8 @@ async function show(id) {
   const ns = inLang
     .filter((n) => lyNoteVisible(n, scope))
     .sort((a, b) => byDateKey({ date_from: a.date }, { date_from: b.date }) || a.title.localeCompare(b.title));
+  const oldBody = $("#detail .dock-body"),
+    keepScroll = oldBody && shownId === p.id ? oldBody.scrollTop : 0; // the same place redrawn: stay where the reader was
   $("#detail").innerHTML = placeHeadHTML(p, l); // the new header at once: no frame shows the previous place
   placeDetail();
   history.replaceState(null, "", "#place-" + id);
@@ -437,31 +460,138 @@ async function show(id) {
   if (seq !== showSeq) return; // another place was chosen while the notes were loading
   noteText = {};
   ns.forEach((n, i) => (noteText[n.id] = bodies[i]));
-  const para = (t) =>
-    t
-      .split(/\n\s*\n/)
-      .map((x) => "<p>" + esc(x) + "</p>")
-      .join("");
+  if (shownId !== p.id) noteOpen.clear(); // another place: its notes start folded
+  shownId = p.id;
   $("#detail").innerHTML =
     placeHeadHTML(p, l) +
-    `<div class="dock-body"><p>` +
+    `<div class="dock-body"><p class="names">` +
     p.names
       .filter((n) => !l || n.lang === l)
-      .map((n) => `${esc(n.name)} <span class="sn">[${n.lang}]</span>`)
+      .map((n) => `<span lang="${esc(n.lang)}">${esc(n.name)}</span> <span class="sn">[${esc(n.lang)}]</span>`)
       .join(" · ") +
     "</p>" +
     lyPlaceHTML(p) +
     lyScopeHTML(scope, ns.length, inLang.length) +
-    (ns
-      .map(
-        (n, i) =>
-          `<div class="note"><div class="note-head"><div class="note-meta"><b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + " · " : ""}${esc(langName(n.lang))}</span></div>${AHM_CONFIG.canEdit ? iconBtn("editnote", "pencil", "Edit note", `data-id="${n.id}"`, "sm") : ""}</div>${para(bodies[i])}</div>`,
-      )
-      .join("") || '<p class="sn">No notes yet.</p>') +
+    (ns.length > 1
+      ? `<div class="note-tools" hidden><span class="sn">${ns.length} notes</span><button type="button" class="note-all" data-note-all></button></div>`
+      : "") +
+    (ns.map((n, i) => noteHTML(n, bodies[i])).join("") || '<p class="sn">No notes yet.</p>') +
     editHint +
     `</div><div class="dock-foot">` +
     btns(...edit(["note", "Add note", "primary"])) +
     "</div>";
+  fitNotes();
+  const body = $("#detail .dock-body");
+  if (body && keepScroll) body.scrollTop = keepScroll;
+}
+// ---- long notes: a folded preview with a "more…" toggle, so one long note never buries the rest of the place ----
+const NOTE_LINES = 6; // lines of a folded note
+const noteOpen = new Set(); // ids of long notes the reader has opened; kept while the panel is redrawn
+let shownId = null; // the place whose details are drawn
+// Paragraphs are separated by a blank line; a single line break inside one is kept.
+const para = (t) =>
+  String(t)
+    .trim()
+    .split(/\n\s*\n/)
+    .filter((x) => x.trim())
+    .map((x) => "<p>" + esc(x.trim()).replace(/\n/g, "<br>") + "</p>")
+    .join("");
+const noteHTML = (n, text) =>
+  `<div class="note" data-nid="${esc(n.id)}" lang="${esc(n.lang)}"><div class="note-head"><div class="note-meta"><b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + " · " : ""}${esc(langName(n.lang))}</span></div>${AHM_CONFIG.canEdit ? iconBtn("editnote", "pencil", "Edit note", `data-id="${esc(n.id)}"`, "sm") : ""}</div><div class="note-body" id="nb-${esc(n.id)}">${para(text)}</div><button type="button" class="note-more" hidden aria-expanded="false" aria-controls="nb-${esc(n.id)}" data-note-toggle></button></div>`;
+const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const lineHeightOf = (el) => parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) * 1.45;
+function noteLabels(note) {
+  const open = noteOpen.has(note.dataset.nid),
+    btn = note.querySelector(".note-more");
+  btn.textContent = open ? "less" : "more…";
+  btn.setAttribute("aria-expanded", String(open));
+}
+// Measure every note: only a note that is really longer than the fold gets the toggle (a short one is shown whole).
+function fitNotes() {
+  const root = $("#detail");
+  if (!root) return;
+  let longs = 0;
+  root.querySelectorAll(".note").forEach((note) => {
+    const body = note.querySelector(".note-body"),
+      btn = note.querySelector(".note-more");
+    if (!body || !btn) return;
+    body.classList.remove("is-clamped");
+    body.style.maxHeight = "";
+    const long = body.scrollHeight > lineHeightOf(body) * (NOTE_LINES + 2); // folding must hide at least two lines to be worth a toggle
+    note.classList.toggle("is-long", long);
+    btn.hidden = !long;
+    if (long) {
+      longs++;
+      body.classList.toggle("is-clamped", !noteOpen.has(note.dataset.nid));
+      noteLabels(note);
+    }
+  });
+  const tools = root.querySelector(".note-tools");
+  if (tools) {
+    tools.hidden = longs < 2;
+    const all = tools.querySelector("[data-note-all]"),
+      anyFolded = [...root.querySelectorAll(".note.is-long")].some((n) => !noteOpen.has(n.dataset.nid));
+    all.textContent = anyFolded ? "Expand all" : "Collapse all";
+  }
+}
+// Open or fold one note; animated unless the reader prefers less motion.
+function setNote(note, open, animate = true) {
+  const id = note.dataset.nid,
+    body = note.querySelector(".note-body"),
+    foldPx = Math.round(lineHeightOf(body) * NOTE_LINES);
+  open ? noteOpen.add(id) : noteOpen.delete(id);
+  noteLabels(note);
+  const done = () => {
+    body.classList.remove("anim");
+    body.style.maxHeight = "";
+    body.classList.toggle("is-clamped", !open);
+  };
+  if (!animate || reduceMotion()) return done();
+  body.classList.add("anim", "is-clamped");
+  if (open) {
+    body.style.maxHeight = foldPx + "px";
+    void body.offsetHeight; // start from the fold
+    body.style.maxHeight = body.scrollHeight + "px";
+  } else {
+    body.classList.remove("is-clamped");
+    body.style.maxHeight = body.scrollHeight + "px";
+    body.classList.add("is-clamped");
+    void body.offsetHeight;
+    body.style.maxHeight = foldPx + "px";
+    const scroller = $("#detail .dock-body");
+    if (scroller && note.getBoundingClientRect().top < scroller.getBoundingClientRect().top)
+      note.scrollIntoView({ block: "start", behavior: "smooth" }); // the head of a note folded from far below is brought back into view
+  }
+  let ended = false;
+  const finish = () => (ended ? 0 : ((ended = true), done()));
+  body.addEventListener("transitionend", finish, { once: true });
+  setTimeout(finish, 400); // in case no transition event comes (display change, hidden tab)
+}
+$("#detail").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-note-toggle], [data-note-all]");
+  if (!t) return;
+  if (t.hasAttribute("data-note-all")) {
+    const notesEl = [...$("#detail").querySelectorAll(".note.is-long")],
+      open = notesEl.some((n) => !noteOpen.has(n.dataset.nid)); // any folded: open all; else fold all
+    notesEl.forEach((n) => setNote(n, open));
+    setTimeout(fitNotes, 420);
+  } else {
+    const note = t.closest(".note");
+    setNote(note, !noteOpen.has(note.dataset.nid));
+    setTimeout(fitNotes, 420); // refresh the "Expand all / Collapse all" label
+  }
+});
+// A narrower or wider sidebar re-wraps the text: measure the notes again (only when the width really changed).
+{
+  let lastW = 0,
+    raf = 0;
+  new ResizeObserver(() => {
+    const w = $("#detail").clientWidth;
+    if (!w || w === lastW) return;
+    lastW = w;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(fitNotes);
+  }).observe($("#detail"));
 }
 function closeDetail() {
   stopEditPlace();
@@ -538,6 +668,7 @@ $("#detail").addEventListener("click", (e) => {
   if (a === "canceledit") show(cur.id);
   else if (a === "saveedit") saveEditPlace();
   else if (a === "closedetail") closeDetail();
+  else if (a === "dockmax") setDockFull(!dockFull);
   else if (a === "editnote")
     openDlg(
       "note",

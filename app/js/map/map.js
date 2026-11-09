@@ -581,8 +581,8 @@ Object.assign(AHM.map, {
   focusPlace(id, at) {
     const f = featuresNow && featuresNow.features.find((x) => x.properties.id === id);
     const center = f ? f.geometry.coordinates : at; // `at` = where the symbol was clicked, if the place is not in the list any more
-    // always a visible zoom in: 1.5 levels closer, at least level 8, at most the map's limit
-    if (center) map.flyTo({ center, zoom: Math.min(map.getMaxZoom(), Math.max(map.getZoom() + 1.5, 8)), essential: true });
+    // a double click only moves the map to the place: the reader's zoom stays as it is
+    if (center) map.flyTo({ center, zoom: map.getZoom(), essential: true });
   },
   focusPoint(p, zoom) {
     map.flyTo({ center: lngLatOf(p), zoom });

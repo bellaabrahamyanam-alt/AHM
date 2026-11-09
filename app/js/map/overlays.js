@@ -94,7 +94,7 @@ function renderOvList() {
 const ovFit = (c) =>
   map.fitBounds(
     c.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(c[0], c[0])),
-    { padding: 60 }
+    { padding: viewPad(60) }
   );
 $('#ovList').addEventListener('change', (e) => {
   const id = e.target.dataset.ov;

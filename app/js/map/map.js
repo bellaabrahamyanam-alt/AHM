@@ -112,6 +112,7 @@ function initMap() {
         ((e.error && e.error.message) || "unknown error");
   });
   map.addControl(new maplibregl.NavigationControl(), "top-right");
+  if (map.setPadding) map.setPadding(viewPad(0)); // the first view is centred beside the open panel
   map.on("load", () => {
     const first = map.getStyle().layers[1];
     b.satellites.forEach((s) => {
@@ -568,6 +569,15 @@ function applyHighlight() {
 }
 // ---- commands for the sidebar: AHM.map.* (INTERFACES.md, I-2) ----
 const lngLatOf = (p) => [p.lon, p.lat];
+// The sidebar lies on top of the map (the map keeps its size), so a view is centred in the part of the map that stays visible.
+function viewPad(base) {
+  const p = { top: base, right: base, bottom: base, left: base },
+    side = typeof document !== "undefined" && document.getElementById ? document.getElementById("side") : null;
+  if (!side || document.body.classList.contains("collapsed")) return p;
+  if (typeof matchMedia === "function" && matchMedia("(max-width:700px)").matches) p.bottom = Math.min(base + side.offsetHeight, innerHeight - 160);
+  else p.left = Math.min(base + side.offsetWidth, innerWidth - 160);
+  return p;
+}
 Object.assign(AHM.map, {
   setFeatures(fc) {
     featuresNow = fc;
@@ -582,20 +592,20 @@ Object.assign(AHM.map, {
     const f = featuresNow && featuresNow.features.find((x) => x.properties.id === id);
     const center = f ? f.geometry.coordinates : at; // `at` = where the symbol was clicked, if the place is not in the list any more
     // a double click only moves the map to the place: the reader's zoom stays as it is
-    if (center) map.flyTo({ center, zoom: map.getZoom(), essential: true });
+    if (center) map.flyTo({ center, zoom: map.getZoom(), essential: true, padding: viewPad(0) });
   },
   focusPoint(p, zoom) {
-    map.flyTo({ center: lngLatOf(p), zoom });
+    map.flyTo({ center: lngLatOf(p), zoom, padding: viewPad(0) });
   },
   fitTo(points) {
     if (!points.length) return;
     const b = new maplibregl.LngLatBounds();
     points.forEach((x) => b.extend(x));
-    map.fitBounds(b, { padding: 60, maxZoom: 10 });
+    map.fitBounds(b, { padding: viewPad(60), maxZoom: 10 });
   },
   fitRoute(coords) {
     const b = coords.reduce((x, c) => x.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
-    map.fitBounds(b, { padding: 60 });
+    map.fitBounds(b, { padding: viewPad(60) });
   },
   setRoute(geometry) {
     const s = map.getSource("ahm-route");

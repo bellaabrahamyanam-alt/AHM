@@ -1,18 +1,22 @@
 /* Sidebar (sidebar domain): panel, tabs, lists, forms, details, folds, dialogs. Hand-formatted. */
 /* ---- panel ---- */
+/* The panel is fixed on top of the map (the map fills the window): opening, closing or resizing it never resizes or moves the map. */
 aside {
-  position: relative;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
   width: var(--side-w, 380px);
   display: flex;
   flex-direction: column;
   background: var(--base-bg);
   border-right: 1px solid var(--li-row-border-bottom-color);
   box-shadow: var(--dropdown-shadow);
-  transition: margin 0.2s;
+  transition: transform 0.2s;
   z-index: 2;
 }
 body.collapsed aside {
-  margin-left: calc(-1 * var(--side-w, 380px));
+  transform: translateX(-100%); /* the handle (#collapse) sticks out to the right and stays visible */
 }
 h2 {
   font: normal 20px var(--font-head);
@@ -763,18 +767,16 @@ button.ly-dadd:hover:not(:disabled) {
 }
 
 @media (max-width: 700px) {
-  body {
-    flex-direction: column-reverse;
-  }
   aside {
+    top: auto;
+    right: 0;
     width: 100%;
     height: var(--side-h, 52vh);
     border-right: 0;
     border-top: 1px solid var(--li-row-border-bottom-color);
   }
   body.collapsed aside {
-    margin-left: 0;
-    margin-bottom: calc(-1 * var(--side-h, 52vh));
+    transform: translateY(100%); /* the bottom sheet slides down; its handle stays visible */
   }
   #collapse {
     top: -22px;

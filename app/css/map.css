@@ -1,7 +1,33 @@
 /* Map (map domain): map canvas, popup, type symbols, historical-map (overlay) controls. Hand-formatted. */
+/* The map fills the window; the sidebar (fixed, see sidebar.css) lies on top of it. The map never changes size when the panel moves. */
 #map {
-  flex: 1;
-  min-width: 0;
+  position: fixed;
+  inset: 0;
+}
+/* the controls at the left (and, on phones, at the bottom) step aside of the open panel */
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  transition: margin 0.2s;
+}
+body.resizing .maplibregl-ctrl-top-left,
+body.resizing .maplibregl-ctrl-bottom-left,
+body.resizing .maplibregl-ctrl-bottom-right {
+  transition: none;
+}
+body:not(.collapsed) .maplibregl-ctrl-top-left,
+body:not(.collapsed) .maplibregl-ctrl-bottom-left {
+  margin-left: var(--side-w, 380px);
+}
+@media (max-width: 700px) {
+  body:not(.collapsed) .maplibregl-ctrl-top-left,
+  body:not(.collapsed) .maplibregl-ctrl-bottom-left {
+    margin-left: 0;
+  }
+  body:not(.collapsed) .maplibregl-ctrl-bottom-left,
+  body:not(.collapsed) .maplibregl-ctrl-bottom-right {
+    margin-bottom: var(--side-h, 52vh);
+  }
 }
 /* ---- type symbols: same shapes and colours as on the map ---- */
 .ti {

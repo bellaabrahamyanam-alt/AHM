@@ -474,6 +474,100 @@ li.empty:hover {
   line-height: 1.3em;
 }
 
+/* ---- notes: readable wrapping, and a folded preview for long ones (js/sidebar/ui.js: fitNotes, setNote) ---- */
+#detail .names {
+  overflow-wrap: anywhere;
+}
+#detail .note-body {
+  margin-top: 4px;
+  line-height: 1.45;
+  overflow-wrap: anywhere; /* a very long word or link never pushes the card wider than the sidebar */
+  hyphens: auto; /* uses the note's lang attribute */
+  text-wrap: pretty;
+}
+#detail .note-body p {
+  margin: 0 0 0.65em;
+  line-height: 1.45;
+}
+#detail .note-body p:last-child {
+  margin-bottom: 0;
+}
+#detail .note-body.is-clamped {
+  max-height: calc(1.45em * 6); /* NOTE_LINES in ui.js */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.8em), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.8em), transparent);
+}
+#detail .note-body.anim {
+  overflow: hidden;
+  transition: max-height 0.28s ease;
+}
+/* "more…" / "less": a quiet text link under the note, no box */
+#detail .note-more {
+  display: inline-block;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--base-href-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#detail .note-more[hidden] {
+  display: none;
+}
+#detail .note-more:hover {
+  text-decoration: underline;
+}
+#detail .note-more:focus-visible,
+#detail .note-all:focus-visible {
+  outline: 2px solid var(--base-href-color);
+  outline-offset: 2px;
+}
+#detail .note-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 -4px;
+}
+#detail .note-tools[hidden] {
+  display: none;
+}
+#detail .note-all {
+  min-height: 0;
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--base-href-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#detail .note-all:hover {
+  text-decoration: underline;
+}
+@media (prefers-reduced-motion: reduce) {
+  #detail .note-body.anim {
+    transition: none;
+  }
+}
+/* the larger-panel toggle in the place header: #dock.max makes the dock take the whole panel (over the dragged height) */
+#dock.max {
+  flex: 1 1 100%;
+  max-height: 100%;
+}
+.icon-btn[data-act="dockmax"] svg {
+  transform: rotate(180deg); /* points up: grow the panel */
+  transition: transform 0.2s;
+}
+#dock.max .icon-btn[data-act="dockmax"] svg {
+  transform: none; /* points down: shrink it again */
+}
+
 /* ---- directions / layers ---- */
 .rp {
   display: flex;

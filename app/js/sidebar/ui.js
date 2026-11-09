@@ -307,18 +307,36 @@ const btns = (...a) =>
   a
     .map(([k, t, c]) => `<button data-act="${k}"${c ? ` class="${c}"` : ""}>${t}</button>`)
     .join(" ");
+// A click on an empty point of the map opens a small menu at that point (map.js): add place, route from, route to.
+const pointActions = () => [
+  ...(AHM_CONFIG.canEdit ? [{ id: "add", icon: "plus", label: "Add place here" }] : []),
+  { id: "from", icon: "route-from", label: "Route from here" },
+  { id: "to", icon: "route-to", label: "Route to here" },
+];
+let pickBusy = false; // "add" opened the dialog: the grey pin stays until the dialog closes
 function pickPoint(p) {
+  const hint = AHM_CONFIG.canEdit ? "" : AHM_CONFIG.loggedIn ? "Adding places is limited to administrators." : "Log in to add places.";
+  AHM.map.showMenu(p, pointActions(), p.name || "Selected point", hint); // first: it closes the previous menu, which clears the old pin
   pick = p;
   AHM.map.setPick(p);
-  $("#pick").innerHTML =
-    `<button class="x" data-act="closepick" title="Close">✕</button><h3>${esc(p.name || "Selected point")}</h3><div class="sn">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>` +
-    btns(
-      ...edit(["add", "Add place here", "primary"]),
-      ["from", "Route from"],
-      ["to", "Route to"],
-    ) +
-    editHint;
 }
+AHM.on("map:menu", ({ action }) => {
+  if (!pick) return;
+  if (action === "add") {
+    pickBusy = true;
+    openDlg("place", pick);
+  } else act(action, pick);
+});
+AHM.on("map:menu-close", () => {
+  if (pickBusy) return;
+  pick = null;
+  AHM.map.setPick(null);
+});
+$("#dlg").addEventListener("close", () => {
+  pickBusy = false;
+  pick = null;
+  AHM.map.setPick(null);
+});
 // ---- place details (open in the list, under the place; the map does not move) ----
 const iconBtn = (act, icon, text, extra = "", cls = "") =>
   `<button type="button" class="icon-btn${cls ? " " + cls : ""}" data-act="${act}" ${extra} title="${text}" aria-label="${text}">${AHM.icons.svg(icon, 16)}</button>`;
@@ -338,6 +356,7 @@ async function show(id) {
   if (lyState.editing) return lyToggleMember(id); // choosing places for a layer
   if (curTab !== "explore") tab("explore"); // the list lives in the Explore tab
   stopEditPlace();
+  AHM.map.hideMenu(); // a chosen place replaces the point menu and its pin
   cur = p;
   const seq = ++showSeq;
   AHM.state.set('selected', p.id);
@@ -450,15 +469,6 @@ function act(a, p) {
   else if (a === "note") openDlg("note", p);
   else if (a === "editplace") editPlace(p);
 }
-$("#pick").addEventListener("click", (e) => {
-  const a = e.target.dataset.act;
-  if (!a) return;
-  if (a === "closepick") {
-    AHM.map.setPick(null);
-    pick = null;
-    $("#pick").innerHTML = "";
-  } else if (pick) act(a, pick);
-});
 $("#detail").addEventListener("click", (e) => {
   const b = e.target.closest("[data-act]"), // an icon button: the click lands on its svg
     a = b && b.dataset.act;

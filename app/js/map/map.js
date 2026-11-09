@@ -10,19 +10,36 @@ let mapReady = false,
   hoverCluster = null, // the bubble under the mouse
   pendingClick = null, // timer of a single click on a place: a double click cancels it
   pickMarker = null,
+  menu = null, // the popup with the actions for a clicked empty point
+  pulsedId = null, // the selected place that already got its pulse
   routeMarkers = {};
 const CLUSTER_RADIUS = 50; // px: places this close together become one bubble
 const CLUSTER_MAX_ZOOM = 11; // from zoom 12 on every place is drawn on its own
 const DBL_CLICK_MS = 300; // a single click on a place waits this long, in case a double click follows
-const TIP_TOP_MIN = 60; // px from the top edge: closer than this, the tooltip goes below the bullet
 const TIP_GAP = 6; // px between the bullet's edge and the tooltip
 const BUBBLE = "#3a3f44";
 const BUBBLE_HOVER = "#5a6168";
+const ACCENT = "#115098"; // the link blue of the forum style: hover ring, selected ring
+const SEL_SCALE = 1.3; // the selected symbol is this much larger than the others
+const HOVER_SCALE = 1.15; // the symbol under the mouse
+// where the point menu sits relative to the clicked point, for every side the library may choose (the grey pin is about 40px high)
+const MENU_OFFSET = {
+  center: [0, 0],
+  top: [0, 12],
+  "top-left": [0, 12],
+  "top-right": [0, 12],
+  bottom: [0, -40],
+  "bottom-left": [0, -40],
+  "bottom-right": [0, -40],
+  left: [14, -20],
+  right: [-14, -20],
+};
 const SEL = {
   shadow: "ahm-highlight-shadow",
   ring: "ahm-highlight", // the white outline; the id the selection tests use
   outer: "ahm-highlight-outer",
   symbol: "ahm-highlight-symbol",
+  pulse: "ahm-highlight-pulse",
 };
 const EMPTY = { type: "FeatureCollection", features: [] };
 const GROUPS = {
@@ -213,6 +230,35 @@ function initMap() {
         paint: { "text-color": "#ffffff" },
       });
     }
+    // the place under the mouse: a larger symbol in a soft ring (own source and layers, so the symbols underneath never change)
+    map.addSource("ahm-hover", { type: "geojson", data: EMPTY });
+    map.addLayer({
+      id: "ahm-hover-ring",
+      type: "circle",
+      source: "ahm-hover",
+      paint: {
+        "circle-radius": ["+", ["*", ["get", "r"], HOVER_SCALE], 4],
+        "circle-color": "rgba(255,255,255,0.75)",
+        "circle-stroke-width": 1.5,
+        "circle-stroke-color": ACCENT,
+        "circle-stroke-opacity": 0.55,
+      },
+    });
+    map.addLayer({
+      id: "ahm-hover-symbol",
+      type: "symbol",
+      source: "ahm-hover",
+      layout: {
+        "icon-image": [
+          "coalesce",
+          ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
+          ["image", "ahm-type-settlement"],
+        ],
+        "icon-size": HOVER_SCALE,
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
     // the selected place: drawn last, so it is above labels and every other symbol at every zoom
     map.addSource("ahm-highlight", { type: "geojson", data: EMPTY }); // one Point: the selected place, never clustered
     map.addLayer({
@@ -220,9 +266,9 @@ function initMap() {
       type: "circle",
       source: "ahm-highlight",
       paint: {
-        "circle-radius": 17,
-        "circle-color": "rgba(0,0,0,0.35)",
-        "circle-blur": 0.6,
+        "circle-radius": ["+", ["*", ["get", "r"], SEL_SCALE], 12],
+        "circle-color": "rgba(17,80,152,0.22)",
+        "circle-blur": 0.5,
         "circle-radius-transition": { duration: 150 },
       },
     });
@@ -231,12 +277,10 @@ function initMap() {
       type: "circle",
       source: "ahm-highlight",
       paint: {
-        "circle-radius": 14,
+        "circle-radius": ["+", ["*", ["get", "r"], SEL_SCALE], 3],
         "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 2,
+        "circle-stroke-width": 3,
         "circle-stroke-color": "#ffffff",
-        "circle-radius-transition": { duration: 150 },
-        "circle-stroke-width-transition": { duration: 150 },
       },
     });
     map.addLayer({
@@ -244,11 +288,10 @@ function initMap() {
       type: "circle",
       source: "ahm-highlight",
       paint: {
-        "circle-radius": 16,
+        "circle-radius": ["+", ["*", ["get", "r"], SEL_SCALE], 6.5],
         "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 1,
-        "circle-stroke-color": "rgba(0,0,0,0.5)",
-        "circle-radius-transition": { duration: 150 },
+        "circle-stroke-width": 2.5,
+        "circle-stroke-color": ACCENT,
       },
     });
     map.addLayer({
@@ -261,11 +304,24 @@ function initMap() {
           ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
           ["image", "ahm-type-settlement"],
         ],
-        "icon-size": 1.3,
+        "icon-size": SEL_SCALE,
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
       paint: { "icon-opacity-transition": { duration: 150 } },
+    });
+    map.addLayer({
+      // a ring that spreads from a newly selected place (animated by pulseSelected)
+      id: SEL.pulse,
+      type: "circle",
+      source: "ahm-highlight",
+      paint: {
+        "circle-radius": 18,
+        "circle-color": "rgba(0,0,0,0)",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": ACCENT,
+        "circle-stroke-opacity": 0,
+      },
     });
     // ---- pointer events -------------------------------------------------------------------------------------
     const hitAt = (e, ids) =>
@@ -285,9 +341,13 @@ function initMap() {
     };
     map.on("click", (e) => {
       const bubble = bubbleAt(e);
-      if (bubble) return zoomToBubble(bubble);
+      if (bubble) {
+        hideMenu();
+        return zoomToBubble(bubble);
+      }
       const ours = placeAt(e);
       if (ours) {
+        hideMenu();
         clearTimeout(pendingClick);
         const id = ours.properties.id;
         pendingClick = setTimeout(() => {
@@ -324,7 +384,7 @@ function initMap() {
     map.on("mouseenter", "ahm-places", (e) => {
       const f = e.features[0];
       map.getCanvas().style.cursor = "pointer";
-      liftPlace(f.properties.id);
+      liftPlace(f);
       showTip(f.properties, f.geometry.coordinates);
     });
     map.on("mouseleave", "ahm-places", () => {
@@ -336,7 +396,7 @@ function initMap() {
       // the selected place is not lifted, but it shows the pointer and its tooltip
       const f = e.features[0];
       map.getCanvas().style.cursor = "pointer";
-      showTip(f.properties, f.geometry.coordinates);
+      showTip(f.properties, f.geometry.coordinates, SEL_SCALE);
     });
     map.on("mouseleave", SEL.symbol, () => {
       map.getCanvas().style.cursor = "";
@@ -389,13 +449,22 @@ function initMap() {
 }
 
 // ---- hover and tooltip (task 008) ----
-function liftPlace(id) {
-  hoverId = id;
-  map.setPaintProperty(
-    "ahm-places",
-    "icon-opacity",
-    id == null ? null : ["case", ["==", ["get", "id"], id], 0.85, 1],
-  );
+// One Point for the hover and selected layers: it carries the type (symbol) and the symbol radius r (ring sizes).
+const pointOf = (coords, props) => ({
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: coords },
+      properties: { ...props, r: (TYPE_STYLE[props.type_code] || TYPE_STYLE.settlement).r },
+    },
+  ],
+});
+// The place under the mouse is redrawn a little larger inside a soft ring; the symbol never turns transparent.
+function liftPlace(f) {
+  hoverId = f ? f.properties.id : null;
+  const src = map.getSource("ahm-hover");
+  if (src) src.setData(f ? pointOf(f.geometry.coordinates, { id: f.properties.id, type_code: f.properties.type_code }) : EMPTY);
 }
 function paintBubbles() {
   map.setPaintProperty(
@@ -406,16 +475,18 @@ function paintBubbles() {
       : ["case", ["==", ["get", "cluster_id"], hoverCluster], BUBBLE_HOVER, BUBBLE],
   );
 }
-function showTip(props, coords) {
+function showTip(props, coords, scale = 1) {
   hideTip();
   const style = TYPE_STYLE[props.type_code] || TYPE_STYLE.settlement;
-  const anchor = map.project(coords).y < TIP_TOP_MIN ? "top" : "bottom";
-  const html = `<b>${esc(props.name)}</b><br><span class="sn">${esc(props.type)}${props.dates ? " · " + esc(props.dates) : ""}</span>`;
+  const sub = [props.type, props.dates].filter(Boolean).map(esc).join(" · ");
+  const html = `<div class="tip-title">${esc(props.name || "")}</div><div class="tip-sub">${typeIcon(props.type_code)}${sub}</div>`;
+  // no fixed anchor: the library picks the side that keeps the tooltip inside the map (near the sidebar edge it opens to the right)
   tip = new maplibregl.Popup({
     closeButton: false,
     closeOnClick: false,
-    anchor,
-    offset: style.r + TIP_GAP,
+    className: "ahm-tip",
+    maxWidth: "260px",
+    offset: style.r * scale + TIP_GAP + (scale > 1 ? 6 : 0),
   })
     .setLngLat(coords)
     .setHTML(html)
@@ -425,6 +496,55 @@ function hideTip() {
   if (tip) tip.remove();
   tip = null;
 }
+
+// ---- the menu of a clicked empty point: icon buttons for the actions the sidebar offers (AHM.map.showMenu, event map:menu) ----
+function hideMenu() {
+  if (!menu) return;
+  const m = menu;
+  menu = null;
+  m.remove(); // fires "close" -> map:menu-close
+}
+function showMenu(p, actions, title, hint) {
+  hideMenu();
+  hideTip();
+  const el = document.createElement("div");
+  el.className = "ahm-menu";
+  el.innerHTML =
+    `<div class="ahm-menu-title">${esc(title || "")}</div><div class="ahm-menu-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>` +
+    '<div class="ahm-menu-btns">' +
+    actions
+      .map(
+        (a) =>
+          `<button type="button" class="ahm-menu-btn${a.id === "add" ? " primary" : ""}" data-id="${esc(a.id)}" title="${esc(a.label)}" aria-label="${esc(a.label)}">${AHM.icons.svg(a.icon, 20)}</button>`,
+      )
+      .join("") +
+    "</div>" +
+    (hint ? `<div class="ahm-menu-hint">${esc(hint)}</div>` : "");
+  const pop = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    className: "ahm-menu-popup",
+    maxWidth: "none",
+    offset: MENU_OFFSET,
+  })
+    .setLngLat([p.lon, p.lat])
+    .setDOMContent(el)
+    .addTo(map);
+  pop.on("close", () => {
+    if (menu === pop) menu = null;
+    AHM.emit("map:menu-close");
+  });
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-id]");
+    if (!b) return;
+    AHM.emit("map:menu", { action: b.dataset.id, lon: p.lon, lat: p.lat, name: p.name });
+    hideMenu();
+  });
+  menu = pop;
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideMenu();
+});
 
 // ---- the selected place (task 004 and 008) ----
 const featureSources = ["ahm-places", "ahm-label-src"];
@@ -454,26 +574,33 @@ function applyHidden() {
   if (map.getLayer("ahm-places")) map.setFilter("ahm-places", places);
   if (map.getLayer("ahm-labels")) map.setFilter("ahm-labels", hide);
 }
+// A short ring spreads from a newly selected place, so the eye finds it (skipped when the person asked for less motion).
+function pulseSelected() {
+  if (!map.getLayer(SEL.pulse) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const t0 = performance.now(),
+    T = 900;
+  const step = (t) => {
+    if (!map.getLayer(SEL.pulse)) return;
+    const k = Math.min(1, (t - t0) / T);
+    map.setPaintProperty(SEL.pulse, "circle-radius", 18 + 24 * k);
+    map.setPaintProperty(SEL.pulse, "circle-stroke-opacity", 0.7 * (1 - k));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 function applyHighlight() {
   // the selected place is redrawn after every setFeatures and once the map is ready
   const src = mapReady && map.getSource("ahm-highlight");
   if (!src) return;
   const f =
     selectedId != null && featuresNow && featuresNow.features.find((x) => x.properties.id === selectedId);
-  src.setData(
-    f
-      ? {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: { type: "Point", coordinates: f.geometry.coordinates },
-              properties: { id: selectedId, type_code: f.properties.type_code },
-            },
-          ],
-        }
-      : EMPTY,
-  );
+  // all properties of the place travel with the highlight: its tooltip needs the name, the type and the dates
+  src.setData(f ? pointOf(f.geometry.coordinates, f.properties) : EMPTY);
+  if (!f) pulsedId = null;
+  else if (pulsedId !== selectedId) {
+    pulsedId = selectedId;
+    pulseSelected();
+  }
 }
 // ---- commands for the sidebar: AHM.map.* (INTERFACES.md, I-2) ----
 const lngLatOf = (p) => [p.lon, p.lat];
@@ -518,6 +645,8 @@ Object.assign(AHM.map, {
           .addTo(map);
     });
   },
+  showMenu,
+  hideMenu,
   setPick(p) {
     pickMarker && pickMarker.remove();
     pickMarker = p ? new maplibregl.Marker({ color: "#666" }).setLngLat(lngLatOf(p)).addTo(map) : null;

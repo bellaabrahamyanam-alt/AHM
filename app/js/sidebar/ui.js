@@ -133,6 +133,60 @@ $("#resizer").addEventListener("keydown", (e) => {
   e.preventDefault();
   setSize(curSize() + d * (mobile() ? 3 : 20), true);
 });
+// ---- resizable details dock: drag its top edge, double-click resets, Up/Down arrows nudge; the height is remembered ----
+const dockEl = $("#dock"),
+  dockGrip = document.createElement("div"),
+  dockMax = () => Math.max(160, $(".stack").clientHeight - 120); // always leave 120px of the list
+dockGrip.id = "dockResizer";
+dockGrip.tabIndex = 0;
+dockGrip.setAttribute("role", "separator");
+dockGrip.setAttribute("aria-orientation", "horizontal");
+dockGrip.setAttribute("aria-label", "Resize details");
+dockGrip.title = "Drag to resize (double-click to reset)";
+dockEl.prepend(dockGrip);
+function setDock(h, save) {
+  h = clamp(h, 120, dockMax());
+  dockEl.style.setProperty("--dock-h", h + "px");
+  if (save)
+    try {
+      localStorage.setItem("ahm-dock-h", h);
+    } catch (e) {}
+  return h;
+}
+try {
+  const v = +localStorage.getItem("ahm-dock-h");
+  if (v) setDock(v);
+} catch (e) {}
+let dockDrag = null;
+dockGrip.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  dockGrip.setPointerCapture(e.pointerId);
+  dockDrag = { y: e.clientY, h: dockEl.offsetHeight };
+  document.body.classList.add("dock-resizing");
+});
+dockGrip.addEventListener("pointermove", (e) => {
+  if (dockDrag) setDock(dockDrag.h + dockDrag.y - e.clientY); // dragging up makes the dock taller
+});
+const dockDragEnd = () => {
+  if (!dockDrag) return;
+  dockDrag = null;
+  document.body.classList.remove("dock-resizing");
+  setDock(dockEl.offsetHeight, true);
+};
+dockGrip.addEventListener("pointerup", dockDragEnd);
+dockGrip.addEventListener("pointercancel", dockDragEnd);
+dockGrip.addEventListener("dblclick", () => {
+  dockEl.style.removeProperty("--dock-h");
+  try {
+    localStorage.removeItem("ahm-dock-h");
+  } catch (e) {}
+});
+dockGrip.addEventListener("keydown", (e) => {
+  const d = { ArrowUp: 24, ArrowDown: -24 }[e.key];
+  if (!d) return;
+  e.preventDefault();
+  setDock(dockEl.offsetHeight + d, true);
+});
 // ---- filters and results ----
 function fillLangs() {
   const v = $("#lang").value;

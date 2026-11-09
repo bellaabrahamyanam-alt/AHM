@@ -9,6 +9,8 @@ let mapReady = false,
   hoverId = null, // the place whose symbol is lifted under the mouse
   hoverCluster = null, // the bubble under the mouse
   pendingClick = null, // timer of a single click on a place: a double click cancels it
+  pendingId = null, // the place that single click belongs to
+  lastDblAt = 0, // when the last double click on a place was handled (the click path and the dblclick event must not both move the map)
   pickMarker = null,
   menu = null, // the popup with the actions for a clicked empty point
   routeMarkers = {};
@@ -300,8 +302,10 @@ function initMap() {
       const ours = placeAt(e);
       if (ours) {
         hideMenu();
-        clearTimeout(pendingClick);
         const id = ours.properties.id;
+        if (pendingClick && pendingId === id) return placeDblClick(id); // the second click of a double click
+        clearTimeout(pendingClick);
+        pendingId = id;
         pendingClick = setTimeout(() => {
           pendingClick = null;
           AHM.emit("place:click", { id });
@@ -329,10 +333,7 @@ function initMap() {
       const ours = placeAt(e);
       if (!ours) return;
       e.preventDefault(); // no default double-click zoom
-      clearTimeout(pendingClick);
-      pendingClick = null;
-      AHM.map.focusPlace(ours.properties.id); // the same move as a double click on the name in the list
-      AHM.emit("place:dblclick", { id: ours.properties.id });
+      placeDblClick(ours.properties.id);
     });
     map.on("mouseenter", "ahm-places", (e) => {
       const f = e.features[0];
@@ -450,6 +451,15 @@ function hideTip() {
   tip = null;
 }
 
+// A double click on a place: no pending single click, move the map as the list row does, tell the sidebar (it opens the place).
+function placeDblClick(id) {
+  clearTimeout(pendingClick);
+  pendingClick = null;
+  if (performance.now() - lastDblAt < 500) return; // already handled by the other path
+  lastDblAt = performance.now();
+  AHM.map.focusPlace(id);
+  AHM.emit("place:dblclick", { id });
+}
 // ---- the menu of a clicked empty point: icon buttons for the actions the sidebar offers (AHM.map.showMenu, event map:menu) ----
 function hideMenu() {
   if (!menu) return;
@@ -550,7 +560,8 @@ Object.assign(AHM.map, {
   },
   focusPlace(id) {
     const f = featuresNow && featuresNow.features.find((x) => x.properties.id === id);
-    if (f) map.flyTo({ center: f.geometry.coordinates, zoom: Math.max(map.getZoom(), 8) });
+    // always a visible zoom in: 1.5 levels closer, at least level 8, at most the map's limit
+    if (f) map.flyTo({ center: f.geometry.coordinates, zoom: Math.min(map.getMaxZoom(), Math.max(map.getZoom() + 1.5, 8)) });
   },
   focusPoint(p, zoom) {
     map.flyTo({ center: lngLatOf(p), zoom });

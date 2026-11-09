@@ -40,6 +40,9 @@ const AHM_CONFIG = {
         layerSave: window.AHM_BACKEND.layerSave,
         layerDelete: window.AHM_BACKEND.layerDelete,
         categorySave: window.AHM_BACKEND.categorySave,
+        shapes: window.AHM_BACKEND.shapes,
+        shapeSave: window.AHM_BACKEND.shapeSave,
+        shapeDelete: window.AHM_BACKEND.shapeDelete,
       }
     : {
         places: "data/places.geojson",
@@ -59,6 +62,9 @@ const AHM_CONFIG = {
         layerSave: "/api/layer/save",
         layerDelete: "/api/layer/delete",
         categorySave: "/api/category/save",
+        shapes: "data/shapes.geojson",
+        shapeSave: "/api/shape/save",
+        shapeDelete: "/api/shape/delete",
       },
   basemap: {
     style: "https://tiles.openfreemap.org/styles/liberty", // vector tiles

@@ -396,7 +396,8 @@ function migrateNoteFiles() {
 }
 migrate();
 // ---------------- categories and layers: same rules as service/store.php (read the comment there for the model) ----------------
-const CAT_FILE = path.join(DATA, 'categories.json'),
+const SHAPES_FILE = path.join(DATA, 'shapes.geojson'),
+  CAT_FILE = path.join(DATA, 'categories.json'),
   LAYERS_FILE = path.join(DATA, 'layers.json'),
   LNOTES = path.join(DATA, 'layer-notes');
 const COLOR = /^#[0-9a-fA-F]{6}$/,
@@ -503,18 +504,22 @@ function saveLayer(inp) {
   return id;
 }
 const placeIds = () => new Set(((readJSON(GEO, { features: [] }).features) || []).map((f) => (f.properties || {}).id));
-// Adds and/or removes places of one layer. Returns the new number of members.
+const shapeIds = () => new Set(((readJSON(SHAPES_FILE, { features: [] }).features) || []).map((f) => (f.properties || {}).id));
+// Adds and/or removes members of one layer: places and shapes (borders), both given as ids. Returns the new number of members.
 function changeMembers(lid, add, remove) {
   const d = layersData(),
     i = UUID.test(String(lid)) ? layerIndex(d, lid) : -1;
   if (i < 0) throw bad('unknown layer');
-  const places = placeIds();
-  let members = d.layers[i].members.map((m) => m.place),
+  const places = placeIds(),
+    shapes = shapeIds(),
+    kind = new Map(d.layers[i].members.map((m) => [m.place || m.shape, m.shape ? 'shape' : 'place']));
+  let members = d.layers[i].members.map((m) => m.place || m.shape),
     changed = false;
   add.forEach((p) => {
-    if (typeof p !== 'string' || !places.has(p)) throw bad('unknown place');
+    if (typeof p !== 'string' || !(places.has(p) || shapes.has(p))) throw bad('unknown place or border');
     if (!members.includes(p)) {
       members.push(p); // appended: the order of the list is the order of adding
+      kind.set(p, places.has(p) ? 'place' : 'shape');
       changed = true;
     }
   });
@@ -528,11 +533,12 @@ function changeMembers(lid, add, remove) {
     }
   });
   if (changed) {
-    d.layers[i].members = members.map((place) => ({ place }));
+    d.layers[i].members = members.map((id) => ({ [kind.get(id)]: id }));
     d.layers[i].updated = nowUtc();
     putList(LAYERS_FILE, 'layers', d);
-    removed.forEach((p) => untagNotes(lid, p)); // a place that left the layer keeps its notes, but they are no longer tied to it
-    if (removed.length) rebuildIndex();
+    const gone = removed.filter((p) => kind.get(p) === 'place');
+    gone.forEach((p) => untagNotes(lid, p)); // a place that left the layer keeps its notes, but they are no longer tied to it
+    if (gone.length) rebuildIndex();
   }
   return members.length;
 }
@@ -577,7 +583,7 @@ function cleanNoteLayers(ids, pid, joining = []) {
 }
 function saveMembers(inp) {
   ['add', 'remove'].forEach((k) => {
-    if (inp[k] !== undefined && !Array.isArray(inp[k])) throw bad(`"${k}" must be a list of place ids`);
+    if (inp[k] !== undefined && !Array.isArray(inp[k])) throw bad(`"${k}" must be a list of place or border ids`);
   });
   return changeMembers(String(inp.id || ''), inp.add || [], inp.remove || []);
 }
@@ -648,6 +654,107 @@ function layerSave(inp) {
   if (inp.layer_members && typeof inp.layer_members === 'object') return { members: saveMembers(inp.layer_members) };
   if (inp.layer_note && typeof inp.layer_note === 'object') return { id: saveLayerNote(inp.layer_note) };
   throw bad('nothing to save');
+}
+// ---------------- shapes: borders now, routes later (same rules as service/store.php) ----------------
+// data/shapes.geojson: one feature per shape. Geometry: Polygon, MultiPolygon, LineString or MultiLineString. Properties: id, names, type,
+// color, opacity (the fill of an area, the line of a line), label (draw the name on the map), date_from, date_to, source, created, updated.
+const SHAPE_TYPES = ['country', 'kingdom', 'region', 'district', 'territory', 'disputed'];
+const SHAPE_GEOMS = ['Polygon', 'MultiPolygon', 'LineString', 'MultiLineString'];
+const MAX_SHAPE_POINTS = 20000,
+  SOURCE = /^[A-Za-z0-9:_./ -]{0,100}$/;
+const readShapes = () => {
+  const d = readJSON(SHAPES_FILE, null);
+  return d && Array.isArray(d.features) ? d : { type: 'FeatureCollection', features: [] };
+};
+// One feature per line: a change in git shows as a change of one line, not of thousands of numbers.
+const putShapes = (d) => {
+  if (fs.existsSync(SHAPES_FILE)) fs.copyFileSync(SHAPES_FILE, archivePath('shapes', 'geojson'));
+  writeAtomic(SHAPES_FILE, '{"type":"FeatureCollection","features":[\n' + d.features.map((f) => JSON.stringify(f)).join(',\n') + '\n]}\n');
+};
+function cleanGeometry(g) {
+  if (!g || typeof g !== 'object' || !SHAPE_GEOMS.includes(g.type) || !Array.isArray(g.coordinates))
+    throw bad('a border needs a Polygon, MultiPolygon, LineString or MultiLineString geometry');
+  let n = 0;
+  const pt = (c) => {
+      if (!Array.isArray(c) || !Number.isFinite(c[0]) || !Number.isFinite(c[1]) || Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90)
+        throw bad('a coordinate is out of range (longitude -180..180, latitude -90..90)');
+      n++;
+      return [Math.round(c[0] * 1e6) / 1e6, Math.round(c[1] * 1e6) / 1e6];
+    },
+    line = (l, min) => {
+      if (!Array.isArray(l) || l.length < min) throw bad(`a line needs at least ${min} points`);
+      return l.map(pt);
+    },
+    ring = (r) => {
+      const q = line(r, 4);
+      if (q[0][0] !== q[q.length - 1][0] || q[0][1] !== q[q.length - 1][1]) throw bad('an area outline must be closed');
+      return q;
+    },
+    poly = (p) => {
+      if (!Array.isArray(p) || !p.length) throw bad('an area needs an outline');
+      return p.map(ring);
+    },
+    many = (a, f) => {
+      if (!a.length) throw bad('the geometry is empty');
+      return a.map(f);
+    };
+  const c = g.coordinates,
+    coordinates =
+      g.type === 'Polygon' ? poly(c) : g.type === 'MultiPolygon' ? many(c, poly) : g.type === 'LineString' ? line(c, 2) : many(c, (l) => line(l, 2));
+  if (n > MAX_SHAPE_POINTS) throw bad(`a border can have at most ${MAX_SHAPE_POINTS} points (it has ${n}); simplify it`);
+  return { type: g.type, coordinates };
+}
+function cleanShape(inp, codes) {
+  const names = cleanNames(inp.names, codes, 'a border needs at least one name');
+  if (!SHAPE_TYPES.includes(inp.type)) throw bad('unknown border type');
+  if (typeof inp.color !== 'string' || !COLOR.test(inp.color)) throw bad('the colour must look like #aa3344');
+  const opacity = Number(inp.opacity);
+  if (!(opacity >= 0 && opacity <= 1)) throw bad('the opacity must be between 0 and 1');
+  if (typeof inp.label !== 'boolean') throw bad('"label" must be true or false');
+  const source = inp.source === undefined || inp.source === null ? '' : String(inp.source);
+  if (!SOURCE.test(source)) throw bad('the source is too long or has unusual characters');
+  const from = D.dateClean(inp.date_from === undefined ? null : inp.date_from, 'begin date'),
+    to = D.dateClean(inp.date_to === undefined ? null : inp.date_to, 'end date');
+  D.dateOrderCheck(from, to);
+  return { names, type: inp.type, color: inp.color.toLowerCase(), opacity: Math.round(opacity * 100) / 100, label: inp.label, date_from: from, date_to: to, source };
+}
+// Creates a shape (no id; geometry required) or changes one (geometry only when given). Returns the id.
+function saveShape(inp) {
+  const c = cleanShape(inp, langLoad().map((l) => l.code)),
+    d = readShapes(),
+    now = nowUtc();
+  let id = String(inp.id || '');
+  if (id) {
+    const f = UUID.test(id) ? d.features.find((x) => x.properties.id === id) : null;
+    if (!f) throw bad('unknown border');
+    if (inp.geometry !== undefined) f.geometry = cleanGeometry(inp.geometry);
+    f.properties = Object.assign({}, f.properties, c, { updated: now });
+  } else {
+    id = crypto.randomUUID();
+    d.features.push({ type: 'Feature', geometry: cleanGeometry(inp.geometry), properties: Object.assign({ id }, c, { created: now, updated: now }) });
+  }
+  putShapes(d);
+  return id;
+}
+// Deletes a shape; the archive keeps the old file. The shape leaves every layer.
+function deleteShape(id) {
+  const d = readShapes(),
+    i = UUID.test(String(id)) ? d.features.findIndex((x) => x.properties.id === id) : -1;
+  if (i < 0) throw bad('unknown border');
+  d.features.splice(i, 1);
+  putShapes(d);
+  const ls = layersData();
+  let changed = false;
+  ls.layers.forEach((l) => {
+    const keep = l.members.filter((m) => m.shape !== id);
+    if (keep.length !== l.members.length) {
+      l.members = keep;
+      l.updated = nowUtc();
+      changed = true;
+    }
+  });
+  if (changed) putList(LAYERS_FILE, 'layers', ls);
+  return true;
 }
 // ---------------- historical map images (overlays): same rules as service/store.php ----------------
 const OVJ = path.join(DATA, 'overlays.json'),
@@ -785,6 +892,8 @@ module.exports = (req, res, next) => {
   if (url === '/api/language/save') return jsonPost(req, res, (inp) => ({ code: saveLang(inp) })); // admins only in the forum
   if (url === '/api/layer/save') return jsonPost(req, res, (inp) => layerSave(inp)); // editors in the forum
   if (url === '/api/layer/delete') return jsonPost(req, res, (inp) => (deleteLayer(String(inp.id || '')), {})); // admins only in the forum
+  if (url === '/api/shape/save') return jsonPost(req, res, (inp) => ({ id: saveShape(inp) })); // editors in the forum
+  if (url === '/api/shape/delete') return jsonPost(req, res, (inp) => (deleteShape(String(inp.id || '')), {})); // editors in the forum
   if (url === '/api/category/save') return jsonPost(req, res, (inp) => ({ id: saveCategory(inp) })); // admins only in the forum
   if (!url.startsWith('/api/overlay/')) return saveNotes(req, res, next);
   if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });

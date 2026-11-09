@@ -46,12 +46,36 @@ function tab(n) {
 document.querySelector(".tabs").addEventListener("click", (e) => {
   if (e.target.dataset.tab) tab(e.target.dataset.tab);
 });
+// the handle on the right edge of the sidebar: one button, the icon and the label say what it does now
+function sideHandle(h) {
+  const b = $("#collapse"),
+    t = h ? "Expand sidebar" : "Collapse sidebar";
+  b.innerHTML = AHM.icons.svg(h ? "panel-right" : "panel-left", 14);
+  b.title = t;
+  b.setAttribute("aria-label", t);
+}
 const toggleSide = (h) => {
   document.body.classList.toggle("collapsed", h);
+  sideHandle(h);
   setTimeout(() => AHM.emit("sidebar:resized"), 250);
 };
-$("#collapse").onclick = () => toggleSide(true);
-$("#expand").onclick = () => toggleSide(false);
+$("#collapse").onclick = () => toggleSide(!document.body.classList.contains("collapsed"));
+sideHandle(false);
+// ---- the details dock: a pane under the lists; the place details (#detail) and the layer details (#lyDetail) live in it ----
+$(".stack").append($("#dock"));
+function dockSync() {
+  $("#dock").hidden = $("#detail").hidden && $("#lyDetail").hidden;
+}
+// The dock covers the lower half of the panel: if a row is hidden behind it, scroll the list just enough to centre the row.
+function revealRow(li) {
+  const box = li.closest(".body");
+  requestAnimationFrame(() => {
+    const b = box.getBoundingClientRect(),
+      r = li.getBoundingClientRect();
+    if (r.top >= b.top && r.bottom <= b.bottom) return;
+    box.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
+  });
+}
 // ---- resizable sidebar: drag the edge, double-click resets, arrow keys nudge; size is remembered ----
 const mobile = () => matchMedia("(max-width:700px)").matches;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -146,32 +170,33 @@ function setData(p, n) {
 }
 function placeRowHTML(p, hits, l, q) {
   return (
-    `<li data-id="${p.id}"><div class="t"><b>${esc(label(p, l))}</b><span class="badge">${typeIcon(p.type)}${typeLabel(p.type)}</span></div>` +
+    `<li data-id="${p.id}"><div class="t"><span class="tmark" title="${esc(typeLabel(p.type))}">${typeIcon(p.type)}</span><b>${esc(label(p, l))}</b></div>` +
     (placeWhen(p) ? `<div class="sn">${esc(placeWhen(p))}</div>` : "") +
     (hits[0] ? `<div class="sn">${mark(hits[0].text, q)}</div>` : "") +
     "</li>"
   );
 }
-// The details of the open place (#detail) sit in the list, right under that place. The other places stay in the list.
+// The details of the open place (#detail) live in the dock under the list; the list keeps all its rows and the open one is marked.
 function placeDetail() {
   const d = $("#detail");
+  document.querySelectorAll("#list li.on").forEach((x) => x.classList.remove("on"));
   if (!cur) {
     d.hidden = true;
-    $("#detailHome").append(d);
+    dockSync();
     return;
   }
-  document.querySelectorAll("#list li.on").forEach((x) => x.classList.remove("on"));
   let li = $(`#list li[data-id="${cur.id}"]`);
   if (!li) {
-    // the place is filtered out of the list: show its row anyway, so the details still hang under a name
+    // the place is filtered out of the list: show its row anyway, so the open place always has a row
     const e = $("#list .empty");
     if (e) e.remove();
     $("#list").insertAdjacentHTML("afterbegin", placeRowHTML(cur, [], $("#lang").value, ""));
     li = $("#list li");
   }
   li.classList.add("on");
-  li.after(d);
   d.hidden = false;
+  dockSync();
+  revealRow(li);
 }
 /** What run() needs from the sidebar fields (INTERFACES.md I-3). */
 const searchOptions = () => ({ q: $("#q").value, lang: $("#lang").value, sort: $("#sort").value, period: periodBounds() });
@@ -185,7 +210,6 @@ function update() {
   // the selected types and the language are shown inside Filters, so only the period is repeated here
   $("#fActive").innerHTML = periodActive() ? chip("period", "period") : "";
   $("#count").textContent = r.length + " of " + places.length + " places";
-  $("#detailHome").append($("#detail")); // keep the open place's details out of the list while it is rebuilt
   $("#list").innerHTML = r.length
     ? r.map(({ p, hits }) => placeRowHTML(p, hits, l, q)).join("")
     : '<li class="empty">No places match. Try fewer filters.</li>';
@@ -290,6 +314,18 @@ function pickPoint(p) {
     editHint;
 }
 // ---- place details (open in the list, under the place; the map does not move) ----
+const iconBtn = (act, icon, text, extra = "", cls = "") =>
+  `<button type="button" class="icon-btn${cls ? " " + cls : ""}" data-act="${act}" ${extra} title="${text}" aria-label="${text}">${AHM.icons.svg(icon, 16)}</button>`;
+// The header of the place card: type marker (its title is the type), name, then edit / route from / route to / close.
+const placeHeadHTML = (p, l) =>
+  `<div class="dock-head"><span class="tmark" title="${esc(typeLabel(p.type))}">${typeIcon(p.type)}</span>` +
+  `<h3 class="dock-title">${esc(label(p, l))}</h3><span class="dock-btns">` +
+  (AHM_CONFIG.canEdit ? iconBtn("editplace", "pencil", "Edit place") : "") +
+  iconBtn("from", "route-from", "Route from here") +
+  iconBtn("to", "route-to", "Route to here") +
+  iconBtn("closedetail", "close", "Close") +
+  "</span></div>";
+let showSeq = 0;
 async function show(id) {
   const p = places.find((x) => x.id === id);
   if (!p) return;
@@ -297,6 +333,7 @@ async function show(id) {
   if (curTab !== "explore") tab("explore"); // the list lives in the Explore tab
   stopEditPlace();
   cur = p;
+  const seq = ++showSeq;
   AHM.state.set('selected', p.id);
   const l = $("#lang").value;
   const scope = lyScope(id, true),
@@ -304,11 +341,13 @@ async function show(id) {
   const ns = inLang
     .filter((n) => lyNoteVisible(n, scope))
     .sort((a, b) => byDateKey({ date_from: a.date }, { date_from: b.date }) || a.title.localeCompare(b.title));
+  $("#detail").innerHTML = placeHeadHTML(p, l); // the new header at once: no frame shows the previous place
   placeDetail();
   history.replaceState(null, "", "#place-" + id);
   const bodies = await Promise.all(
     ns.map((n) => loadNoteBody(n).catch(() => n.text)),
   );
+  if (seq !== showSeq) return; // another place was chosen while the notes were loading
   noteText = {};
   ns.forEach((n, i) => (noteText[n.id] = bodies[i]));
   const para = (t) =>
@@ -317,7 +356,8 @@ async function show(id) {
       .map((x) => "<p>" + esc(x) + "</p>")
       .join("");
   $("#detail").innerHTML =
-    `<div class="inline-body"><p>` +
+    placeHeadHTML(p, l) +
+    `<div class="dock-body"><p>` +
     p.names
       .filter((n) => !l || n.lang === l)
       .map((n) => `${esc(n.name)} <span class="sn">[${n.lang}]</span>`)
@@ -328,18 +368,13 @@ async function show(id) {
     (ns
       .map(
         (n, i) =>
-          `<div class="note">${AHM_CONFIG.canEdit ? `<button class="mini" data-act="editnote" data-id="${n.id}">Edit</button>` : ""}<b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + " · " : ""}${esc(langName(n.lang))}</span>${para(bodies[i])}</div>`,
+          `<div class="note"><div class="note-head"><div class="note-meta"><b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + " · " : ""}${esc(langName(n.lang))}</span></div>${AHM_CONFIG.canEdit ? iconBtn("editnote", "pencil", "Edit note", `data-id="${n.id}"`, "sm") : ""}</div>${para(bodies[i])}</div>`,
       )
       .join("") || '<p class="sn">No notes yet.</p>') +
     editHint +
-    `</div><div class="inline-actions">` +
-    btns(
-      ...edit(["note", "Add note", "primary"], ["editplace", "Edit"]),
-      ["from", "Route from"],
-      ["to", "Route to"],
-    ) +
+    `</div><div class="dock-foot">` +
+    btns(...edit(["note", "Add note", "primary"])) +
     "</div>";
-  $("#detail").scrollIntoView({ block: "nearest" });
 }
 function closeDetail() {
   stopEditPlace();
@@ -419,15 +454,17 @@ $("#pick").addEventListener("click", (e) => {
   } else if (pick) act(a, pick);
 });
 $("#detail").addEventListener("click", (e) => {
-  const a = e.target.dataset.act;
+  const b = e.target.closest("[data-act]"), // an icon button: the click lands on its svg
+    a = b && b.dataset.act;
   if (!a) return;
   if (a === "canceledit") show(cur.id);
   else if (a === "saveedit") saveEditPlace();
+  else if (a === "closedetail") closeDetail();
   else if (a === "editnote")
     openDlg(
       "note",
       cur,
-      notes.find((n) => n.id === e.target.dataset.id),
+      notes.find((n) => n.id === b.dataset.id),
     );
   else if (cur)
     act(
@@ -574,10 +611,10 @@ function editPlace(p) {
   AHM.state.set('selected', p.id);
   placeDetail();
   $("#detail").innerHTML =
-    '<div class="inline-body"><h2>Edit place</h2>' +
-    '<div class="sn">Drag the red pin on the map to move the place, or type the coordinates.</div>' +
+    '<div class="dock-head"><h3 class="dock-title">Edit place</h3></div>' +
+    '<div class="dock-body"><div class="sn">Drag the red pin on the map to move the place, or type the coordinates.</div>' +
     placeFormHTML(p) +
-    '</div><div class="inline-actions"><div id="pfErr" class="sn err-line"></div><button class="primary" data-act="saveedit">Save</button><button data-act="canceledit">Cancel</button></div>';
+    '</div><div class="dock-foot"><div id="pfErr" class="sn err-line"></div><button class="primary" data-act="saveedit">Save</button><button data-act="canceledit">Cancel</button></div>';
   AHM.map.hidePlace(p.id); // hide the old symbol so the pin does not leave a ghost behind
   editMk = AHM.map.editPin(p, (l) => {
     $("#detail .pf-lat").value = l.lat.toFixed(6);

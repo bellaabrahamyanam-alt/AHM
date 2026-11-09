@@ -474,6 +474,101 @@ li.empty:hover {
   line-height: 1.3em;
 }
 
+/* ---- notes: readable wrapping, and a folded preview for long ones (js/sidebar/ui.js: fitNotes, setNote) ---- */
+#detail .names {
+  overflow-wrap: anywhere;
+}
+#detail .note-body {
+  margin-top: 4px;
+  line-height: 1.45;
+  overflow-wrap: anywhere; /* a very long word or link never pushes the card wider than the sidebar */
+  hyphens: auto; /* uses the note's lang attribute */
+  text-wrap: pretty;
+}
+#detail .note-body p {
+  margin: 0 0 0.65em;
+  line-height: 1.45;
+}
+#detail .note-body p:last-child {
+  margin-bottom: 0;
+}
+#detail .note-body.is-clamped {
+  max-height: calc(1.45em * 6); /* NOTE_LINES in ui.js */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.8em), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.8em), transparent);
+}
+#detail .note-body.anim {
+  overflow: hidden;
+  transition: max-height 0.28s ease;
+}
+/* the toggle sticks to the bottom of the visible panel while its note is open, so "Show less" is never far away */
+#detail .note-more {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: block;
+  width: calc(100% + 20px);
+  min-height: 0;
+  margin: 6px -10px -8px;
+  padding: 6px 10px;
+  border: 0;
+  border-top: 1px solid var(--li-row-border-bottom-color);
+  border-radius: 0 0 var(--radius-m) var(--radius-m);
+  background: var(--bg1-bg-color);
+  box-shadow: none;
+  color: var(--base-href-color);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+#detail .note-more[hidden] {
+  display: none;
+}
+#detail .note-more::after {
+  content: " \25BE";
+}
+#detail .note-more[aria-expanded="true"]::after {
+  content: " \25B4";
+}
+#detail .note-more:hover {
+  background: var(--page-btn-bg-focus);
+}
+#detail .note-more:focus-visible,
+#detail .note-all:focus-visible {
+  outline: 2px solid var(--base-href-color);
+  outline-offset: -2px;
+}
+#detail .note-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 -4px;
+}
+#detail .note-tools[hidden] {
+  display: none;
+}
+#detail .note-all {
+  min-height: 0;
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--base-href-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#detail .note-all:hover {
+  text-decoration: underline;
+}
+@media (prefers-reduced-motion: reduce) {
+  #detail .note-body.anim {
+    transition: none;
+  }
+}
+
 /* ---- directions / layers ---- */
 .rp {
   display: flex;
@@ -812,6 +907,17 @@ button.back:hover {
   background: var(--base-bg);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.08);
+}
+#dock.max {
+  flex: 1 1 100%;
+  max-height: 100%;
+}
+.icon-btn[data-act="dockmax"] svg {
+  transform: rotate(180deg); /* points up: grow the panel */
+  transition: transform 0.2s;
+}
+#dock.max .icon-btn[data-act="dockmax"] svg {
+  transform: none; /* points down: shrink it again */
 }
 #detail,
 #lyDetail {

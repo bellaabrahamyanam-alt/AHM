@@ -641,8 +641,23 @@ input[type="search"]::-webkit-search-cancel-button {
   flex: 0 0 130px;
   width: 130px;
 }
-.pf-add {
+/* minor actions that add a row: a text button, not a grey box (the grey boxes are for the main actions) */
+.pf-add,
+.ly-dadd {
   margin: 3px 0;
+}
+button.pf-add,
+button.ly-dadd {
+  min-height: 28px;
+  padding: 2px 4px;
+  background: none;
+  color: var(--a);
+}
+button.pf-add:hover:not(:disabled),
+button.ly-dadd:hover:not(:disabled) {
+  background: none;
+  color: var(--a-hover);
+  text-decoration: underline;
 }
 .pf-up,
 .pf-del {

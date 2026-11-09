@@ -220,6 +220,10 @@ hr {
 .langs li.tr:hover {
   background: none;
 }
+/* in these tables the pencil belongs to the row: the row keeps its hover while the pencil is hovered */
+.langs li.tr:hover b {
+  color: var(--a-hover);
+}
 /* table-like rows without lines: [button] [code] [English name] [native name] */
 .tr {
   display: grid;
@@ -259,6 +263,23 @@ button.wide {
 /* same side padding as the list rows (.langs li.tr), so the editor columns line up with the table above */
 .tr-edit {
   padding: 0 4px 0 10px;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1.4fr); /* the columns of the rows above */
+  row-gap: 6px;
+}
+.tr-edit .tc-btn {
+  grid-row: 1 / span 2;
+}
+.tr-edit #lgCode {
+  grid-column: 2;
+  grid-row: 1;
+}
+.tr-edit #lgName {
+  grid-column: 2;
+  grid-row: 2;
+}
+.tr-edit #lgNative {
+  grid-column: 3;
+  grid-row: 2;
 }
 .tr-edit input {
   margin: 0;

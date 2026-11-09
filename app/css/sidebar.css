@@ -41,8 +41,14 @@ b {
 .body {
   flex: 1;
   overflow: auto;
-  padding: 4px 14px 16px;
+  padding: 4px 6px 16px 14px; /* the right side: 14px minus the reserved scrollbar gutter below */
   line-height: 1.45;
+}
+/* The scrollbar gutter is reserved, so the content does not shift sideways when a scrollbar appears or goes away. */
+.body,
+.dock-body {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
 }
 .searchbar {
   display: flex;

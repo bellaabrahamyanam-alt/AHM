@@ -1,0 +1,283 @@
+// Shapes on the map (map domain): borders (areas) and lines, drawn exactly as the sidebar describes them. The map knows nothing about
+// border types: every feature arrives with its look (colour, opacity, width, dash) already resolved. Also the drawing tool.
+// Commands (AHM.map.*, INTERFACES.md I-2): setShapes(fc), highlightShape(id|null), previewShape(id, {color, opacity}|null),
+//   showPreview(geometry|null) (a blue draft outline), drawShape({ kind: 'area'|'line', coords?, color? }, onChange), isDrawing().
+// Events: shape:click { id } (a click on a line or an outline, 6 px tolerance), map:click now carries shapes: [{ id }] (areas under the
+//   cursor), draw:finish (Enter or double click while drawing), draw:cancel (Esc).
+// Feature properties: kind ('area' | 'line' | 'label'), id, name, type (text), dates (text), color, ink (label colour), opacity, width,
+//   dash (solid | dashed | dotted | dashdot), label (boolean), halo ('' or a colour), size (area of the bounding box: smaller shapes are drawn on top and hit first).
+//   A 'label' feature is a Point where an area's name is drawn.
+const SHAPE_DASH = { solid: null, dashed: [3, 2], dotted: [0.1, 2.2], dashdot: [4, 1.6, 0.8, 1.6] };
+const SHAPE_HIT_PX = 6;
+const SHAPE_FILL = 'ahm-shape-fill';
+const SHAPE_LINES = Object.keys(SHAPE_DASH).map((d) => 'ahm-shape-line-' + d);
+const DRAFT = '#bc2a4d'; // the colour of the shape being drawn
+const PREVIEW = '#1d6fd1'; // the colour of a search result shown before it is added
+let labelFont = ['Noto Sans Regular']; // map.js sets the font of the base map
+let shapesNow = null, // the last collection received (drawn as soon as the map is ready)
+  shapeSel = null,
+  shapeHover = null,
+  shapeTip = null,
+  shapeDrawing = null;
+
+function shapesInit() {
+  const col = ['coalesce', ['feature-state', 'color'], ['get', 'color']],
+    opa = ['coalesce', ['feature-state', 'opacity'], ['get', 'opacity']],
+    flag = (k) => ['boolean', ['feature-state', k], false],
+    src = 'ahm-shapes',
+    add = (l, s) => map.addLayer({ source: s || src, ...l }, 'ahm-route'); // above the base map and the history images, under the route and the places
+  map.addSource(src, { type: 'geojson', data: shapesNow || EMPTY, promoteId: 'id' });
+  add({
+    id: SHAPE_FILL,
+    type: 'fill',
+    filter: ['==', ['get', 'kind'], 'area'],
+    paint: { 'fill-color': col, 'fill-opacity': ['min', 0.85, ['+', opa, ['case', flag('hover'), 0.12, 0]]] },
+  });
+  const notLabel = ['!=', ['get', 'kind'], 'label'];
+  add({
+    // a ring in the colour of a layer: the members of the layer being edited
+    id: 'ahm-shape-halo',
+    type: 'line',
+    filter: ['all', notLabel, ['!=', ['coalesce', ['get', 'halo'], ''], '']],
+    layout: { 'line-join': 'round' },
+    paint: { 'line-color': ['coalesce', ['get', 'halo'], '#000000'], 'line-width': ['+', ['get', 'width'], 8], 'line-opacity': 0.85 },
+  });
+  add({
+    // the selected shape (DESIGN.md): a soft shadow and a white casing under its line
+    id: 'ahm-shape-shadow',
+    type: 'line',
+    filter: notLabel,
+    layout: { 'line-join': 'round' },
+    paint: { 'line-color': '#000000', 'line-blur': 4, 'line-width': ['+', ['get', 'width'], 9], 'line-opacity': ['case', flag('selected'), 0.28, 0] },
+  });
+  add({
+    id: 'ahm-shape-casing',
+    type: 'line',
+    filter: notLabel,
+    layout: { 'line-join': 'round' },
+    paint: { 'line-color': '#ffffff', 'line-width': ['+', ['get', 'width'], 5], 'line-opacity': ['case', flag('selected'), 0.95, 0] },
+  });
+  Object.entries(SHAPE_DASH).forEach(([d, dash]) =>
+    add({
+      id: 'ahm-shape-line-' + d,
+      type: 'line',
+      filter: ['all', notLabel, ['==', ['get', 'dash'], d]],
+      layout: { 'line-cap': d === 'dotted' ? 'round' : 'butt', 'line-join': 'round' },
+      paint: {
+        'line-color': col,
+        'line-width': ['+', ['get', 'width'], ['case', flag('hover'), 1, 0]],
+        'line-opacity': ['case', ['==', ['get', 'kind'], 'line'], opa, 0.9],
+        ...(dash ? { 'line-dasharray': dash } : {}),
+      },
+    })
+  );
+  if (map.getStyle().glyphs) {
+    const text = {
+        'text-field': ['get', 'name'],
+        'text-font': labelFont,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 8, 12, 12, 14],
+        'text-max-width': 8,
+        'text-padding': 4,
+      },
+      paint = { 'text-color': ['get', 'ink'], 'text-halo-color': '#ffffff', 'text-halo-width': 2 };
+    add({
+      // the name of an area: at the Point the sidebar chose inside it
+      id: 'ahm-shape-label-area',
+      type: 'symbol',
+      filter: ['all', ['==', ['get', 'kind'], 'label'], ['==', ['get', 'label'], true]],
+      layout: { ...text, 'text-letter-spacing': 0.05 },
+      paint,
+    });
+    add({
+      id: 'ahm-shape-label-line',
+      type: 'symbol',
+      filter: ['all', ['==', ['get', 'kind'], 'line'], ['==', ['get', 'label'], true]],
+      layout: { ...text, 'symbol-placement': 'line-center' },
+      paint,
+    });
+  }
+  // two scratch sources: the shape being drawn (red) and a search result being looked at (blue), both dashed
+  [
+    ['ahm-draw', DRAFT],
+    ['ahm-preview', PREVIEW],
+  ].forEach(([id, c]) => {
+    map.addSource(id, { type: 'geojson', data: EMPTY });
+    add({ id: id + '-fill', type: 'fill', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': c, 'fill-opacity': 0.15 } }, id);
+    add({ id: id + '-line', type: 'line', layout: { 'line-join': 'round' }, paint: { 'line-color': c, 'line-width': 2.5, 'line-dasharray': [2, 1.5] } }, id);
+  });
+
+  // ---- pointer: hover (lighter, tooltip) ----
+  const lineAt = (pt) =>
+    map.queryRenderedFeatures([[pt.x - SHAPE_HIT_PX, pt.y - SHAPE_HIT_PX], [pt.x + SHAPE_HIT_PX, pt.y + SHAPE_HIT_PX]], { layers: SHAPE_LINES })[0];
+  shapeLineAt = lineAt;
+  shapesAt = (pt) => {
+    const seen = new Set();
+    return map
+      .queryRenderedFeatures(pt, { layers: [SHAPE_FILL] })
+      .filter((f) => !seen.has(f.properties.id) && seen.add(f.properties.id))
+      .sort((x, y) => (x.properties.size || 0) - (y.properties.size || 0)); // the smallest area first: it is drawn on top
+  };
+  map.on('mousemove', (e) => {
+    if (shapeDrawing) return;
+    const placeLayers = ['ahm-places', SEL.symbol, 'ahm-clusters'].filter((id) => map.getLayer(id));
+    if (map.queryRenderedFeatures(e.point, { layers: placeLayers }).length) return setShapeHover(null); // a place or a bubble has its own hover
+    const line = lineAt(e.point),
+      f = line || shapesAt(e.point)[0];
+    map.getCanvas().style.cursor = line ? 'pointer' : '';
+    setShapeHover(f, e.lngLat);
+  });
+  map.getCanvas().addEventListener('mouseleave', () => setShapeHover(null));
+  if (shapeSel) map.setFeatureState({ source: src, id: shapeSel }, { selected: true }); // selected before the map was ready
+}
+let shapeLineAt = () => null,
+  shapesAt = () => [];
+
+function setShapeHover(f, at) {
+  const id = f ? f.properties.id : null;
+  if (id !== shapeHover) {
+    if (shapeHover) map.setFeatureState({ source: 'ahm-shapes', id: shapeHover }, { hover: false });
+    if (shapeTip) shapeTip.remove();
+    shapeTip = null;
+    shapeHover = id;
+    if (id) {
+      map.setFeatureState({ source: 'ahm-shapes', id }, { hover: true });
+      const p = f.properties;
+      shapeTip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'ahm-tip', maxWidth: '260px', offset: 14 })
+        .setHTML(`<div class="tip-title">${esc(p.name || '')}</div><div class="tip-sub">${[p.type, p.dates].filter(Boolean).map(esc).join(' · ')}</div>`)
+        .setLngLat(at)
+        .addTo(map);
+    }
+  } else if (shapeTip && at) shapeTip.setLngLat(at);
+}
+
+// ---- drawing: click adds a point, drag moves it, right click removes it, Backspace undoes, Enter or double click finishes, Esc cancels ----
+function drawShape(opts, onChange) {
+  endDraw();
+  setShapeHover(null);
+  const kind = opts.kind,
+    pts = (opts.coords || []).map((c) => c.slice()),
+    marks = [],
+    geom = () =>
+      kind === 'area'
+        ? pts.length >= 3
+          ? { type: 'Polygon', coordinates: [[...pts, pts[0]]] }
+          : null
+        : pts.length >= 2
+          ? { type: 'LineString', coordinates: pts.map((p) => p.slice()) }
+          : null,
+    paint = () => {
+      const f = [];
+      if (kind === 'area' && pts.length >= 3) f.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...pts, pts[0]]] }, properties: {} });
+      if (pts.length >= 2) f.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: kind === 'area' && pts.length > 2 ? [...pts, pts[0]] : pts }, properties: {} });
+      map.getSource('ahm-draw').setData({ type: 'FeatureCollection', features: f });
+    },
+    changed = () => {
+      paint();
+      if (onChange) onChange(geom());
+    },
+    vertex = (ll) => {
+      const el = document.createElement('div');
+      el.className = 'ahm-vtx';
+      const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(ll).addTo(map);
+      m.on('drag', () => {
+        const l = m.getLngLat();
+        pts[marks.indexOf(m)] = [l.lng, l.lat];
+        paint();
+      });
+      m.on('dragend', changed);
+      ['click', 'dblclick'].forEach((t) => el.addEventListener(t, (ev) => ev.stopPropagation())); // not a new point
+      el.addEventListener('contextmenu', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const i = marks.indexOf(m);
+        pts.splice(i, 1);
+        marks.splice(i, 1);
+        m.remove();
+        changed();
+      });
+      marks.push(m);
+    },
+    undo = () => {
+      if (!pts.length) return;
+      pts.pop();
+      marks.pop().remove();
+      changed();
+    };
+  let last = { t: 0, x: -99, y: -99 };
+  const onClick = (e) => {
+      const now = performance.now();
+      if (now - last.t < 400 && Math.hypot(e.point.x - last.x, e.point.y - last.y) < 6) return; // the second click of a double click
+      last = { t: now, x: e.point.x, y: e.point.y };
+      pts.push([e.lngLat.lng, e.lngLat.lat]);
+      vertex(e.lngLat);
+      changed();
+    },
+    onDbl = (e) => {
+      e.preventDefault();
+      AHM.emit('draw:finish');
+    },
+    onKey = (ev) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+      if (ev.key === 'Enter') AHM.emit('draw:finish');
+      else if (ev.key === 'Escape') AHM.emit('draw:cancel');
+      else if (ev.key === 'Backspace' || (ev.key.toLowerCase() === 'z' && (ev.ctrlKey || ev.metaKey))) {
+        ev.preventDefault();
+        undo();
+      }
+    };
+  pts.forEach((p) => vertex(p));
+  map.on('click', onClick);
+  map.on('dblclick', onDbl);
+  document.addEventListener('keydown', onKey);
+  map.doubleClickZoom.disable();
+  map.getCanvas().style.cursor = 'crosshair';
+  hideMenu();
+  paint();
+  shapeDrawing = {
+    getGeometry: geom,
+    count: () => pts.length,
+    undo,
+    remove() {
+      map.off('click', onClick);
+      map.off('dblclick', onDbl);
+      document.removeEventListener('keydown', onKey);
+      marks.forEach((m) => m.remove());
+      map.getSource('ahm-draw').setData(EMPTY);
+      map.doubleClickZoom.enable();
+      map.getCanvas().style.cursor = '';
+      shapeDrawing = null;
+    },
+  };
+  return shapeDrawing;
+}
+const endDraw = () => shapeDrawing && shapeDrawing.remove();
+
+Object.assign(AHM.map, {
+  setShapes(fc) {
+    shapesNow = fc;
+    const s = mapReady && map.getSource('ahm-shapes');
+    if (s) s.setData(fc);
+  },
+  highlightShape(id) {
+    if (!mapReady || !map.getSource('ahm-shapes')) {
+      shapeSel = id;
+      return;
+    }
+    if (shapeSel) map.setFeatureState({ source: 'ahm-shapes', id: shapeSel }, { selected: false });
+    shapeSel = id;
+    if (id) map.setFeatureState({ source: 'ahm-shapes', id }, { selected: true });
+  },
+  /** Shows a colour or an opacity before it is saved; null puts the saved look back. */
+  previewShape(id, look) {
+    if (!mapReady || !map.getSource('ahm-shapes')) return;
+    const t = { source: 'ahm-shapes', id };
+    if (look) map.setFeatureState(t, look);
+    else map.removeFeatureState(t, 'color'), map.removeFeatureState(t, 'opacity');
+  },
+  showPreview(geometry) {
+    const s = mapReady && map.getSource('ahm-preview');
+    if (s) s.setData(geometry ? { type: 'Feature', geometry, properties: {} } : EMPTY);
+  },
+  drawShape,
+  isDrawing: () => !!shapeDrawing,
+});

@@ -455,7 +455,7 @@ const ICON_PLUS =
 let lyCatOpen = null; // null = nothing is edited, 'new' = adding, otherwise the id of the category being renamed
 const catEditorHTML = (title) =>
   `<div class="label">${title}</div><div class="pf" id="catForm"><div class="pf-names"></div><button type="button" class="pf-add">+ Add another name</button></div>` +
-  '<div class="btn-pair"><button id="catSave" class="primary">Save</button><button id="catCancel">Cancel</button></div><div id="catErr" class="sn"></div>';
+  '<div class="btn-pair"><button id="catSave" class="primary" disabled>Save</button><button id="catCancel">Cancel</button></div><div id="catErr" class="sn"></div>';
 function lyRenderCats() {
   const l = $('#lang').value,
     admin = AHM_CONFIG.canLayerAdmin;
@@ -466,30 +466,36 @@ function lyRenderCats() {
       .sort((a, b) => catName(a, l).localeCompare(catName(b, l)))
       .map(
         (c) =>
-          `<li class="tr tr-cat" data-cid="${c.id}"><span class="tc-btn">` +
+          `<li class="tr tr-cat${lyCatOpen === c.id ? ' on' : ''}" data-cid="${c.id}"><span class="tc-btn">` +
           (admin
             ? `<button type="button" class="icon-btn" data-lyact="editcat" data-cid="${c.id}" title="Rename ${esc(catName(c, l))}" aria-label="Rename ${esc(catName(c, l))}">${ICON_PENCIL}</button>`
             : '') +
-          `</span><b>${esc(catName(c, l))}</b><span class="sn">${esc(c.names.map((n) => n.name + ' [' + n.lang + ']').join(' · '))}</span></li>` +
-          (lyCatOpen === c.id ? `<li class="cat-edit">${catEditorHTML('Rename category')}</li>` : '')
+          `</span><b>${esc(catName(c, l))}</b><span class="sn">${esc(c.names.map((n) => n.name + ' [' + n.lang + ']').join(' · '))}</span></li>`
       )
       .join('') || '<li class="empty">No categories yet.</li>';
   if (!admin) {
     $('#catAdmin').innerHTML = '<div class="sn">Only administrators can add a category. Missing one? Ask an administrator.</div>';
-  } else if (lyCatOpen === 'new') {
-    $('#catAdmin').innerHTML = catEditorHTML('New category');
+  } else if (lyCatOpen) {
+    // one editor at the bottom of the fold for both a new category and a rename (the renamed row is marked)
+    $('#catAdmin').innerHTML = catEditorHTML(lyCatOpen === 'new' ? 'New category' : 'Rename category');
   } else {
-    $('#catAdmin').innerHTML = lyCatOpen ? '' : '<button id="catAdd" class="wide">Add</button>';
+    $('#catAdmin').innerHTML = '<button id="catAdd" class="wide">+ Add category</button>';
   }
   if ($('#catForm')) {
     placeFormWire($('#catForm'));
     catFill(lyCatOpen === 'new' ? null : catById(lyCatOpen));
   }
 }
+// Save stays off until at least one name is filled.
+const catValidate = () => {
+  const b = $('#catSave');
+  if (b) b.disabled = !lyReadNames($('#catForm')).length;
+};
 function catFill(c) {
   lyCatEditing = c ? c.id : null;
   $('#catForm .pf-names').innerHTML = (c ? c.names : [{ lang: $('#lang').value || 'en', name: '' }]).map((n) => pfRow(n)).join('');
   $('#catErr').textContent = '';
+  catValidate();
 }
 
 // ---- events ----
@@ -613,6 +619,7 @@ $('#catList').addEventListener('click', (e) => {
   if (b) {
     lyCatOpen = b.dataset.cid;
     lyRenderCats();
+    $('#catAdmin').scrollIntoView({ block: 'nearest' });
     $('#catForm .nn').focus();
   }
 });
@@ -639,4 +646,6 @@ async function catClick(e) {
   }
 }
 $('#catAdmin').addEventListener('click', catClick);
+$('#catAdmin').addEventListener('input', catValidate);
+$('#catAdmin').addEventListener('click', () => setTimeout(catValidate)); // a name row may have been removed
 $('#catList').addEventListener('click', catClick);

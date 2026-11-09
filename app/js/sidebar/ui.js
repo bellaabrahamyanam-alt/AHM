@@ -284,6 +284,12 @@ function focusPlace(id) {
   if (!cur || cur.id !== id) show(id);
   AHM.map.focusPlace(id);
 }
+// A double click zooms; it must not select the name under the pointer (dragging still selects text).
+[$("#list"), $("#lyList")].forEach((el) =>
+  el.addEventListener("mousedown", (e) => {
+    if (e.detail > 1) e.preventDefault();
+  }),
+);
 $("#list").addEventListener("dblclick", (e) => {
   const li = e.target.closest("li[data-id]");
   if (li && !lyState.editing) focusPlace(li.dataset.id);
@@ -649,6 +655,7 @@ $("#detail").addEventListener("input", (e) => {
 // One table-like layout without lines: [button] [code] [English name] [name in the language itself].
 // Rows: pencil = edit. The last row is the add/edit row (plus = add, pencil = editing); Save and Cancel sit below it.
 let lgEditing = null; // the code being edited, or null = adding
+let lgOpen = false; // the form is shown only while it is open
 function renderLangs() {
   $("#langList").innerHTML =
     languages
@@ -656,7 +663,7 @@ function renderLangs() {
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(
         (l) =>
-          `<li class="tr"><span class="tc-btn">${
+          `<li class="tr${l.code === lgEditing ? " on" : ""}"><span class="tc-btn">${
             AHM_CONFIG.canLanguage
               ? `<button type="button" class="icon-btn" data-lgedit="${esc(l.code)}" title="Edit ${esc(l.name)}" aria-label="Edit ${esc(l.name)}">${ICON_PENCIL}</button>`
               : ""
@@ -664,22 +671,44 @@ function renderLangs() {
       )
       .join("") || '<li class="sn">No languages yet.</li>';
 }
+// Save stays off until the code and the English name are filled.
+const lgValidate = () => {
+  const b = $("#lgAdd");
+  if (b) b.disabled = !($("#lgCode").value.trim() && $("#lgName").value.trim());
+};
+// The form is shown only while it is open: "+ Add language" opens it empty, the pencil of a row opens it filled.
+function lgRenderAdmin() {
+  $("#langAdmin").innerHTML = !AHM_CONFIG.canLanguage
+    ? '<div class="sn">Only administrators can add a language. Missing one? Ask an administrator.</div>'
+    : lgOpen
+      ? '<div class="tr tr-edit"><span class="tc-btn"><span class="tc-mode" id="lgMode"></span></span>' +
+        '<input id="lgCode" maxlength="8" placeholder="code, e.g. hy" aria-label="Language code">' +
+        '<input id="lgName" placeholder="Name in English" aria-label="Name in English">' +
+        '<input id="lgNative" placeholder="Name in the language" aria-label="Name in the language itself"></div>' +
+        '<div class="btn-pair"><button id="lgAdd" class="primary" disabled>Save</button><button id="lgCancel">Cancel</button></div><div id="lgErr" class="sn err-line"></div>'
+      : '<button id="lgNew" class="wide">+ Add language</button>';
+}
 function lgFill(l) {
+  lgOpen = true;
   lgEditing = l ? l.code : null;
+  lgRenderAdmin();
+  renderLangs();
   $("#lgCode").value = l ? l.code : "";
   $("#lgCode").readOnly = !!l; // the code is what names and notes refer to, so it never changes
   $("#lgName").value = l ? l.name : "";
   $("#lgNative").value = l ? l.native || "" : "";
   $("#lgMode").innerHTML = l ? ICON_PENCIL : ICON_PLUS;
   $("#lgErr").textContent = "";
+  lgValidate();
 }
-$("#langAdmin").innerHTML = AHM_CONFIG.canLanguage
-  ? '<div class="tr tr-edit"><span class="tc-btn"><span class="tc-mode" id="lgMode">' + ICON_PLUS + "</span></span>" +
-    '<input id="lgCode" maxlength="8" placeholder="code, e.g. hy" aria-label="Language code">' +
-    '<input id="lgName" placeholder="Name in English" aria-label="Name in English">' +
-    '<input id="lgNative" placeholder="Name in the language" aria-label="Name in the language itself"></div>' +
-    '<div class="btn-pair"><button id="lgAdd" class="primary">Save</button><button id="lgCancel">Cancel</button></div><div id="lgErr" class="sn"></div>'
-  : '<div class="sn">Only administrators can add a language. Missing one? Ask an administrator.</div>';
+function lgClose() {
+  lgOpen = false;
+  lgEditing = null;
+  lgRenderAdmin();
+  renderLangs();
+}
+lgRenderAdmin();
+$("#langAdmin").addEventListener("input", lgValidate);
 $("#langList").addEventListener("click", (e) => {
   const b = e.target.closest("[data-lgedit]");
   if (!b) return;
@@ -687,7 +716,11 @@ $("#langList").addEventListener("click", (e) => {
   $("#lgName").focus();
 });
 $("#langAdmin").addEventListener("click", async (e) => {
-  if (e.target.id === "lgCancel") return lgFill(null);
+  if (e.target.id === "lgNew") {
+    lgFill(null);
+    return $("#lgCode").focus();
+  }
+  if (e.target.id === "lgCancel") return lgClose();
   if (e.target.id !== "lgAdd") return;
   const err = $("#lgErr");
   try {
@@ -705,9 +738,8 @@ $("#langAdmin").addEventListener("click", async (e) => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Error("Save failed: " + (j.error || r.status));
     languages = await loadLanguages();
-    renderLangs();
     fillLangs();
-    lgFill(null);
+    lgClose();
   } catch (x) {
     err.textContent = x.message;
   }

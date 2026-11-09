@@ -756,7 +756,10 @@ $("#langAdmin").addEventListener("click", async (e) => {
 });
 // ---- events from the map (INTERFACES.md, I-2) ----
 AHM.on("place:click", ({ id }) => (lyState.editing ? lyToggleMember(id) : show(id)));
-AHM.on("place:dblclick", ({ id }) => !lyState.editing && focusPlace(id));
+// the map moves by itself (AHM.map.focusPlace, the move the list row uses); the sidebar only opens the place
+AHM.on("place:dblclick", ({ id }) => {
+  if (!lyState.editing && (!cur || cur.id !== id)) show(id);
+});
 AHM.on("map:show-controls", () => tab("maps"));
 AHM.on("map:click", (p) => !lyState.editing && pickPoint(p)); // choosing places for a layer: empty clicks do nothing
 // ---- start ----

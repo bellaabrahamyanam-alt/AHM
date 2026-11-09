@@ -11,7 +11,6 @@ let mapReady = false,
   pendingClick = null, // timer of a single click on a place: a double click cancels it
   pickMarker = null,
   menu = null, // the popup with the actions for a clicked empty point
-  pulsedId = null, // the selected place that already got its pulse
   routeMarkers = {};
 const CLUSTER_RADIUS = 50; // px: places this close together become one bubble
 const CLUSTER_MAX_ZOOM = 11; // from zoom 12 on every place is drawn on its own
@@ -19,9 +18,22 @@ const DBL_CLICK_MS = 300; // a single click on a place waits this long, in case 
 const TIP_GAP = 6; // px between the bullet's edge and the tooltip
 const BUBBLE = "#3a3f44";
 const BUBBLE_HOVER = "#5a6168";
-const ACCENT = "#115098"; // the link blue of the forum style: hover ring, selected ring
-const SEL_SCALE = 1.3; // the selected symbol is this much larger than the others
-const HOVER_SCALE = 1.15; // the symbol under the mouse
+const SEL_SCALE = 1.25; // the selected symbol is this much larger than the others
+const SIZE_STOPS = [
+  [4, 0.55],
+  [8, 0.8],
+  [11, 1],
+]; // [zoom, symbol size]: small when the map is zoomed out, full size from zoom 11
+const sizeByZoom = (k) => ["interpolate", ["linear"], ["zoom"], ...SIZE_STOPS.flatMap(([z, s]) => [z, s * k])];
+function zoomScale(z) {
+  if (z <= SIZE_STOPS[0][0]) return SIZE_STOPS[0][1];
+  for (let i = 1; i < SIZE_STOPS.length; i++) {
+    const [z0, s0] = SIZE_STOPS[i - 1],
+      [z1, s1] = SIZE_STOPS[i];
+    if (z <= z1) return s0 + ((s1 - s0) * (z - z0)) / (z1 - z0);
+  }
+  return SIZE_STOPS[SIZE_STOPS.length - 1][1];
+}
 // where the point menu sits relative to the clicked point, for every side the library may choose (the grey pin is about 40px high)
 const MENU_OFFSET = {
   center: [0, 0],
@@ -35,11 +47,7 @@ const MENU_OFFSET = {
   right: [-14, -20],
 };
 const SEL = {
-  shadow: "ahm-highlight-shadow",
-  ring: "ahm-highlight", // the white outline; the id the selection tests use
-  outer: "ahm-highlight-outer",
-  symbol: "ahm-highlight-symbol",
-  pulse: "ahm-highlight-pulse",
+  symbol: "ahm-highlight-symbol", // the selected place: its marker with a white border, a little larger
 };
 const EMPTY = { type: "FeatureCollection", features: [] };
 const GROUPS = {
@@ -172,6 +180,7 @@ function initMap() {
           ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
           ["image", "ahm-type-settlement"],
         ],
+        "icon-size": sizeByZoom(1),
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
@@ -233,28 +242,16 @@ function initMap() {
     // the place under the mouse: a larger symbol in a soft ring (own source and layers, so the symbols underneath never change)
     map.addSource("ahm-hover", { type: "geojson", data: EMPTY });
     map.addLayer({
-      id: "ahm-hover-ring",
-      type: "circle",
-      source: "ahm-hover",
-      paint: {
-        "circle-radius": ["+", ["*", ["get", "r"], HOVER_SCALE], 4],
-        "circle-color": "rgba(255,255,255,0.75)",
-        "circle-stroke-width": 1.5,
-        "circle-stroke-color": ACCENT,
-        "circle-stroke-opacity": 0.55,
-      },
-    });
-    map.addLayer({
       id: "ahm-hover-symbol",
       type: "symbol",
       source: "ahm-hover",
       layout: {
         "icon-image": [
           "coalesce",
-          ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
-          ["image", "ahm-type-settlement"],
+          ["image", ["concat", "ahm-type-", ["get", "type_code"], "-hl"]],
+          ["image", "ahm-type-settlement-hl"],
         ],
-        "icon-size": HOVER_SCALE,
+        "icon-size": sizeByZoom(1),
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
@@ -262,67 +259,22 @@ function initMap() {
     // the selected place: drawn last, so it is above labels and every other symbol at every zoom
     map.addSource("ahm-highlight", { type: "geojson", data: EMPTY }); // one Point: the selected place, never clustered
     map.addLayer({
-      id: SEL.shadow,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": ["+", ["*", ["get", "r"], SEL_SCALE], 12],
-        "circle-color": "rgba(17,80,152,0.22)",
-        "circle-blur": 0.5,
-        "circle-radius-transition": { duration: 150 },
-      },
-    });
-    map.addLayer({
-      id: SEL.ring,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": ["+", ["*", ["get", "r"], SEL_SCALE], 3],
-        "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 3,
-        "circle-stroke-color": "#ffffff",
-      },
-    });
-    map.addLayer({
-      id: SEL.outer,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": ["+", ["*", ["get", "r"], SEL_SCALE], 6.5],
-        "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 2.5,
-        "circle-stroke-color": ACCENT,
-      },
-    });
-    map.addLayer({
       id: SEL.symbol,
       type: "symbol",
       source: "ahm-highlight",
       layout: {
         "icon-image": [
           "coalesce",
-          ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
-          ["image", "ahm-type-settlement"],
+          ["image", ["concat", "ahm-type-", ["get", "type_code"], "-hl"]],
+          ["image", "ahm-type-settlement-hl"],
         ],
-        "icon-size": SEL_SCALE,
+        "icon-size": sizeByZoom(SEL_SCALE),
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
       paint: { "icon-opacity-transition": { duration: 150 } },
     });
-    map.addLayer({
-      // a ring that spreads from a newly selected place (animated by pulseSelected)
-      id: SEL.pulse,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": 18,
-        "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 2,
-        "circle-stroke-color": ACCENT,
-        "circle-stroke-opacity": 0,
-      },
-    });
+
     // ---- pointer events -------------------------------------------------------------------------------------
     const hitAt = (e, ids) =>
       map.queryRenderedFeatures(e.point, {
@@ -376,9 +328,10 @@ function initMap() {
       }
       const ours = placeAt(e);
       if (!ours) return;
-      e.preventDefault(); // no default double-click zoom; the sidebar decides what a double click does
+      e.preventDefault(); // no default double-click zoom
       clearTimeout(pendingClick);
       pendingClick = null;
+      AHM.map.focusPlace(ours.properties.id); // the same move as a double click on the name in the list
       AHM.emit("place:dblclick", { id: ours.properties.id });
     });
     map.on("mouseenter", "ahm-places", (e) => {
@@ -486,7 +439,7 @@ function showTip(props, coords, scale = 1) {
     closeOnClick: false,
     className: "ahm-tip",
     maxWidth: "260px",
-    offset: style.r * scale + TIP_GAP + (scale > 1 ? 6 : 0),
+    offset: style.r * scale * zoomScale(map.getZoom()) + TIP_GAP + 4, // the symbol is smaller when zoomed out; 4px for the border
   })
     .setLngLat(coords)
     .setHTML(html)
@@ -574,20 +527,6 @@ function applyHidden() {
   if (map.getLayer("ahm-places")) map.setFilter("ahm-places", places);
   if (map.getLayer("ahm-labels")) map.setFilter("ahm-labels", hide);
 }
-// A short ring spreads from a newly selected place, so the eye finds it (skipped when the person asked for less motion).
-function pulseSelected() {
-  if (!map.getLayer(SEL.pulse) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const t0 = performance.now(),
-    T = 900;
-  const step = (t) => {
-    if (!map.getLayer(SEL.pulse)) return;
-    const k = Math.min(1, (t - t0) / T);
-    map.setPaintProperty(SEL.pulse, "circle-radius", 18 + 24 * k);
-    map.setPaintProperty(SEL.pulse, "circle-stroke-opacity", 0.7 * (1 - k));
-    if (k < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
 function applyHighlight() {
   // the selected place is redrawn after every setFeatures and once the map is ready
   const src = mapReady && map.getSource("ahm-highlight");
@@ -596,11 +535,6 @@ function applyHighlight() {
     selectedId != null && featuresNow && featuresNow.features.find((x) => x.properties.id === selectedId);
   // all properties of the place travel with the highlight: its tooltip needs the name, the type and the dates
   src.setData(f ? pointOf(f.geometry.coordinates, f.properties) : EMPTY);
-  if (!f) pulsedId = null;
-  else if (pulsedId !== selectedId) {
-    pulsedId = selectedId;
-    pulseSelected();
-  }
 }
 // ---- commands for the sidebar: AHM.map.* (INTERFACES.md, I-2) ----
 const lngLatOf = (p) => [p.lon, p.lat];

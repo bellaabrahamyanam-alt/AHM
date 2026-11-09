@@ -210,6 +210,7 @@ function initMap() {
             !ops.includes(l.layout["text-font"][0]),
         );
       const font = fl ? fl.layout["text-font"] : ["Noto Sans Regular"];
+      labelFont = font; // the border names (shapes.js) use it too
       map.addLayer({
         id: "ahm-labels",
         type: "symbol",
@@ -295,6 +296,7 @@ function initMap() {
         .catch(() => {});
     };
     map.on("click", (e) => {
+      if (shapeDrawing) return; // the drawing tool (shapes.js) owns the clicks
       const bubble = bubbleAt(e);
       if (bubble) {
         hideMenu();
@@ -322,6 +324,11 @@ function initMap() {
         }, DBL_CLICK_MS);
         return;
       }
+      const line = shapeLineAt(e.point); // a click on the line or the outline of a border (shapes.js)
+      if (line) {
+        hideMenu();
+        return AHM.emit("shape:click", { id: line.properties.id });
+      }
       const base = map
         .queryRenderedFeatures(e.point)
         .find(
@@ -332,6 +339,7 @@ function initMap() {
         lon: e.lngLat.lng,
         lat: e.lngLat.lat,
         name: base && base.properties.name,
+        shapes: shapesAt(e.point).map((f) => ({ id: f.properties.id })), // the areas under the click, the top one first
       });
     });
     map.on("dblclick", (e) => {
@@ -383,6 +391,7 @@ function initMap() {
           `<label><input type="checkbox" data-g="${g}" checked> ${g}</label>`,
       )
       .join(" ");
+    shapesInit();
     overlaysInit();
     syncOverlays();
     applyVis();

@@ -1,7 +1,7 @@
 /* Styles of the campaigns feature. Every selector starts with .campaigns- or #campaigns- (tests/js/features.test.js). */
 .campaigns-badge {
   position: fixed;
-  left: 8px;
+  right: 120px; /* on the map, beside the attribution: never over the cards of the sidebar */
   bottom: 8px;
   z-index: 5;
   padding: 2px 8px;

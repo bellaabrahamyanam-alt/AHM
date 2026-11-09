@@ -23,7 +23,7 @@ function lySet(ls, ln, cs) {
   layerNotes = ln;
   categories = cs;
   lyMembers = {};
-  layers.forEach((l) => (lyMembers[l.id] = new Set(l.members.map((m) => m.place))));
+  layers.forEach((l) => (lyMembers[l.id] = new Set(l.members.map((m) => m.place || m.shape))));
   ['only', 'hide'].forEach((k) => [...lyState[k]].forEach((id) => lyById(id) || lyState[k].delete(id))); // deleted by someone
   if (lyState.open && !lyById(lyState.open)) lyState.open = null;
   if (lyState.editing && !lyById(lyState.editing)) lyStopEdit();
@@ -85,7 +85,9 @@ function lyHay(ly) {
 }
 function lyRowHTML(ly, l) {
   const c = catById(ly.category),
-    meta = [catName(c, l), lyWhen(ly), ly.members.length + (ly.members.length === 1 ? ' place' : ' places')].filter(Boolean);
+    np = ly.members.filter((m) => m.place).length,
+    ns = ly.members.length - np,
+    meta = [catName(c, l), lyWhen(ly), np + (np === 1 ? ' place' : ' places'), ns ? ns + (ns === 1 ? ' border' : ' borders') : ''].filter(Boolean);
   return (
     `<li data-lid="${ly.id}"><div class="t"><b>${lySwatch(ly.color)}${esc(lyName(ly, l))}</b>` +
     `<span class="ly-btns"><button class="${lyState.only.has(ly.id) ? 'on' : ''}" data-lyact="only" data-lid="${ly.id}" title="Show on the map only the places of this layer">Only</button>` +
@@ -171,12 +173,13 @@ function lyRenderDetail() {
     '<button data-lyact="fit">Fit map</button></div>' +
     (editing
       ? lyEditPanel(ly, byId)
-      : `<div class="label">Places (${ly.members.length})</div><ul class="ly-members">` +
+      : `<div class="label">Places (${ly.members.filter((m) => m.place).length})</div><ul class="ly-members">` +
         (ly.members
           .map((m, i) => byId.get(m.place) && `<li data-pid="${m.place}"><span class="sn">${i + 1}.</span> <b>${esc(label(byId.get(m.place), l))}</b> <span class="badge">${typeIcon(byId.get(m.place).type)}${typeLabel(byId.get(m.place).type)}</span></li>`)
           .filter(Boolean)
           .join('') || '<li class="empty">No places yet.</li>') +
-        '</ul>') +
+        '</ul>' +
+        lyShapeList(ly, l)) +
     '<div class="label">Notes about this layer</div>' +
     (ns
       .map(
@@ -195,13 +198,13 @@ function lyRenderDetail() {
 }
 /** Choosing places: click them on the map or tick them here; nothing is saved until "Save places". */
 function lyEditPanel(ly, byId) {
-  const orig = new Set(ly.members.map((m) => m.place)),
+  const orig = new Set(ly.members.map((m) => m.place || m.shape)),
     add = [...lyState.staged].filter((p) => !orig.has(p)).length,
     rem = [...orig].filter((p) => !lyState.staged.has(p)).length;
   return (
-    `<div class="ly-edit"><b>Choose the places of this layer</b><div class="sn">Click places on the map, or tick them below. A place always stays on the main map. ` +
+    `<div class="ly-edit"><b>Choose the places and borders of this layer</b><div class="sn">Click places or borders (their lines) on the map, or tick them below. Everything stays on the main map. ` +
     `<span id="lyDelta">${add || rem ? `+${add} −${rem}` : 'no changes yet'}</span></div>` +
-    searchFieldHTML('lyPickQ', 'Find a place…') +
+    searchFieldHTML('lyPickQ', 'Find a place or border…') +
     `<ul id="lyPick">${lyPickRows('', byId)}</ul>` +
     '<div class="row"><button class="primary" data-lyact="saveplaces">Save places</button><button data-lyact="cancelplaces">Cancel</button></div></div>'
   );
@@ -217,12 +220,26 @@ function lyPickRows(q, byId) {
         (p) =>
           `<li data-pid="${p.id}"><label><input type="checkbox"${lyState.staged.has(p.id) ? ' checked' : ''}> ${esc(label(p, l))}</label> <span class="badge">${typeLabel(p.type)}</span></li>`
       )
-      .join('') || '<li class="empty">No places match.</li>'
+      .join('') +
+      shapes
+        .filter((s) => !q || s.names.some((n) => norm(n.name).includes(q)))
+        .sort((a, b) => shapeName(a, l).localeCompare(shapeName(b, l)))
+        .map((s) => `<li data-pid="${s.id}"><label><input type="checkbox"${lyState.staged.has(s.id) ? ' checked' : ''}> ${esc(shapeName(s, l))}</label> <span class="badge">${shIcon(s.type)}${esc(shapeType(s.type).label)}</span></li>`)
+        .join('') || '<li class="empty">Nothing matches.</li>'
   );
+}
+/** The borders of an open layer, under its places. */
+function lyShapeList(ly, l) {
+  const ss = ly.members.map((m) => m.shape && shapeById(m.shape)).filter(Boolean);
+  return ss.length
+    ? `<div class="label">Borders (${ss.length})</div><ul class="ly-members">` +
+        ss.map((s) => `<li data-sid="${s.id}"><b>${esc(shapeName(s, l))}</b> <span class="badge">${shIcon(s.type)}${esc(shapeType(s.type).label)}</span></li>`).join('') +
+        '</ul>'
+    : '';
 }
 function lyDelta() {
   const ly = lyById(lyState.editing),
-    orig = new Set(ly.members.map((m) => m.place)),
+    orig = new Set(ly.members.map((m) => m.place || m.shape)),
     add = [...lyState.staged].filter((p) => !orig.has(p)).length,
     rem = [...orig].filter((p) => !lyState.staged.has(p)).length;
   if ($('#lyDelta')) $('#lyDelta').textContent = add || rem ? `+${add} −${rem}` : 'no changes yet';
@@ -249,7 +266,7 @@ function lyStartEdit() {
   const ly = lyById(lyState.open);
   if (!ly) return;
   lyState.editing = ly.id;
-  lyState.staged = new Set(ly.members.map((m) => m.place));
+  lyState.staged = new Set(ly.members.map((m) => m.place || m.shape));
   AHM.state.patch('layers', {});
   lyRenderDetail();
   update(); // every place is shown now, the members get a ring
@@ -273,7 +290,7 @@ function lyToggleMember(pid) {
 }
 async function lySavePlaces() {
   const ly = lyById(lyState.editing),
-    orig = ly.members.map((m) => m.place),
+    orig = ly.members.map((m) => m.place || m.shape),
     add = [...lyState.staged].filter((p) => !orig.includes(p)),
     remove = orig.filter((p) => !lyState.staged.has(p));
   try {
@@ -287,8 +304,9 @@ async function lySavePlaces() {
 }
 function lyFit() {
   const ly = lyById(lyState.open),
-    ps = ly ? places.filter((p) => lyMembers[ly.id].has(p.id)) : [];
-  AHM.map.fitTo(ps.map((p) => [p.lon, p.lat]));
+    ps = ly ? places.filter((p) => lyMembers[ly.id].has(p.id)) : [],
+    ss = ly ? shapes.filter((s) => lyMembers[ly.id].has(s.id)) : [];
+  AHM.map.fitTo([...ps.map((p) => [p.lon, p.lat]), ...ss.flatMap((s) => bboxCorners(geomBBox(s.geometry)))]);
 }
 
 // ---- the layer form (new / change) ----
@@ -531,6 +549,8 @@ $('#lyDetail').addEventListener('click', async (e) => {
     return lyToggleMember(pk.dataset.pid);
   }
   if (li && !a) return show(li.dataset.pid);
+  const sli = e.target.closest('.ly-members li[data-sid]');
+  if (sli && !a) return shOpen(sli.dataset.sid);
   if (!a || !ly) return;
   const act = a.dataset.lyact;
   if (act === 'only' || act === 'hide') lyToggleFilter(act, ly.id);

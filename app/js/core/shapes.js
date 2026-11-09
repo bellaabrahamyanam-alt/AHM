@@ -152,3 +152,59 @@ function guessShapeType(x) {
   if (['county', 'district', 'municipality', 'city', 'town', 'village', 'suburb', 'borough', 'city_district'].includes(t)) return 'district';
   return 'territory';
 }
+/** The colour of the name drawn on the map: the shape colour, darkened so it reads on the white halo. */
+function shapeInk(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((c) => Math.round(c * 0.5).toString(16).padStart(2, '0')).join('');
+}
+/** Where to write the name: inside the largest part of an area (the point farthest from every edge, found on a grid), the middle of a line. */
+function geomLabelPoint(g) {
+  if (g.type === 'LineString' || g.type === 'MultiLineString') {
+    const l = geomLines(g).reduce((a, b) => (b.length > a.length ? b : a));
+    return l[Math.floor(l.length / 2)];
+  }
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates,
+    box = (r) => geomBBox({ type: 'LineString', coordinates: r }),
+    best = polys.reduce((a, p) => (bboxArea(box(p[0])) > bboxArea(box(a[0])) ? p : a)),
+    segs = best.flatMap((r) => r.slice(1).map((p, i) => [r[i], p])),
+    inside = (x, y) => {
+      let c = false;
+      best.forEach((r) => {
+        for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+          if (r[i][1] > y !== r[j][1] > y && x < ((r[j][0] - r[i][0]) * (y - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+      });
+      return c;
+    },
+    dist = (x, y) => {
+      let m = Infinity;
+      for (const [a, b] of segs) {
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          len = dx * dx + dy * dy,
+          t = len ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len)) : 0,
+          ex = a[0] + t * dx - x,
+          ey = a[1] + t * dy - y;
+        m = Math.min(m, ex * ex + ey * ey);
+      }
+      return m;
+    };
+  const b = box(best[0]);
+  let at = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2],
+    top = -1,
+    w = (b[2] - b[0]) / 2,
+    h = (b[3] - b[1]) / 2;
+  for (let round = 0, c = at.slice(); round < 3; round++) {
+    for (let i = -6; i <= 6; i++)
+      for (let j = -6; j <= 6; j++) {
+        const x = c[0] + (i / 6) * w,
+          y = c[1] + (j / 6) * h;
+        if (!inside(x, y)) continue;
+        const d = dist(x, y);
+        if (d > top) (top = d), (at = [x, y]);
+      }
+    c = at.slice();
+    w /= 4;
+    h /= 4;
+  }
+  return at;
+}

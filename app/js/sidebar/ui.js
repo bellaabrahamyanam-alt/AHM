@@ -42,6 +42,7 @@ function tab(n) {
   }
   if (cur && !editMk) closeDetail(); // a tab is navigation: leave the place sheet (but never in the middle of editing)
   lyRenderDetail(); // the layer sheet belongs to the Layers tab
+  shRenderView(); // and the border card to the Borders tab
 }
 document.querySelector(".tabs").addEventListener("click", (e) => {
   if (e.target.dataset.tab) tab(e.target.dataset.tab);
@@ -64,7 +65,7 @@ sideHandle(false);
 // ---- the details dock: a pane under the lists; the place details (#detail) and the layer details (#lyDetail) live in it ----
 $(".stack").append($("#dock"));
 function dockSync() {
-  $("#dock").hidden = $("#detail").hidden && $("#lyDetail").hidden;
+  $("#dock").hidden = $("#detail").hidden && $("#lyDetail").hidden && $("#shDetail").hidden;
 }
 // The dock covers the lower half of the panel: if a row is hidden behind it, scroll the list just enough to centre the row.
 function revealRow(li) {
@@ -284,6 +285,7 @@ function update() {
     })),
   };
   AHM.map.setFeatures(fc);
+  shRefresh(); // the borders follow the same filters
 }
 $("#activeBar").addEventListener("click", (e) => {
   const k = e.target.closest("[data-clear]") && e.target.closest("[data-clear]").dataset.clear;
@@ -362,7 +364,8 @@ const btns = (...a) =>
     .map(([k, t, c]) => `<button data-act="${k}"${c ? ` class="${c}"` : ""}>${t}</button>`)
     .join(" ");
 // A click on an empty point of the map opens a small menu at that point (map.js): add place, route from, route to.
-const pointActions = () => [
+const pointActions = (p) => [
+  ...(p && p.shapes && p.shapes.length ? [{ id: "border", icon: "area", label: "Open border: " + shapeName(shapeById(p.shapes[0].id), $("#lang").value) }] : []),
   ...(AHM_CONFIG.canEdit ? [{ id: "add", icon: "plus", label: "Add place here" }] : []),
   { id: "from", icon: "route-from", label: "Route from here" },
   { id: "to", icon: "route-to", label: "Route to here" },
@@ -370,12 +373,17 @@ const pointActions = () => [
 let pickBusy = false; // "add" opened the dialog: the grey pin stays until the dialog closes
 function pickPoint(p) {
   const hint = AHM_CONFIG.canEdit ? "" : AHM_CONFIG.loggedIn ? "Adding places is limited to administrators." : "Log in to add places.";
-  AHM.map.showMenu(p, pointActions(), p.name || "Selected point", hint); // first: it closes the previous menu, which clears the old pin
+  AHM.map.showMenu(p, pointActions(p), p.name || "Selected point", hint); // first: it closes the previous menu, which clears the old pin
   pick = p;
   AHM.map.setPick(p);
 }
 AHM.on("map:menu", ({ action }) => {
   if (!pick) return;
+  if (action === "border") {
+    const id = pick.shapes[0].id;
+    AHM.map.hideMenu();
+    return shOpen(id);
+  }
   if (action === "add") {
     pickBusy = true;
     openDlg("place", pick);
@@ -815,18 +823,23 @@ AHM.on("place:dblclick", ({ id }) => {
   if (!lyState.editing && (!cur || cur.id !== id)) show(id);
 });
 AHM.on("map:show-controls", () => tab("maps"));
-AHM.on("map:click", (p) => !lyState.editing && pickPoint(p)); // choosing places for a layer: empty clicks do nothing
+AHM.on("map:click", (p) => {
+  if (!lyState.editing) return pickPoint(p);
+  if (p.shapes && p.shapes.length) lyToggleMember(p.shapes[0].id); // choosing members: a click inside a border picks it
+});
 // ---- start ----
 renderRoute();
-Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), loadLayerNotes(), loadCategories()])
-  .then(([p, n, l, ly, ln, cs]) => {
+Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), loadLayerNotes(), loadCategories(), loadShapes()])
+  .then(([p, n, l, ly, ln, cs, sp]) => {
     languages = l;
     renderLangs();
     setData(p, n);
+    shSet(sp);
     lySet(ly, ln, cs);
     update();
     if (location.hash.startsWith("#place-")) show(location.hash.slice(7));
     else if (location.hash.startsWith("#layer-")) lyOpen(location.hash.slice(7));
+    else if (location.hash.startsWith("#border-")) shOpen(location.hash.slice(8), true);
   })
   .catch(
     (e) =>

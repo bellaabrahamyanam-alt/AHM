@@ -673,11 +673,11 @@ function renderLangs() {
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(
         (l) =>
-          `<li class="tr tr-cat${l.code === lgEditing ? " on" : ""}"><span class="tc-btn">${
+          `<li class="tr${l.code === lgEditing ? " on" : ""}"><span class="tc-btn">${
             AHM_CONFIG.canLanguage
               ? `<button type="button" class="icon-btn" data-lgedit="${esc(l.code)}" title="Edit ${esc(l.name)}" aria-label="Edit ${esc(l.name)}">${ICON_PENCIL}</button>`
               : ""
-          }</span><span class="tc-name"><b>${esc(l.name)}</b> <span class="sn">[${esc(l.code)}]</span></span><span class="sn">${esc(l.native || "")}</span></li>`,
+          }</span><span class="tc-code">${esc(l.code)}</span><span>${esc(l.name)}</span><span>${esc(l.native || "")}</span></li>`,
       )
       .join("") || '<li class="sn">No languages yet.</li>';
 }

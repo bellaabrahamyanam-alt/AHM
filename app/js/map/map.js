@@ -9,7 +9,7 @@ let mapReady = false,
   hoverId = null, // the place whose symbol is lifted under the mouse
   hoverCluster = null, // the bubble under the mouse
   pendingClick = null, // timer of a single click on a place: a double click cancels it
-  pendingId = null, // the place that single click belongs to
+  lastHit = null, // the last click on a place: {id, at, x, y, t}; a second click near it within DBL_WINDOW_MS is a double click
   lastDblAt = 0, // when the last double click on a place was handled (the click path and the dblclick event must not both move the map)
   pickMarker = null,
   menu = null, // the popup with the actions for a clicked empty point
@@ -17,6 +17,7 @@ let mapReady = false,
 const CLUSTER_RADIUS = 50; // px: places this close together become one bubble
 const CLUSTER_MAX_ZOOM = 11; // from zoom 12 on every place is drawn on its own
 const DBL_CLICK_MS = 300; // a single click on a place waits this long, in case a double click follows
+const DBL_WINDOW_MS = 600; // two clicks on the same spot within this time are a double click
 const TIP_GAP = 6; // px between the bullet's edge and the tooltip
 const BUBBLE = "#3a3f44";
 const BUBBLE_HOVER = "#5a6168";
@@ -300,12 +301,21 @@ function initMap() {
         return zoomToBubble(bubble);
       }
       const ours = placeAt(e);
-      if (ours) {
+      // the second click of a double click: the same spot within the window, even if the symbol can not be queried at that instant
+      const again =
+        lastHit && performance.now() - lastHit.t < DBL_WINDOW_MS && Math.hypot(e.point.x - lastHit.x, e.point.y - lastHit.y) < 12
+          ? lastHit
+          : null;
+      if (ours || again) {
         hideMenu();
-        const id = ours.properties.id;
-        if (pendingClick && pendingId === id) return placeDblClick(id); // the second click of a double click
+        const id = ours ? ours.properties.id : again.id;
+        const at = ours ? ours.geometry.coordinates : again.at;
+        if (again && again.id === id) {
+          lastHit = null;
+          return placeDblClick(id, at);
+        }
+        lastHit = { id, at, x: e.point.x, y: e.point.y, t: performance.now() };
         clearTimeout(pendingClick);
-        pendingId = id;
         pendingClick = setTimeout(() => {
           pendingClick = null;
           AHM.emit("place:click", { id });
@@ -331,9 +341,9 @@ function initMap() {
         return zoomToBubble(bubble);
       }
       const ours = placeAt(e);
-      if (!ours) return;
-      e.preventDefault(); // no default double-click zoom
-      placeDblClick(ours.properties.id);
+      if (!ours && performance.now() - lastDblAt > 500) return; // not on a place
+      e.preventDefault(); // no default double-click zoom (also when the click path has just handled this double click)
+      if (ours) placeDblClick(ours.properties.id, ours.geometry.coordinates);
     });
     map.on("mouseenter", "ahm-places", (e) => {
       const f = e.features[0];
@@ -452,13 +462,14 @@ function hideTip() {
 }
 
 // A double click on a place: no pending single click, move the map as the list row does, tell the sidebar (it opens the place).
-function placeDblClick(id) {
+function placeDblClick(id, at) {
   clearTimeout(pendingClick);
   pendingClick = null;
   if (performance.now() - lastDblAt < 500) return; // already handled by the other path
   lastDblAt = performance.now();
-  AHM.map.focusPlace(id);
-  AHM.emit("place:dblclick", { id });
+  AHM.emit("place:dblclick", { id }); // the sidebar opens the place
+  // the move starts after the sidebar has finished its own changes and after the browser's own dblclick event, so nothing can cancel it
+  setTimeout(() => AHM.map.focusPlace(id, at), 100);
 }
 // ---- the menu of a clicked empty point: icon buttons for the actions the sidebar offers (AHM.map.showMenu, event map:menu) ----
 function hideMenu() {
@@ -558,10 +569,11 @@ Object.assign(AHM.map, {
     hiddenId = id;
     applyHidden();
   },
-  focusPlace(id) {
+  focusPlace(id, at) {
     const f = featuresNow && featuresNow.features.find((x) => x.properties.id === id);
+    const center = f ? f.geometry.coordinates : at; // `at` = where the symbol was clicked, if the place is not in the list any more
     // always a visible zoom in: 1.5 levels closer, at least level 8, at most the map's limit
-    if (f) map.flyTo({ center: f.geometry.coordinates, zoom: Math.min(map.getMaxZoom(), Math.max(map.getZoom() + 1.5, 8)) });
+    if (center) map.flyTo({ center, zoom: Math.min(map.getMaxZoom(), Math.max(map.getZoom() + 1.5, 8)), essential: true });
   },
   focusPoint(p, zoom) {
     map.flyTo({ center: lngLatOf(p), zoom });

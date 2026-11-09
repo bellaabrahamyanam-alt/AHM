@@ -9,20 +9,48 @@ let mapReady = false,
   hoverId = null, // the place whose symbol is lifted under the mouse
   hoverCluster = null, // the bubble under the mouse
   pendingClick = null, // timer of a single click on a place: a double click cancels it
+  lastHit = null, // the last click on a place: {id, at, x, y, t}; a second click near it within DBL_WINDOW_MS is a double click
+  lastDblAt = 0, // when the last double click on a place was handled (the click path and the dblclick event must not both move the map)
   pickMarker = null,
+  menu = null, // the popup with the actions for a clicked empty point
   routeMarkers = {};
 const CLUSTER_RADIUS = 50; // px: places this close together become one bubble
 const CLUSTER_MAX_ZOOM = 11; // from zoom 12 on every place is drawn on its own
 const DBL_CLICK_MS = 300; // a single click on a place waits this long, in case a double click follows
-const TIP_TOP_MIN = 60; // px from the top edge: closer than this, the tooltip goes below the bullet
+const DBL_WINDOW_MS = 600; // two clicks on the same spot within this time are a double click
 const TIP_GAP = 6; // px between the bullet's edge and the tooltip
 const BUBBLE = "#3a3f44";
 const BUBBLE_HOVER = "#5a6168";
+const SEL_SCALE = 1.25; // the selected symbol is this much larger than the others
+const SIZE_STOPS = [
+  [4, 0.55],
+  [8, 0.8],
+  [11, 1],
+]; // [zoom, symbol size]: small when the map is zoomed out, full size from zoom 11
+const sizeByZoom = (k) => ["interpolate", ["linear"], ["zoom"], ...SIZE_STOPS.flatMap(([z, s]) => [z, s * k])];
+function zoomScale(z) {
+  if (z <= SIZE_STOPS[0][0]) return SIZE_STOPS[0][1];
+  for (let i = 1; i < SIZE_STOPS.length; i++) {
+    const [z0, s0] = SIZE_STOPS[i - 1],
+      [z1, s1] = SIZE_STOPS[i];
+    if (z <= z1) return s0 + ((s1 - s0) * (z - z0)) / (z1 - z0);
+  }
+  return SIZE_STOPS[SIZE_STOPS.length - 1][1];
+}
+// where the point menu sits relative to the clicked point, for every side the library may choose (the grey pin is about 40px high)
+const MENU_OFFSET = {
+  center: [0, 0],
+  top: [0, 12],
+  "top-left": [0, 12],
+  "top-right": [0, 12],
+  bottom: [0, -40],
+  "bottom-left": [0, -40],
+  "bottom-right": [0, -40],
+  left: [14, -20],
+  right: [-14, -20],
+};
 const SEL = {
-  shadow: "ahm-highlight-shadow",
-  ring: "ahm-highlight", // the white outline; the id the selection tests use
-  outer: "ahm-highlight-outer",
-  symbol: "ahm-highlight-symbol",
+  symbol: "ahm-highlight-symbol", // the selected place: its marker with a white border, a little larger
 };
 const EMPTY = { type: "FeatureCollection", features: [] };
 const GROUPS = {
@@ -155,6 +183,7 @@ function initMap() {
           ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
           ["image", "ahm-type-settlement"],
         ],
+        "icon-size": sizeByZoom(1),
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
@@ -181,6 +210,7 @@ function initMap() {
             !ops.includes(l.layout["text-font"][0]),
         );
       const font = fl ? fl.layout["text-font"] : ["Noto Sans Regular"];
+      labelFont = font; // the border names (shapes.js) use it too
       map.addLayer({
         id: "ahm-labels",
         type: "symbol",
@@ -213,44 +243,25 @@ function initMap() {
         paint: { "text-color": "#ffffff" },
       });
     }
+    // the place under the mouse: a larger symbol in a soft ring (own source and layers, so the symbols underneath never change)
+    map.addSource("ahm-hover", { type: "geojson", data: EMPTY });
+    map.addLayer({
+      id: "ahm-hover-symbol",
+      type: "symbol",
+      source: "ahm-hover",
+      layout: {
+        "icon-image": [
+          "coalesce",
+          ["image", ["concat", "ahm-type-", ["get", "type_code"], "-hl"]],
+          ["image", "ahm-type-settlement-hl"],
+        ],
+        "icon-size": sizeByZoom(1),
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
     // the selected place: drawn last, so it is above labels and every other symbol at every zoom
     map.addSource("ahm-highlight", { type: "geojson", data: EMPTY }); // one Point: the selected place, never clustered
-    map.addLayer({
-      id: SEL.shadow,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": 17,
-        "circle-color": "rgba(0,0,0,0.35)",
-        "circle-blur": 0.6,
-        "circle-radius-transition": { duration: 150 },
-      },
-    });
-    map.addLayer({
-      id: SEL.ring,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": 14,
-        "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#ffffff",
-        "circle-radius-transition": { duration: 150 },
-        "circle-stroke-width-transition": { duration: 150 },
-      },
-    });
-    map.addLayer({
-      id: SEL.outer,
-      type: "circle",
-      source: "ahm-highlight",
-      paint: {
-        "circle-radius": 16,
-        "circle-color": "rgba(0,0,0,0)",
-        "circle-stroke-width": 1,
-        "circle-stroke-color": "rgba(0,0,0,0.5)",
-        "circle-radius-transition": { duration: 150 },
-      },
-    });
     map.addLayer({
       id: SEL.symbol,
       type: "symbol",
@@ -258,15 +269,16 @@ function initMap() {
       layout: {
         "icon-image": [
           "coalesce",
-          ["image", ["concat", "ahm-type-", ["get", "type_code"]]],
-          ["image", "ahm-type-settlement"],
+          ["image", ["concat", "ahm-type-", ["get", "type_code"], "-hl"]],
+          ["image", "ahm-type-settlement-hl"],
         ],
-        "icon-size": 1.3,
+        "icon-size": sizeByZoom(SEL_SCALE),
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
       paint: { "icon-opacity-transition": { duration: 150 } },
     });
+
     // ---- pointer events -------------------------------------------------------------------------------------
     const hitAt = (e, ids) =>
       map.queryRenderedFeatures(e.point, {
@@ -284,17 +296,38 @@ function initMap() {
         .catch(() => {});
     };
     map.on("click", (e) => {
+      if (shapeDrawing) return; // the drawing tool (shapes.js) owns the clicks
       const bubble = bubbleAt(e);
-      if (bubble) return zoomToBubble(bubble);
+      if (bubble) {
+        hideMenu();
+        return zoomToBubble(bubble);
+      }
       const ours = placeAt(e);
-      if (ours) {
+      // the second click of a double click: the same spot within the window, even if the symbol can not be queried at that instant
+      const again =
+        lastHit && performance.now() - lastHit.t < DBL_WINDOW_MS && Math.hypot(e.point.x - lastHit.x, e.point.y - lastHit.y) < 12
+          ? lastHit
+          : null;
+      if (ours || again) {
+        hideMenu();
+        const id = ours ? ours.properties.id : again.id;
+        const at = ours ? ours.geometry.coordinates : again.at;
+        if (again && again.id === id) {
+          lastHit = null;
+          return placeDblClick(id, at);
+        }
+        lastHit = { id, at, x: e.point.x, y: e.point.y, t: performance.now() };
         clearTimeout(pendingClick);
-        const id = ours.properties.id;
         pendingClick = setTimeout(() => {
           pendingClick = null;
           AHM.emit("place:click", { id });
         }, DBL_CLICK_MS);
         return;
+      }
+      const line = shapeLineAt(e.point); // a click on the line or the outline of a border (shapes.js)
+      if (line) {
+        hideMenu();
+        return AHM.emit("shape:click", { id: line.properties.id });
       }
       const base = map
         .queryRenderedFeatures(e.point)
@@ -306,6 +339,7 @@ function initMap() {
         lon: e.lngLat.lng,
         lat: e.lngLat.lat,
         name: base && base.properties.name,
+        shapes: shapesAt(e.point).map((f) => ({ id: f.properties.id })), // the areas under the click, the top one first
       });
     });
     map.on("dblclick", (e) => {
@@ -315,16 +349,14 @@ function initMap() {
         return zoomToBubble(bubble);
       }
       const ours = placeAt(e);
-      if (!ours) return;
-      e.preventDefault(); // no default double-click zoom; the sidebar decides what a double click does
-      clearTimeout(pendingClick);
-      pendingClick = null;
-      AHM.emit("place:dblclick", { id: ours.properties.id });
+      if (!ours && performance.now() - lastDblAt > 500) return; // not on a place
+      e.preventDefault(); // no default double-click zoom (also when the click path has just handled this double click)
+      if (ours) placeDblClick(ours.properties.id, ours.geometry.coordinates);
     });
     map.on("mouseenter", "ahm-places", (e) => {
       const f = e.features[0];
       map.getCanvas().style.cursor = "pointer";
-      liftPlace(f.properties.id);
+      liftPlace(f);
       showTip(f.properties, f.geometry.coordinates);
     });
     map.on("mouseleave", "ahm-places", () => {
@@ -336,7 +368,7 @@ function initMap() {
       // the selected place is not lifted, but it shows the pointer and its tooltip
       const f = e.features[0];
       map.getCanvas().style.cursor = "pointer";
-      showTip(f.properties, f.geometry.coordinates);
+      showTip(f.properties, f.geometry.coordinates, SEL_SCALE);
     });
     map.on("mouseleave", SEL.symbol, () => {
       map.getCanvas().style.cursor = "";
@@ -359,6 +391,7 @@ function initMap() {
           `<label><input type="checkbox" data-g="${g}" checked> ${g}</label>`,
       )
       .join(" ");
+    shapesInit();
     overlaysInit();
     syncOverlays();
     applyVis();
@@ -389,13 +422,22 @@ function initMap() {
 }
 
 // ---- hover and tooltip (task 008) ----
-function liftPlace(id) {
-  hoverId = id;
-  map.setPaintProperty(
-    "ahm-places",
-    "icon-opacity",
-    id == null ? null : ["case", ["==", ["get", "id"], id], 0.85, 1],
-  );
+// One Point for the hover and selected layers: it carries the type (symbol) and the symbol radius r (ring sizes).
+const pointOf = (coords, props) => ({
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: coords },
+      properties: { ...props, r: (TYPE_STYLE[props.type_code] || TYPE_STYLE.settlement).r },
+    },
+  ],
+});
+// The place under the mouse is redrawn a little larger inside a soft ring; the symbol never turns transparent.
+function liftPlace(f) {
+  hoverId = f ? f.properties.id : null;
+  const src = map.getSource("ahm-hover");
+  if (src) src.setData(f ? pointOf(f.geometry.coordinates, { id: f.properties.id, type_code: f.properties.type_code }) : EMPTY);
 }
 function paintBubbles() {
   map.setPaintProperty(
@@ -406,16 +448,18 @@ function paintBubbles() {
       : ["case", ["==", ["get", "cluster_id"], hoverCluster], BUBBLE_HOVER, BUBBLE],
   );
 }
-function showTip(props, coords) {
+function showTip(props, coords, scale = 1) {
   hideTip();
   const style = TYPE_STYLE[props.type_code] || TYPE_STYLE.settlement;
-  const anchor = map.project(coords).y < TIP_TOP_MIN ? "top" : "bottom";
-  const html = `<b>${esc(props.name)}</b><br><span class="sn">${esc(props.type)}${props.dates ? " · " + esc(props.dates) : ""}</span>`;
+  const sub = [props.type, props.dates].filter(Boolean).map(esc).join(" · ");
+  const html = `<div class="tip-title">${esc(props.name || "")}</div><div class="tip-sub">${typeIcon(props.type_code)}${sub}</div>`;
+  // no fixed anchor: the library picks the side that keeps the tooltip inside the map (near the sidebar edge it opens to the right)
   tip = new maplibregl.Popup({
     closeButton: false,
     closeOnClick: false,
-    anchor,
-    offset: style.r + TIP_GAP,
+    className: "ahm-tip",
+    maxWidth: "260px",
+    offset: style.r * scale * zoomScale(map.getZoom()) + TIP_GAP + 4, // the symbol is smaller when zoomed out; 4px for the border
   })
     .setLngLat(coords)
     .setHTML(html)
@@ -425,6 +469,65 @@ function hideTip() {
   if (tip) tip.remove();
   tip = null;
 }
+
+// A double click on a place: no pending single click, move the map as the list row does, tell the sidebar (it opens the place).
+function placeDblClick(id, at) {
+  clearTimeout(pendingClick);
+  pendingClick = null;
+  if (performance.now() - lastDblAt < 500) return; // already handled by the other path
+  lastDblAt = performance.now();
+  AHM.emit("place:dblclick", { id }); // the sidebar opens the place
+  // the move starts after the sidebar has finished its own changes and after the browser's own dblclick event, so nothing can cancel it
+  setTimeout(() => AHM.map.focusPlace(id, at), 100);
+}
+// ---- the menu of a clicked empty point: icon buttons for the actions the sidebar offers (AHM.map.showMenu, event map:menu) ----
+function hideMenu() {
+  if (!menu) return;
+  const m = menu;
+  menu = null;
+  m.remove(); // fires "close" -> map:menu-close
+}
+function showMenu(p, actions, title, hint) {
+  hideMenu();
+  hideTip();
+  const el = document.createElement("div");
+  el.className = "ahm-menu";
+  el.innerHTML =
+    `<div class="ahm-menu-title">${esc(title || "")}</div><div class="ahm-menu-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>` +
+    '<div class="ahm-menu-btns">' +
+    actions
+      .map(
+        (a) =>
+          `<button type="button" class="ahm-menu-btn${a.id === "add" ? " primary" : ""}" data-id="${esc(a.id)}" title="${esc(a.label)}" aria-label="${esc(a.label)}">${AHM.icons.svg(a.icon, 20)}</button>`,
+      )
+      .join("") +
+    "</div>" +
+    (hint ? `<div class="ahm-menu-hint">${esc(hint)}</div>` : "");
+  const pop = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    className: "ahm-menu-popup",
+    maxWidth: "none",
+    offset: MENU_OFFSET,
+  })
+    .setLngLat([p.lon, p.lat])
+    .setDOMContent(el)
+    .addTo(map);
+  pop.on("close", () => {
+    if (menu === pop) menu = null;
+    AHM.emit("map:menu-close");
+  });
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-id]");
+    if (!b) return;
+    AHM.emit("map:menu", { action: b.dataset.id, lon: p.lon, lat: p.lat, name: p.name });
+    hideMenu();
+  });
+  menu = pop;
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideMenu();
+});
 
 // ---- the selected place (task 004 and 008) ----
 const featureSources = ["ahm-places", "ahm-label-src"];
@@ -460,20 +563,8 @@ function applyHighlight() {
   if (!src) return;
   const f =
     selectedId != null && featuresNow && featuresNow.features.find((x) => x.properties.id === selectedId);
-  src.setData(
-    f
-      ? {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: { type: "Point", coordinates: f.geometry.coordinates },
-              properties: { id: selectedId, type_code: f.properties.type_code },
-            },
-          ],
-        }
-      : EMPTY,
-  );
+  // all properties of the place travel with the highlight: its tooltip needs the name, the type and the dates
+  src.setData(f ? pointOf(f.geometry.coordinates, f.properties) : EMPTY);
 }
 // ---- commands for the sidebar: AHM.map.* (INTERFACES.md, I-2) ----
 const lngLatOf = (p) => [p.lon, p.lat];
@@ -487,9 +578,11 @@ Object.assign(AHM.map, {
     hiddenId = id;
     applyHidden();
   },
-  focusPlace(id) {
+  focusPlace(id, at) {
     const f = featuresNow && featuresNow.features.find((x) => x.properties.id === id);
-    if (f) map.flyTo({ center: f.geometry.coordinates, zoom: Math.max(map.getZoom(), 8) });
+    const center = f ? f.geometry.coordinates : at; // `at` = where the symbol was clicked, if the place is not in the list any more
+    // a double click only moves the map to the place: the reader's zoom stays as it is
+    if (center) map.flyTo({ center, zoom: map.getZoom(), essential: true });
   },
   focusPoint(p, zoom) {
     map.flyTo({ center: lngLatOf(p), zoom });
@@ -518,6 +611,8 @@ Object.assign(AHM.map, {
           .addTo(map);
     });
   },
+  showMenu,
+  hideMenu,
   setPick(p) {
     pickMarker && pickMarker.remove();
     pickMarker = p ? new maplibregl.Marker({ color: "#666" }).setLngLat(lngLatOf(p)).addTo(map) : null;

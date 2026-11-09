@@ -51,7 +51,7 @@ function syncOverlays() {
       c = editing ? ovEdit.coords : o.coordinates;
     if (!map.getSource(id)) {
       map.addSource(id, { type: 'image', url: ovUrl(o), coordinates: c });
-      map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-fade-duration': 0 } }, 'ahm-route'); // above the base map, below route and markers
+      map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-fade-duration': 0 } }, map.getLayer('ahm-shape-fill') ? 'ahm-shape-fill' : 'ahm-route'); // above the base map, below the borders, the route and the markers
     } else map.getSource(id).setCoordinates(c);
     map.setPaintProperty(id, 'raster-opacity', ovOpacity(o));
     map.setLayerZoomRange(id, editing ? 0 : o.minzoom, editing ? 24 : o.maxzoom); // while editing it is always visible

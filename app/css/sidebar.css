@@ -14,12 +14,6 @@ aside {
 body.collapsed aside {
   margin-left: calc(-1 * var(--side-w, 380px));
 }
-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 12px 14px 6px;
-}
 h2 {
   font: normal 20px var(--font-head);
   color: var(--content-color);
@@ -124,14 +118,24 @@ button {
   cursor: pointer;
   white-space: nowrap;
 }
-button:hover,
-button:focus {
+/* hover and press have their own greys (the forum grey is the same as the button grey); a clicked button does not stay "hovered" */
+button:hover:not(:disabled) {
   color: var(--btn-fg-hover);
-  background: var(--btn-bg-hover);
+  background: var(--btn-hover-bg);
+}
+button:active:not(:disabled) {
+  background: var(--btn-press-bg);
+}
+button:focus {
   outline: 0;
 }
 button:focus-visible {
-  border-color: var(--inputbox-border-hover);
+  outline: 2px solid var(--inputbox-border-hover);
+  outline-offset: 1px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .row {
   display: flex;
@@ -209,12 +213,16 @@ hr {
   padding: 0;
 }
 .langs li.tr {
-  padding: 2px 0;
+  padding: 2px 4px 2px 10px;
   border: 0;
   cursor: default;
 }
 .langs li.tr:hover {
   background: none;
+}
+/* the rows of these tables are not links: hovering a row or its pencil changes nothing but the pencil's own box */
+.langs li.tr:hover b {
+  color: var(--a);
 }
 /* table-like rows without lines: [button] [code] [English name] [native name] */
 .tr {
@@ -242,7 +250,7 @@ button.wide {
   width: 100%;
 }
 .tr .tc-code {
-  color: var(--muted-color);
+  color: var(--a); /* bold and blue, like the category name */
 }
 .tc-btn {
   display: flex;
@@ -251,6 +259,10 @@ button.wide {
 .tc-mode {
   display: inline-flex;
   color: var(--muted-color);
+}
+/* same side padding as the list rows (.langs li.tr), so the editor columns line up with the table above */
+.tr-edit {
+  padding: 0 4px 0 10px;
 }
 .tr-edit input {
   margin: 0;
@@ -402,19 +414,24 @@ li {
 li:first-child {
   border-top: 1px solid var(--li-row-border-bottom-color);
 }
-li:hover {
-  background: var(--li-row-hover);
+/* a row reacts only to the pointer over the row itself, not over a button, link or box inside it (:where keeps the specificity of plain li:hover) */
+li:hover:where(:not(:has(button:hover, a:hover, input:hover))) {
+  background: var(--row-hover-bg);
 }
 li b {
   color: var(--a);
 }
-li:hover b {
+li:hover:where(:not(:has(button:hover, a:hover, input:hover))) b {
   color: var(--a-hover);
 }
 li .t {
   display: flex;
-  justify-content: space-between;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+}
+li .t > b {
+  flex: 1;
+  min-width: 0;
 }
 .badge {
   font-size: 10px;
@@ -457,6 +474,100 @@ li.empty:hover {
   line-height: 1.3em;
 }
 
+/* ---- notes: readable wrapping, and a folded preview for long ones (js/sidebar/ui.js: fitNotes, setNote) ---- */
+#detail .names {
+  overflow-wrap: anywhere;
+}
+#detail .note-body {
+  margin-top: 4px;
+  line-height: 1.45;
+  overflow-wrap: anywhere; /* a very long word or link never pushes the card wider than the sidebar */
+  hyphens: auto; /* uses the note's lang attribute */
+  text-wrap: pretty;
+}
+#detail .note-body p {
+  margin: 0 0 0.65em;
+  line-height: 1.45;
+}
+#detail .note-body p:last-child {
+  margin-bottom: 0;
+}
+#detail .note-body.is-clamped {
+  max-height: calc(1.45em * 6); /* NOTE_LINES in ui.js */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.8em), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.8em), transparent);
+}
+#detail .note-body.anim {
+  overflow: hidden;
+  transition: max-height 0.28s ease;
+}
+/* "more…" / "less": a quiet text link under the note, no box */
+#detail .note-more {
+  display: inline-block;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--base-href-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#detail .note-more[hidden] {
+  display: none;
+}
+#detail .note-more:hover {
+  text-decoration: underline;
+}
+#detail .note-more:focus-visible,
+#detail .note-all:focus-visible {
+  outline: 2px solid var(--base-href-color);
+  outline-offset: 2px;
+}
+#detail .note-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 -4px;
+}
+#detail .note-tools[hidden] {
+  display: none;
+}
+#detail .note-all {
+  min-height: 0;
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--base-href-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#detail .note-all:hover {
+  text-decoration: underline;
+}
+@media (prefers-reduced-motion: reduce) {
+  #detail .note-body.anim {
+    transition: none;
+  }
+}
+/* the larger-panel toggle in the place header: #dock.max makes the dock take the whole panel (over the dragged --dock-h height) */
+#dock.max {
+  flex: 1 1 100%;
+  max-height: 100%;
+}
+.icon-btn[data-act="dockmax"] svg {
+  transform: rotate(180deg); /* points up: grow the panel */
+  transition: transform 0.2s;
+}
+#dock.max .icon-btn[data-act="dockmax"] svg {
+  transform: none; /* points down: shrink it again */
+}
+
 /* ---- directions / layers ---- */
 .rp {
   display: flex;
@@ -496,25 +607,51 @@ li.empty:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
   padding: 0;
   color: var(--muted-color);
+  background: transparent;
 }
-.icon-btn:hover,
-.icon-btn:focus-visible {
+.icon-btn.sm {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+.icon-btn svg {
+  display: block;
+  flex: none;
+}
+button.icon-btn:hover:not(:disabled),
+button.icon-btn:focus-visible {
   color: var(--a);
+  background: var(--btn-hover-bg);
 }
-#expand {
-  display: none;
+button.icon-btn:active:not(:disabled) {
+  background: var(--btn-press-bg);
+}
+/* the handle on the right edge of the panel: it sticks out over the map, so it stays visible when the panel is collapsed */
+#collapse {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 3;
+  top: 50%;
+  right: -22px;
+  width: 22px;
+  height: 56px;
+  transform: translateY(-50%);
+  z-index: 6;
+  background: var(--base-bg);
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-left: 0;
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
   box-shadow: var(--dropdown-shadow);
 }
-body.collapsed #expand {
-  display: block;
+/* the old second button is replaced by the handle */
+#expand {
+  display: none !important;
+}
+body.collapsed #resizer {
+  display: none;
 }
 #resizer {
   position: absolute;
@@ -581,7 +718,7 @@ input[type="search"]::-webkit-search-cancel-button {
   color: var(--muted-color);
 }
 .clear:hover,
-.clear:focus {
+.clear:focus-visible {
   background: none;
   color: var(--a-hover);
 }
@@ -598,8 +735,23 @@ input[type="search"]::-webkit-search-cancel-button {
   flex: 0 0 130px;
   width: 130px;
 }
-.pf-add {
+/* minor actions that add a row: a text button, not a grey box (the grey boxes are for the main actions) */
+.pf-add,
+.ly-dadd {
   margin: 3px 0;
+}
+button.pf-add,
+button.ly-dadd {
+  min-height: 28px;
+  padding: 2px 4px;
+  background: none;
+  color: var(--a);
+}
+button.pf-add:hover:not(:disabled),
+button.ly-dadd:hover:not(:disabled) {
+  background: none;
+  color: var(--a-hover);
+  text-decoration: underline;
 }
 .pf-up,
 .pf-del {
@@ -624,12 +776,18 @@ input[type="search"]::-webkit-search-cancel-button {
     margin-left: 0;
     margin-bottom: calc(-1 * var(--side-h, 52vh));
   }
-  #expand {
-    top: auto;
-    bottom: 10px;
+  #collapse {
+    top: -22px;
+    right: auto;
+    left: 50%;
+    width: 56px;
+    height: 22px;
+    transform: translateX(-50%);
+    border: 1px solid var(--li-row-border-bottom-color);
+    border-bottom: 0;
+    border-radius: var(--radius-m) var(--radius-m) 0 0;
   }
-  #collapse svg,
-  #expand svg {
+  #collapse svg {
     transform: rotate(-90deg);
   }
   #resizer {
@@ -685,9 +843,6 @@ input[type="search"]::-webkit-search-cancel-button {
   padding: 6px 10px;
   margin: 6px 0;
 }
-.ly-note .mini {
-  float: right;
-}
 .ly-edit {
   background: var(--bg2-bg-color);
   border: 1px solid var(--li-row-border-bottom-color);
@@ -738,10 +893,12 @@ button.primary {
   background: var(--a);
   color: #fff;
 }
-button.primary:hover,
-button.primary:focus {
+button.primary:hover:not(:disabled) {
   background: var(--a-hover);
   color: #fff;
+}
+button.primary:active:not(:disabled) {
+  filter: brightness(0.9);
 }
 button.danger {
   color: var(--error-color);
@@ -754,30 +911,93 @@ button.back:hover {
   background: none;
   text-decoration: underline;
 }
-/* A sheet (place or layer details) covers the list; the list underneath keeps its scroll position. */
-.sheet {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
+/* The details dock: under the lists, about half of the panel (at least 220px), its own scroll; the list above keeps its scroll position. */
+#dock {
+  position: relative;
+  flex: 0 0 var(--dock-h, max(50%, 220px)); /* --dock-h is set by dragging the top edge */
+  min-height: 120px;
+  max-height: 85%;
   display: flex;
   flex-direction: column;
   background: var(--base-bg);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.08);
 }
-.sheet[hidden] {
-  display: none;
+/* the grip on the top edge of the dock: a small pill; a taller invisible strip around it takes the mouse and touch */
+#dockResizer {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 9px;
+  cursor: row-resize;
+  z-index: 5;
+  touch-action: none;
 }
-.sheet-head {
+#dockResizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-color);
+  transform: translateX(-50%);
+}
+#dockResizer:hover::after,
+#dockResizer:focus-visible::after,
+body.dock-resizing #dockResizer::after {
+  background: var(--muted-color);
+}
+#dockResizer:focus {
+  outline: 0;
+}
+body.dock-resizing {
+  user-select: none;
+  cursor: row-resize;
+}
+#detail,
+#lyDetail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-head {
   flex: none;
-  padding: 2px 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 14px;
   border-bottom: 1px solid var(--li-row-border-bottom-color);
 }
-.sheet-body {
+.dock-head .tmark,
+.dock-head .swatch {
+  flex: none;
+  margin: 0;
+}
+.dock-title {
   flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-btns {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.dock-body {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 4px 14px 16px;
+  padding: 6px 14px 12px;
   line-height: 1.45;
 }
-.sheet-actions {
+.dock-foot {
   flex: none;
   display: flex;
   flex-wrap: wrap;
@@ -850,25 +1070,124 @@ dialog {
   padding: 16px;
 }
 
-/* ---- place details open inside the list, under the place ---- */
-li.place-open,
-li.place-open:hover {
-  padding: 0 8px 10px;
-  cursor: default;
-  background: none;
-  border-top: 0;
+/* ---- polish: rows, markers, notes, one button language ---- */
+:root {
+  --row-hover-bg: #ece8d2;
+  --row-on-bg: #f8f5e4;
 }
-li.on {
-  background: var(--li-row-hover);
-  border-bottom-color: transparent;
+button,
+summary,
+.tabs {
+  user-select: none;
 }
-.inline-body {
-  line-height: 1.45;
+.tabs {
+  margin-top: 12px;
 }
-.inline-actions {
+/* the open (selected) row is clearly different from a hovered one: light panel colour and an accent bar */
+li.on,
+li.on:hover,
+.langs li.tr.on,
+.langs li.tr.on:hover {
+  position: relative;
+  background: var(--row-on-bg);
+}
+/* the bar is its own layer above the content: a button in the row (its hover box) can never cover it */
+li.on::before,
+.langs li.tr.on::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--a);
+  border-radius: 0 2px 2px 0;
+  pointer-events: none;
+}
+.tmark {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.tmark .ti {
+  margin: 0;
+  vertical-align: 0;
+}
+.note-head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 8px;
+}
+.note-meta {
+  min-width: 0;
+}
+.note-head .icon-btn {
+  margin: -4px -6px 0 0;
+}
+.ly-note {
+  margin: 10px 0;
+  padding: 8px 10px;
+  background: var(--bg1-bg-color);
+  border-color: var(--select-border-color);
+}
+.ly-btns button {
+  min-height: 24px;
+  padding: 2px 10px;
+}
+/* an active toggle keeps its colour on hover and only gets a little darker */
+.ly-btns button.on:hover,
+#lyDetail .row button.on:hover {
+  background: var(--a-hover);
+  color: #fff;
+}
+button.danger:hover:not(:disabled) {
+  background: #f6dde3;
+  color: var(--error-color);
+}
+.ly-quick {
+  flex-wrap: wrap;
+}
+.chip.ly-chip {
+  background: var(--page-btn-bg-focus);
+  padding: 2px 4px 2px 10px;
+}
+.ly-chip button {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  border-radius: 50%;
+  line-height: 1;
+  color: var(--muted-color);
+}
+.ly-chip button:hover:not(:disabled) {
+  background: var(--btn-press-bg);
+  color: var(--error-color);
+}
+#pick button {
+  margin: 6px 6px 0 0;
+}
+/* controls in one row have one height */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select {
+  min-height: 30px;
+}
+.searchbar {
+  align-items: center;
+}
+.bar > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bar select,
+.searchbar button {
+  margin: 0;
+}
+#lgErr,
+#catErr,
+#lyErr,
+#lyErr2 {
+  color: var(--error-color);
 }
 

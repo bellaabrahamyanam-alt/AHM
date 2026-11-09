@@ -42,16 +42,41 @@ function tab(n) {
   }
   if (cur && !editMk) closeDetail(); // a tab is navigation: leave the place sheet (but never in the middle of editing)
   lyRenderDetail(); // the layer sheet belongs to the Layers tab
+  shRenderView(); // and the border card to the Borders tab
 }
 document.querySelector(".tabs").addEventListener("click", (e) => {
   if (e.target.dataset.tab) tab(e.target.dataset.tab);
 });
+// the handle on the right edge of the sidebar: one button, the icon and the label say what it does now
+function sideHandle(h) {
+  const b = $("#collapse"),
+    t = h ? "Expand sidebar" : "Collapse sidebar";
+  b.innerHTML = AHM.icons.svg(h ? "panel-right" : "panel-left", 14);
+  b.title = t;
+  b.setAttribute("aria-label", t);
+}
 const toggleSide = (h) => {
   document.body.classList.toggle("collapsed", h);
+  sideHandle(h);
   setTimeout(() => AHM.emit("sidebar:resized"), 250);
 };
-$("#collapse").onclick = () => toggleSide(true);
-$("#expand").onclick = () => toggleSide(false);
+$("#collapse").onclick = () => toggleSide(!document.body.classList.contains("collapsed"));
+sideHandle(false);
+// ---- the details dock: a pane under the lists; the place details (#detail) and the layer details (#lyDetail) live in it ----
+$(".stack").append($("#dock"));
+function dockSync() {
+  $("#dock").hidden = $("#detail").hidden && $("#lyDetail").hidden && $("#shDetail").hidden;
+}
+// The dock covers the lower half of the panel: if a row is hidden behind it, scroll the list just enough to centre the row.
+function revealRow(li) {
+  const box = li.closest(".body");
+  requestAnimationFrame(() => {
+    const b = box.getBoundingClientRect(),
+      r = li.getBoundingClientRect();
+    if (r.top >= b.top && r.bottom <= b.bottom) return;
+    box.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
+  });
+}
 // ---- resizable sidebar: drag the edge, double-click resets, arrow keys nudge; size is remembered ----
 const mobile = () => matchMedia("(max-width:700px)").matches;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -109,6 +134,60 @@ $("#resizer").addEventListener("keydown", (e) => {
   e.preventDefault();
   setSize(curSize() + d * (mobile() ? 3 : 20), true);
 });
+// ---- resizable details dock: drag its top edge, double-click resets, Up/Down arrows nudge; the height is remembered ----
+const dockEl = $("#dock"),
+  dockGrip = document.createElement("div"),
+  dockMax = () => Math.max(160, $(".stack").clientHeight - 120); // always leave 120px of the list
+dockGrip.id = "dockResizer";
+dockGrip.tabIndex = 0;
+dockGrip.setAttribute("role", "separator");
+dockGrip.setAttribute("aria-orientation", "horizontal");
+dockGrip.setAttribute("aria-label", "Resize details");
+dockGrip.title = "Drag to resize (double-click to reset)";
+dockEl.prepend(dockGrip);
+function setDock(h, save) {
+  h = clamp(h, 120, dockMax());
+  dockEl.style.setProperty("--dock-h", h + "px");
+  if (save)
+    try {
+      localStorage.setItem("ahm-dock-h", h);
+    } catch (e) {}
+  return h;
+}
+try {
+  const v = +localStorage.getItem("ahm-dock-h");
+  if (v) setDock(v);
+} catch (e) {}
+let dockDrag = null;
+dockGrip.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  dockGrip.setPointerCapture(e.pointerId);
+  dockDrag = { y: e.clientY, h: dockEl.offsetHeight };
+  document.body.classList.add("dock-resizing");
+});
+dockGrip.addEventListener("pointermove", (e) => {
+  if (dockDrag) setDock(dockDrag.h + dockDrag.y - e.clientY); // dragging up makes the dock taller
+});
+const dockDragEnd = () => {
+  if (!dockDrag) return;
+  dockDrag = null;
+  document.body.classList.remove("dock-resizing");
+  setDock(dockEl.offsetHeight, true);
+};
+dockGrip.addEventListener("pointerup", dockDragEnd);
+dockGrip.addEventListener("pointercancel", dockDragEnd);
+dockGrip.addEventListener("dblclick", () => {
+  dockEl.style.removeProperty("--dock-h");
+  try {
+    localStorage.removeItem("ahm-dock-h");
+  } catch (e) {}
+});
+dockGrip.addEventListener("keydown", (e) => {
+  const d = { ArrowUp: 24, ArrowDown: -24 }[e.key];
+  if (!d) return;
+  e.preventDefault();
+  setDock(dockEl.offsetHeight + d, true);
+});
 // ---- filters and results ----
 function fillLangs() {
   const v = $("#lang").value;
@@ -146,32 +225,33 @@ function setData(p, n) {
 }
 function placeRowHTML(p, hits, l, q) {
   return (
-    `<li data-id="${p.id}"><div class="t"><b>${esc(label(p, l))}</b><span class="badge">${typeIcon(p.type)}${typeLabel(p.type)}</span></div>` +
+    `<li data-id="${p.id}"><div class="t"><span class="tmark" title="${esc(typeLabel(p.type))}">${typeIcon(p.type)}</span><b>${esc(label(p, l))}</b></div>` +
     (placeWhen(p) ? `<div class="sn">${esc(placeWhen(p))}</div>` : "") +
     (hits[0] ? `<div class="sn">${mark(hits[0].text, q)}</div>` : "") +
     "</li>"
   );
 }
-// The details of the open place (#detail) sit in the list, right under that place. The other places stay in the list.
+// The details of the open place (#detail) live in the dock under the list; the list keeps all its rows and the open one is marked.
 function placeDetail() {
   const d = $("#detail");
+  document.querySelectorAll("#list li.on").forEach((x) => x.classList.remove("on"));
   if (!cur) {
     d.hidden = true;
-    $("#detailHome").append(d);
+    dockSync();
     return;
   }
-  document.querySelectorAll("#list li.on").forEach((x) => x.classList.remove("on"));
   let li = $(`#list li[data-id="${cur.id}"]`);
   if (!li) {
-    // the place is filtered out of the list: show its row anyway, so the details still hang under a name
+    // the place is filtered out of the list: show its row anyway, so the open place always has a row
     const e = $("#list .empty");
     if (e) e.remove();
     $("#list").insertAdjacentHTML("afterbegin", placeRowHTML(cur, [], $("#lang").value, ""));
     li = $("#list li");
   }
   li.classList.add("on");
-  li.after(d);
   d.hidden = false;
+  dockSync();
+  revealRow(li);
 }
 /** What run() needs from the sidebar fields (INTERFACES.md I-3). */
 const searchOptions = () => ({ q: $("#q").value, lang: $("#lang").value, sort: $("#sort").value, period: periodBounds() });
@@ -185,7 +265,6 @@ function update() {
   // the selected types and the language are shown inside Filters, so only the period is repeated here
   $("#fActive").innerHTML = periodActive() ? chip("period", "period") : "";
   $("#count").textContent = r.length + " of " + places.length + " places";
-  $("#detailHome").append($("#detail")); // keep the open place's details out of the list while it is rebuilt
   $("#list").innerHTML = r.length
     ? r.map(({ p, hits }) => placeRowHTML(p, hits, l, q)).join("")
     : '<li class="empty">No places match. Try fewer filters.</li>';
@@ -206,6 +285,7 @@ function update() {
     })),
   };
   AHM.map.setFeatures(fc);
+  shRefresh(); // the borders follow the same filters
 }
 $("#activeBar").addEventListener("click", (e) => {
   const k = e.target.closest("[data-clear]") && e.target.closest("[data-clear]").dataset.clear;
@@ -260,6 +340,12 @@ function focusPlace(id) {
   if (!cur || cur.id !== id) show(id);
   AHM.map.focusPlace(id);
 }
+// A double click zooms; it must not select the name under the pointer (dragging still selects text).
+[$("#list"), $("#lyList")].forEach((el) =>
+  el.addEventListener("mousedown", (e) => {
+    if (e.detail > 1) e.preventDefault();
+  }),
+);
 $("#list").addEventListener("dblclick", (e) => {
   const li = e.target.closest("li[data-id]");
   if (li && !lyState.editing) focusPlace(li.dataset.id);
@@ -277,26 +363,85 @@ const btns = (...a) =>
   a
     .map(([k, t, c]) => `<button data-act="${k}"${c ? ` class="${c}"` : ""}>${t}</button>`)
     .join(" ");
+// A click on an empty point of the map opens a small menu at that point (map.js): add place, route from, route to.
+const pointActions = (p) => [
+  ...(p && p.shapes && p.shapes.length ? [{ id: "border", icon: "area", label: "Open border: " + shapeName(shapeById(p.shapes[0].id), $("#lang").value) }] : []),
+  ...(AHM_CONFIG.canEdit ? [{ id: "add", icon: "plus", label: "Add place here" }] : []),
+  { id: "from", icon: "route-from", label: "Route from here" },
+  { id: "to", icon: "route-to", label: "Route to here" },
+];
+let pickBusy = false; // "add" opened the dialog: the grey pin stays until the dialog closes
 function pickPoint(p) {
+  const hint = AHM_CONFIG.canEdit ? "" : AHM_CONFIG.loggedIn ? "Adding places is limited to administrators." : "Log in to add places.";
+  AHM.map.showMenu(p, pointActions(p), p.name || "Selected point", hint); // first: it closes the previous menu, which clears the old pin
   pick = p;
   AHM.map.setPick(p);
-  $("#pick").innerHTML =
-    `<button class="x" data-act="closepick" title="Close">✕</button><h3>${esc(p.name || "Selected point")}</h3><div class="sn">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>` +
-    btns(
-      ...edit(["add", "Add place here", "primary"]),
-      ["from", "Route from"],
-      ["to", "Route to"],
-    ) +
-    editHint;
 }
+AHM.on("map:menu", ({ action }) => {
+  if (!pick) return;
+  if (action === "border") {
+    const id = pick.shapes[0].id;
+    AHM.map.hideMenu();
+    return shOpen(id);
+  }
+  if (action === "add") {
+    pickBusy = true;
+    openDlg("place", pick);
+  } else act(action, pick);
+});
+AHM.on("map:menu-close", () => {
+  if (pickBusy) return;
+  pick = null;
+  AHM.map.setPick(null);
+});
+$("#dlg").addEventListener("close", () => {
+  pickBusy = false;
+  pick = null;
+  AHM.map.setPick(null);
+});
 // ---- place details (open in the list, under the place; the map does not move) ----
+const iconBtn = (act, icon, text, extra = "", cls = "") =>
+  `<button type="button" class="icon-btn${cls ? " " + cls : ""}" data-act="${act}" ${extra} title="${text}" aria-label="${text}">${AHM.icons.svg(icon, 16)}</button>`;
+// The header of the place card: type marker (its title is the type), name, then edit / route from / route to / close.
+const placeHeadHTML = (p, l) =>
+  `<div class="dock-head"><span class="tmark" title="${esc(typeLabel(p.type))}">${typeIcon(p.type)}</span>` +
+  `<h3 class="dock-title">${esc(label(p, l))}</h3><span class="dock-btns">` +
+  (AHM_CONFIG.canEdit ? iconBtn("editplace", "pencil", "Edit place") : "") +
+  iconBtn("from", "route-from", "Route from here") +
+  iconBtn("to", "route-to", "Route to here") +
+  iconBtn("dockmax", "chevron-down", dockFull ? "Smaller panel" : "Larger panel") +
+  iconBtn("closedetail", "close", "Close") +
+  "</span></div>";
+// The dock can take the whole panel (hiding the list) while a long note is read; the choice is remembered.
+// (dockFull, not dockMax: dockMax() is the height limit of the drag-handle above.)
+let dockFull = false;
+try {
+  dockFull = localStorage.getItem("ahm-dock-max") === "1";
+} catch (e) {}
+$("#dock").classList.toggle("max", dockFull);
+function setDockFull(v) {
+  dockFull = v;
+  $("#dock").classList.toggle("max", v);
+  try {
+    localStorage.setItem("ahm-dock-max", v ? "1" : "0");
+  } catch (e) {}
+  const b = $("#detail [data-act=dockmax]");
+  if (b) {
+    b.title = v ? "Smaller panel" : "Larger panel";
+    b.setAttribute("aria-label", b.title);
+    requestAnimationFrame(fitNotes);
+  }
+}
+let showSeq = 0;
 async function show(id) {
   const p = places.find((x) => x.id === id);
   if (!p) return;
   if (lyState.editing) return lyToggleMember(id); // choosing places for a layer
   if (curTab !== "explore") tab("explore"); // the list lives in the Explore tab
   stopEditPlace();
+  AHM.map.hideMenu(); // a chosen place replaces the point menu and its pin
   cur = p;
+  const seq = ++showSeq;
   AHM.state.set('selected', p.id);
   const l = $("#lang").value;
   const scope = lyScope(id, true),
@@ -304,42 +449,149 @@ async function show(id) {
   const ns = inLang
     .filter((n) => lyNoteVisible(n, scope))
     .sort((a, b) => byDateKey({ date_from: a.date }, { date_from: b.date }) || a.title.localeCompare(b.title));
+  const oldBody = $("#detail .dock-body"),
+    keepScroll = oldBody && shownId === p.id ? oldBody.scrollTop : 0; // the same place redrawn: stay where the reader was
+  $("#detail").innerHTML = placeHeadHTML(p, l); // the new header at once: no frame shows the previous place
   placeDetail();
   history.replaceState(null, "", "#place-" + id);
   const bodies = await Promise.all(
     ns.map((n) => loadNoteBody(n).catch(() => n.text)),
   );
+  if (seq !== showSeq) return; // another place was chosen while the notes were loading
   noteText = {};
   ns.forEach((n, i) => (noteText[n.id] = bodies[i]));
-  const para = (t) =>
-    t
-      .split(/\n\s*\n/)
-      .map((x) => "<p>" + esc(x) + "</p>")
-      .join("");
+  if (shownId !== p.id) noteOpen.clear(); // another place: its notes start folded
+  shownId = p.id;
   $("#detail").innerHTML =
-    `<div class="inline-body"><p>` +
+    placeHeadHTML(p, l) +
+    `<div class="dock-body"><p class="names">` +
     p.names
       .filter((n) => !l || n.lang === l)
-      .map((n) => `${esc(n.name)} <span class="sn">[${n.lang}]</span>`)
+      .map((n) => `<span lang="${esc(n.lang)}">${esc(n.name)}</span> <span class="sn">[${esc(n.lang)}]</span>`)
       .join(" · ") +
     "</p>" +
     lyPlaceHTML(p) +
     lyScopeHTML(scope, ns.length, inLang.length) +
-    (ns
-      .map(
-        (n, i) =>
-          `<div class="note">${AHM_CONFIG.canEdit ? `<button class="mini" data-act="editnote" data-id="${n.id}">Edit</button>` : ""}<b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + " · " : ""}${esc(langName(n.lang))}</span>${para(bodies[i])}</div>`,
-      )
-      .join("") || '<p class="sn">No notes yet.</p>') +
+    (ns.length > 1
+      ? `<div class="note-tools" hidden><span class="sn">${ns.length} notes</span><button type="button" class="note-all" data-note-all></button></div>`
+      : "") +
+    (ns.map((n, i) => noteHTML(n, bodies[i])).join("") || '<p class="sn">No notes yet.</p>') +
     editHint +
-    `</div><div class="inline-actions">` +
-    btns(
-      ...edit(["note", "Add note", "primary"], ["editplace", "Edit"]),
-      ["from", "Route from"],
-      ["to", "Route to"],
-    ) +
+    `</div><div class="dock-foot">` +
+    btns(...edit(["note", "Add note", "primary"])) +
     "</div>";
-  $("#detail").scrollIntoView({ block: "nearest" });
+  fitNotes();
+  const body = $("#detail .dock-body");
+  if (body && keepScroll) body.scrollTop = keepScroll;
+}
+// ---- long notes: a folded preview with a "more…" toggle, so one long note never buries the rest of the place ----
+const NOTE_LINES = 6; // lines of a folded note
+const noteOpen = new Set(); // ids of long notes the reader has opened; kept while the panel is redrawn
+let shownId = null; // the place whose details are drawn
+// Paragraphs are separated by a blank line; a single line break inside one is kept.
+const para = (t) =>
+  String(t)
+    .trim()
+    .split(/\n\s*\n/)
+    .filter((x) => x.trim())
+    .map((x) => "<p>" + esc(x.trim()).replace(/\n/g, "<br>") + "</p>")
+    .join("");
+const noteHTML = (n, text) =>
+  `<div class="note" data-nid="${esc(n.id)}" lang="${esc(n.lang)}"><div class="note-head"><div class="note-meta"><b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + " · " : ""}${esc(langName(n.lang))}</span></div>${AHM_CONFIG.canEdit ? iconBtn("editnote", "pencil", "Edit note", `data-id="${esc(n.id)}"`, "sm") : ""}</div><div class="note-body" id="nb-${esc(n.id)}">${para(text)}</div><button type="button" class="note-more" hidden aria-expanded="false" aria-controls="nb-${esc(n.id)}" data-note-toggle></button></div>`;
+const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const lineHeightOf = (el) => parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) * 1.45;
+function noteLabels(note) {
+  const open = noteOpen.has(note.dataset.nid),
+    btn = note.querySelector(".note-more");
+  btn.textContent = open ? "less" : "more…";
+  btn.setAttribute("aria-expanded", String(open));
+}
+// Measure every note: only a note that is really longer than the fold gets the toggle (a short one is shown whole).
+function fitNotes() {
+  const root = $("#detail");
+  if (!root) return;
+  let longs = 0;
+  root.querySelectorAll(".note").forEach((note) => {
+    const body = note.querySelector(".note-body"),
+      btn = note.querySelector(".note-more");
+    if (!body || !btn) return;
+    body.classList.remove("is-clamped");
+    body.style.maxHeight = "";
+    const long = body.scrollHeight > lineHeightOf(body) * (NOTE_LINES + 2); // folding must hide at least two lines to be worth a toggle
+    note.classList.toggle("is-long", long);
+    btn.hidden = !long;
+    if (long) {
+      longs++;
+      body.classList.toggle("is-clamped", !noteOpen.has(note.dataset.nid));
+      noteLabels(note);
+    }
+  });
+  const tools = root.querySelector(".note-tools");
+  if (tools) {
+    tools.hidden = longs < 2;
+    const all = tools.querySelector("[data-note-all]"),
+      anyFolded = [...root.querySelectorAll(".note.is-long")].some((n) => !noteOpen.has(n.dataset.nid));
+    all.textContent = anyFolded ? "Expand all" : "Collapse all";
+  }
+}
+// Open or fold one note; animated unless the reader prefers less motion.
+function setNote(note, open, animate = true) {
+  const id = note.dataset.nid,
+    body = note.querySelector(".note-body"),
+    foldPx = Math.round(lineHeightOf(body) * NOTE_LINES);
+  open ? noteOpen.add(id) : noteOpen.delete(id);
+  noteLabels(note);
+  const done = () => {
+    body.classList.remove("anim");
+    body.style.maxHeight = "";
+    body.classList.toggle("is-clamped", !open);
+  };
+  if (!animate || reduceMotion()) return done();
+  body.classList.add("anim", "is-clamped");
+  if (open) {
+    body.style.maxHeight = foldPx + "px";
+    void body.offsetHeight; // start from the fold
+    body.style.maxHeight = body.scrollHeight + "px";
+  } else {
+    body.classList.remove("is-clamped");
+    body.style.maxHeight = body.scrollHeight + "px";
+    body.classList.add("is-clamped");
+    void body.offsetHeight;
+    body.style.maxHeight = foldPx + "px";
+    const scroller = $("#detail .dock-body");
+    if (scroller && note.getBoundingClientRect().top < scroller.getBoundingClientRect().top)
+      note.scrollIntoView({ block: "start", behavior: "smooth" }); // the head of a note folded from far below is brought back into view
+  }
+  let ended = false;
+  const finish = () => (ended ? 0 : ((ended = true), done()));
+  body.addEventListener("transitionend", finish, { once: true });
+  setTimeout(finish, 400); // in case no transition event comes (display change, hidden tab)
+}
+$("#detail").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-note-toggle], [data-note-all]");
+  if (!t) return;
+  if (t.hasAttribute("data-note-all")) {
+    const notesEl = [...$("#detail").querySelectorAll(".note.is-long")],
+      open = notesEl.some((n) => !noteOpen.has(n.dataset.nid)); // any folded: open all; else fold all
+    notesEl.forEach((n) => setNote(n, open));
+    setTimeout(fitNotes, 420);
+  } else {
+    const note = t.closest(".note");
+    setNote(note, !noteOpen.has(note.dataset.nid));
+    setTimeout(fitNotes, 420); // refresh the "Expand all / Collapse all" label
+  }
+});
+// A narrower or wider sidebar re-wraps the text: measure the notes again (only when the width really changed).
+{
+  let lastW = 0,
+    raf = 0;
+  new ResizeObserver(() => {
+    const w = $("#detail").clientWidth;
+    if (!w || w === lastW) return;
+    lastW = w;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(fitNotes);
+  }).observe($("#detail"));
 }
 function closeDetail() {
   stopEditPlace();
@@ -409,25 +661,19 @@ function act(a, p) {
   else if (a === "note") openDlg("note", p);
   else if (a === "editplace") editPlace(p);
 }
-$("#pick").addEventListener("click", (e) => {
-  const a = e.target.dataset.act;
-  if (!a) return;
-  if (a === "closepick") {
-    AHM.map.setPick(null);
-    pick = null;
-    $("#pick").innerHTML = "";
-  } else if (pick) act(a, pick);
-});
 $("#detail").addEventListener("click", (e) => {
-  const a = e.target.dataset.act;
+  const b = e.target.closest("[data-act]"), // an icon button: the click lands on its svg
+    a = b && b.dataset.act;
   if (!a) return;
   if (a === "canceledit") show(cur.id);
   else if (a === "saveedit") saveEditPlace();
+  else if (a === "closedetail") closeDetail();
+  else if (a === "dockmax") setDockFull(!dockFull);
   else if (a === "editnote")
     openDlg(
       "note",
       cur,
-      notes.find((n) => n.id === e.target.dataset.id),
+      notes.find((n) => n.id === b.dataset.id),
     );
   else if (cur)
     act(
@@ -574,10 +820,10 @@ function editPlace(p) {
   AHM.state.set('selected', p.id);
   placeDetail();
   $("#detail").innerHTML =
-    '<div class="inline-body"><h2>Edit place</h2>' +
-    '<div class="sn">Drag the red pin on the map to move the place, or type the coordinates.</div>' +
+    '<div class="dock-head"><h3 class="dock-title">Edit place</h3></div>' +
+    '<div class="dock-body"><div class="sn">Drag the red pin on the map to move the place, or type the coordinates.</div>' +
     placeFormHTML(p) +
-    '</div><div class="inline-actions"><div id="pfErr" class="sn err-line"></div><button class="primary" data-act="saveedit">Save</button><button data-act="canceledit">Cancel</button></div>';
+    '</div><div class="dock-foot"><div id="pfErr" class="sn err-line"></div><button class="primary" data-act="saveedit">Save</button><button data-act="canceledit">Cancel</button></div>';
   AHM.map.hidePlace(p.id); // hide the old symbol so the pin does not leave a ghost behind
   editMk = AHM.map.editPin(p, (l) => {
     $("#detail .pf-lat").value = l.lat.toFixed(6);
@@ -612,6 +858,7 @@ $("#detail").addEventListener("input", (e) => {
 // One table-like layout without lines: [button] [code] [English name] [name in the language itself].
 // Rows: pencil = edit. The last row is the add/edit row (plus = add, pencil = editing); Save and Cancel sit below it.
 let lgEditing = null; // the code being edited, or null = adding
+let lgOpen = false; // the form is shown only while it is open
 function renderLangs() {
   $("#langList").innerHTML =
     languages
@@ -619,30 +866,52 @@ function renderLangs() {
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(
         (l) =>
-          `<li class="tr"><span class="tc-btn">${
+          `<li class="tr${l.code === lgEditing ? " on" : ""}"><span class="tc-btn">${
             AHM_CONFIG.canLanguage
               ? `<button type="button" class="icon-btn" data-lgedit="${esc(l.code)}" title="Edit ${esc(l.name)}" aria-label="Edit ${esc(l.name)}">${ICON_PENCIL}</button>`
               : ""
-          }</span><span class="tc-code">${esc(l.code)}</span><span>${esc(l.name)}</span><span>${esc(l.native || "")}</span></li>`,
+          }</span><b class="tc-code">${esc(l.code)}</b><span>${esc(l.name)}</span><span>${esc(l.native || "")}</span></li>`,
       )
       .join("") || '<li class="sn">No languages yet.</li>';
 }
+// Save stays off until the code and the English name are filled.
+const lgValidate = () => {
+  const b = $("#lgAdd");
+  if (b) b.disabled = !($("#lgCode").value.trim() && $("#lgName").value.trim());
+};
+// The form is shown only while it is open: "+ Add language" opens it empty, the pencil of a row opens it filled.
+function lgRenderAdmin() {
+  $("#langAdmin").innerHTML = !AHM_CONFIG.canLanguage
+    ? '<div class="sn">Only administrators can add a language. Missing one? Ask an administrator.</div>'
+    : lgOpen
+      ? '<div class="tr tr-edit"><span class="tc-btn"><span class="tc-mode" id="lgMode"></span></span>' +
+        '<input id="lgCode" maxlength="8" placeholder="code, e.g. hy" aria-label="Language code">' +
+        '<input id="lgName" placeholder="Name in English" aria-label="Name in English">' +
+        '<input id="lgNative" placeholder="Name in the language" aria-label="Name in the language itself"></div>' +
+        '<div class="btn-pair"><button id="lgAdd" class="primary" disabled>Save</button><button id="lgCancel">Cancel</button></div><div id="lgErr" class="sn err-line"></div>'
+      : '<button id="lgNew" class="wide">+ Add language</button>';
+}
 function lgFill(l) {
+  lgOpen = true;
   lgEditing = l ? l.code : null;
+  lgRenderAdmin();
+  renderLangs();
   $("#lgCode").value = l ? l.code : "";
   $("#lgCode").readOnly = !!l; // the code is what names and notes refer to, so it never changes
   $("#lgName").value = l ? l.name : "";
   $("#lgNative").value = l ? l.native || "" : "";
   $("#lgMode").innerHTML = l ? ICON_PENCIL : ICON_PLUS;
   $("#lgErr").textContent = "";
+  lgValidate();
 }
-$("#langAdmin").innerHTML = AHM_CONFIG.canLanguage
-  ? '<div class="tr tr-edit"><span class="tc-btn"><span class="tc-mode" id="lgMode">' + ICON_PLUS + "</span></span>" +
-    '<input id="lgCode" maxlength="8" placeholder="code, e.g. hy" aria-label="Language code">' +
-    '<input id="lgName" placeholder="Name in English" aria-label="Name in English">' +
-    '<input id="lgNative" placeholder="Name in the language" aria-label="Name in the language itself"></div>' +
-    '<div class="btn-pair"><button id="lgAdd" class="primary">Save</button><button id="lgCancel">Cancel</button></div><div id="lgErr" class="sn"></div>'
-  : '<div class="sn">Only administrators can add a language. Missing one? Ask an administrator.</div>';
+function lgClose() {
+  lgOpen = false;
+  lgEditing = null;
+  lgRenderAdmin();
+  renderLangs();
+}
+lgRenderAdmin();
+$("#langAdmin").addEventListener("input", lgValidate);
 $("#langList").addEventListener("click", (e) => {
   const b = e.target.closest("[data-lgedit]");
   if (!b) return;
@@ -650,7 +919,11 @@ $("#langList").addEventListener("click", (e) => {
   $("#lgName").focus();
 });
 $("#langAdmin").addEventListener("click", async (e) => {
-  if (e.target.id === "lgCancel") return lgFill(null);
+  if (e.target.id === "lgNew") {
+    lgFill(null);
+    return $("#lgCode").focus();
+  }
+  if (e.target.id === "lgCancel") return lgClose();
   if (e.target.id !== "lgAdd") return;
   const err = $("#lgErr");
   try {
@@ -668,29 +941,36 @@ $("#langAdmin").addEventListener("click", async (e) => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Error("Save failed: " + (j.error || r.status));
     languages = await loadLanguages();
-    renderLangs();
     fillLangs();
-    lgFill(null);
+    lgClose();
   } catch (x) {
     err.textContent = x.message;
   }
 });
 // ---- events from the map (INTERFACES.md, I-2) ----
 AHM.on("place:click", ({ id }) => (lyState.editing ? lyToggleMember(id) : show(id)));
-AHM.on("place:dblclick", ({ id }) => !lyState.editing && focusPlace(id));
+// the map moves by itself (AHM.map.focusPlace, the move the list row uses); the sidebar only opens the place
+AHM.on("place:dblclick", ({ id }) => {
+  if (!lyState.editing && (!cur || cur.id !== id)) show(id);
+});
 AHM.on("map:show-controls", () => tab("maps"));
-AHM.on("map:click", (p) => !lyState.editing && pickPoint(p)); // choosing places for a layer: empty clicks do nothing
+AHM.on("map:click", (p) => {
+  if (!lyState.editing) return pickPoint(p);
+  if (p.shapes && p.shapes.length) lyToggleMember(p.shapes[0].id); // choosing members: a click inside a border picks it
+});
 // ---- start ----
 renderRoute();
-Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), loadLayerNotes(), loadCategories()])
-  .then(([p, n, l, ly, ln, cs]) => {
+Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), loadLayerNotes(), loadCategories(), loadShapes()])
+  .then(([p, n, l, ly, ln, cs, sp]) => {
     languages = l;
     renderLangs();
     setData(p, n);
+    shSet(sp);
     lySet(ly, ln, cs);
     update();
     if (location.hash.startsWith("#place-")) show(location.hash.slice(7));
     else if (location.hash.startsWith("#layer-")) lyOpen(location.hash.slice(7));
+    else if (location.hash.startsWith("#border-")) shOpen(location.hash.slice(8), true);
   })
   .catch(
     (e) =>

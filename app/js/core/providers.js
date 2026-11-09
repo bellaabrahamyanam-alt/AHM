@@ -43,3 +43,34 @@ const route = (a, b) =>
         min: r.duration / 60,
       };
     });
+// Borders of places, countries and regions from OpenStreetMap (same service, same policy: user-started, 1 request per second, cached).
+// Not limited to the study area. Returns [{ name, osm, kind, rank, addresstype, names: { code: name }, geometry }] for results that have an outline.
+const geoShapeCache = new Map();
+const geocodeShapes = async (q, lang) => {
+  const key = lang + '|' + q.toLowerCase();
+  if (geoShapeCache.has(key)) return geoShapeCache.get(key);
+  const wait = geoLast + 1100 - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  geoLast = Date.now();
+  const r = await fetch(
+    AHM_CONFIG.geocodeUrl +
+      '?format=jsonv2&limit=8&polygon_geojson=1&polygon_threshold=0.004&namedetails=1&accept-language=' +
+      encodeURIComponent(lang || 'en') +
+      '&q=' +
+      encodeURIComponent(q)
+  );
+  if (!r.ok) throw Error('The search service answered ' + r.status);
+  const rs = (await r.json())
+    .filter((x) => x.geojson && /^(Multi)?(Polygon|LineString)$/.test(x.geojson.type))
+    .map((x) => ({
+      name: x.display_name,
+      osm: x.osm_type + '/' + x.osm_id,
+      kind: x.type,
+      rank: x.place_rank,
+      addresstype: x.addresstype,
+      names: Object.fromEntries(Object.entries(x.namedetails || {}).filter(([k]) => k === 'name' || k.startsWith('name:'))),
+      geometry: x.geojson,
+    }));
+  geoShapeCache.set(key, rs);
+  return rs;
+};

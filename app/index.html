@@ -11,16 +11,16 @@
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/sidebar.css" />
     <link rel="stylesheet" href="css/map.css" />
+    <link rel="stylesheet" href="css/shapes.css" />
   </head>
   <body>
     <!-- region:sidebar -->
     <aside id="side">
-      <header>
-        <button id="collapse" class="icon-btn" title="Hide panel" aria-label="Hide panel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 15-3-3 3-3"/></svg></button>
-      </header>
+      <button id="collapse" class="icon-btn" title="Hide panel" aria-label="Hide panel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 15-3-3 3-3"/></svg></button>
       <div id="pick"></div>
       <nav class="tabs">
         <button data-tab="explore" class="on">Explore</button>
+        <button data-tab="shapes">Borders</button>
         <button data-tab="layers">Layers</button>
         <button data-tab="more">More</button>
       </nav>
@@ -64,7 +64,7 @@
             </span>
           </div>
           <ul id="list"></ul>
-          <ul id="detailHome" hidden><li id="detail" class="place-open" hidden></li><li id="lyDetail" class="place-open" hidden></li></ul>
+          <div id="dock" hidden><div id="detail" hidden></div><div id="lyDetail" hidden></div><div id="shDetail" hidden></div></div>
           <div id="geo"></div>
         </section>
         <section id="tab-more" hidden>
@@ -133,21 +133,37 @@
           <ul id="catList" class="langs"></ul>
           <div id="catAdmin"></div>
         </div></details></section>
+        <section id="tab-shapes" hidden>
+          <p class="sn">
+            Borders of countries, regions and other areas, and lines. Colour them,
+            make them transparent and show their names on the map. They can belong
+            to layers and follow the period filter of Explore.
+          </p>
+          <div class="label">Search borders</div>
+          <div data-searchfield="shQ" data-placeholder="Search borders…"></div>
+          <div id="shTypes" class="chips"></div>
+          <div class="bar">
+            <span id="shCount"></span>
+            <button id="shFit" title="Zoom the map to the borders in the list">Fit map</button>
+          </div>
+          <ul id="shList"></ul>
+          <div id="shAdd"></div>
+        </section>
         <section id="tab-layers" hidden>
           <div id="lyListView">
             <p class="sn">
               A layer is a subset of the main map, for example one campaign.
               Every place stays on the main map. <b>Only</b> shows just the
-              places of the layer, <b>Hide</b> removes them.
+              places and borders of the layer, <b>Hide</b> removes them.
             </p>
             <div class="label">Search layers</div>
             <div data-searchfield="lyQ" data-placeholder="Search layers…"></div>
             <select id="lyCat" aria-label="Category"></select>
             <div class="bar"><span id="lyCount"></span></div>
             <ul id="lyList"></ul>
-            <details class="fold" id="ly-add" open><summary>Add layer</summary><div class="fold-body">
-              <button id="lyNew" class="wide">Add layer</button>
-            </div></details>
+            <div id="ly-add">
+              <button id="lyNew" class="wide">+ Add layer</button>
+            </div>
           </div>
         </section>
         
@@ -209,6 +225,7 @@
     <script src="js/core/data.js"></script>
     <script src="js/core/dates.js"></script>
     <script src="js/core/layer-rules.js"></script>
+    <script src="js/core/shapes.js"></script>
     <script src="js/core/search.js"></script>
     <script src="js/core/providers.js"></script>
     <script src="js/sidebar/datefield.js"></script>
@@ -217,8 +234,10 @@
     <script src="js/sidebar/placeform.js"></script>
     <script src="js/map/typeicons.js"></script>
     <script src="js/map/map.js"></script>
+    <script src="js/map/shapes.js"></script>
     <script src="js/map/overlays.js"></script>
     <script src="js/sidebar/layers.js"></script>
+    <script src="js/sidebar/shapes.js"></script>
     <script src="js/sidebar/ui.js"></script>
     <script src="js/features.js"></script>
   </body>

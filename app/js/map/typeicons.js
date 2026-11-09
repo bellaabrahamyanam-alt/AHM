@@ -106,11 +106,46 @@ function iconCanvas(type, px, ratio) {
   }
   return c;
 }
-/** Adds one image per type to the map: 'ahm-type-city', 'ahm-type-mountain', ... */
+/** The same symbol with a thick white border that follows its shape (hover and selected look); a hair-line dark edge keeps it visible on pale maps. */
+function iconCanvasHl(type, px, ratio) {
+  const st = TYPE_STYLE[type] || TYPE_STYLE.settlement,
+    c = document.createElement('canvas');
+  c.width = c.height = Math.round(px * ratio);
+  const g = c.getContext('2d');
+  g.scale(ratio, ratio);
+  g.translate(px / 2, px / 2);
+  g.lineJoin = 'round';
+  g.beginPath();
+  SHAPES[st.shape](g, st.r);
+  if (st.shape === 'ring') {
+    g.lineWidth = 10;
+    g.strokeStyle = 'rgba(0,0,0,.35)';
+    g.stroke();
+    g.lineWidth = 8.4;
+    g.strokeStyle = '#fff';
+    g.stroke();
+    g.lineWidth = 3;
+    g.strokeStyle = st.color;
+    g.stroke();
+  } else {
+    g.lineWidth = 8;
+    g.strokeStyle = 'rgba(0,0,0,.35)';
+    g.stroke();
+    g.lineWidth = 6.4;
+    g.strokeStyle = '#fff';
+    g.stroke();
+    g.fillStyle = st.color;
+    g.fill();
+  }
+  return c;
+}
+/** Adds one image per type to the map: 'ahm-type-city', 'ahm-type-mountain', ... and 'ahm-type-city-hl', ... (with the white border) */
 function registerTypeIcons(map) {
   Object.keys(TYPE_STYLE).forEach((t) => {
     const c = iconCanvas(t, 28, 2);
     map.addImage('ahm-type-' + t, c.getContext('2d').getImageData(0, 0, c.width, c.height), { pixelRatio: 2 });
+    const h = iconCanvasHl(t, 40, 2);
+    map.addImage('ahm-type-' + t + '-hl', h.getContext('2d').getImageData(0, 0, h.width, h.height), { pixelRatio: 2 });
   });
 }
 // Small <img> of a type symbol for lists, chips and badges.

@@ -256,6 +256,10 @@ button.wide {
   display: inline-flex;
   color: var(--muted-color);
 }
+/* same side padding as the list rows (.langs li.tr), so the editor columns line up with the table above */
+.tr-edit {
+  padding: 0 4px 0 10px;
+}
 .tr-edit input {
   margin: 0;
 }

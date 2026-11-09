@@ -1,0 +1,12 @@
+# Task 015: code graph tool
+
+- **Domain:** shared. **Branch:** `shared/graph-tool`. **Depends on:** proposal 011 merged (MR !23).
+- **Goal:** one command builds a map of the code, so agents and the architect find what they need without browsing. `node tools/make-graph.js` writes `graph/INDEX.md` and `graph/<domain>.md` for every domain in `tools/domains.json`. Node only, no dependencies, same style as `tools/make-context.js`.
+- **Method:** read every file owned by a domain (owners from `tools/domains.json`); JS and PHP files are nodes. Plain text and regex are enough, no parser.
+- **`graph/<domain>.md`:** one line per file: path, line count, top-level names it defines (`function`, `const`, `class`, `window.X =`), the `AHM.*` calls it makes, the events it emits and listens to (as written in `INTERFACES.md` I-2), and "used by": the other files that mention one of its names, with their domain. PHP files: path, line count, class and public method names.
+- **`graph/INDEX.md`:** one table row per domain: files, lines, largest file, cross-domain uses. Then a "Flags" list: file over 600 lines; a cross-domain use that is not through `AHM.*` and not in the "Known violations" of `INTERFACES.md`; a top-level name defined in two files. Then a short "Where to look" list: feature words (sidebar tabs, map layers, data rules, dates, search, state) mapped to the files that hold them.
+- **Output rules:** sorted, no dates, no random order (the same tree always gives the same text). `INDEX.md` at most 6 KB, each `<domain>.md` at most 8 KB; over that the tool exits 1 and says which file to split or which names to skip.
+- **Check mode:** `node tools/make-graph.js --check` exits 1 if `graph/` is out of date. Test `tests/js/graph.test.js` runs it, in the same way as `tests/js/context.test.js`, and registers in `tests/js/run.js`.
+- **Owners:** add lines for `graph/**`, `tools/make-graph.js` and `tests/js/graph.test.js` to `tools/domains.json` (domain shared), then run `node tools/check-domain.js --codeowners`.
+- **Acceptance:** `node tools/make-graph.js` runs on a clean checkout; the output of two runs is identical; `--check` fails after a one-line change of a listed file and passes after the tool is run again; the size limits are tested; the flags are tested on a small fixture folder (a long file, a duplicate name, a cross-domain use); all three suites green; `changes/shared.md` entry; `todo/shared.md` updated.
+- **Out of scope:** removing `context/` and `make-context.js` (task 016); changing agent prompts (task 016); any application code.

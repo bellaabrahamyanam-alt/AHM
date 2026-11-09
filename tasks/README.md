@@ -19,3 +19,4 @@ Each spec: goal, domain, depends on, interface touched, acceptance criteria, out
 | 012 | Sidebar layout (split, place card, Add layer, toggle, point menu) | `sidebar/layout` | 007, 009, 010 |
 | 013 | Map draws types and shapes, edits shapes | `map/types-and-shapes` | 008, 011 |
 | 014 | Sidebar: types editor and shapes | `sidebar/types-and-shapes` | 011, 012, 013 |
+| 015 | Code graph tool (`graph/`) | `shared/graph-tool` | proposal 011 merged |

@@ -402,7 +402,7 @@ function initMap() {
     applyHighlight();
     AHM.emit("map:ready");
   });
-  AHM.on("sidebar:resized", () => map.resize());
+  AHM.on("sidebar:resized", fitCanvas); // the panel lies on top of the map: normally nothing to do
   AHM.on("state:selected", ({ value }) => {
     selectedId = value == null ? null : value;
     if (mapReady && hoverId != null && hoverId === selectedId) liftPlace(null); // no lift on top of the selected look
@@ -578,6 +578,18 @@ function viewPad(base) {
   else p.left = Math.min(base + side.offsetWidth, innerWidth - 160);
   return p;
 }
+// map.resize() empties the canvas until the next paint: call it only when the box of the map really changed.
+let canvasW = 0,
+  canvasH = 0;
+function fitCanvas() {
+  const el = map.getContainer ? map.getContainer() : null;
+  if (el) {
+    if (el.clientWidth === canvasW && el.clientHeight === canvasH) return;
+    canvasW = el.clientWidth;
+    canvasH = el.clientHeight;
+  }
+  map.resize();
+}
 Object.assign(AHM.map, {
   setFeatures(fc) {
     featuresNow = fc;
@@ -647,7 +659,7 @@ Object.assign(AHM.map, {
     };
   },
   resize() {
-    map.resize();
+    fitCanvas();
   },
   getZoom() {
     return map.getZoom();

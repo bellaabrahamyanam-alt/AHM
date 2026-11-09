@@ -677,7 +677,7 @@ function renderLangs() {
             AHM_CONFIG.canLanguage
               ? `<button type="button" class="icon-btn" data-lgedit="${esc(l.code)}" title="Edit ${esc(l.name)}" aria-label="Edit ${esc(l.name)}">${ICON_PENCIL}</button>`
               : ""
-          }</span><span class="tc-code">${esc(l.code)}</span><span>${esc(l.name)}</span><span>${esc(l.native || "")}</span></li>`,
+          }</span><b class="tc-code">${esc(l.code)}</b><span>${esc(l.name)}</span><span>${esc(l.native || "")}</span></li>`,
       )
       .join("") || '<li class="sn">No languages yet.</li>';
 }

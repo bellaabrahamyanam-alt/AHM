@@ -45,3 +45,15 @@ test('ci: deleting a path that no domain owns is allowed, changing one is not', 
   eq(1, cd.check(['shared'], mod('diffs/old.diff')).length, 'orphan changed');
   eq(1, cd.check(['shared'], del('app/js/map/map.js')).length, 'owned file deleted by the wrong domain');
 });
+
+test('ci: every domain has its own test job, and every JS test file belongs to a domain (so some job runs it)', () => {
+  const cd = require('../../tools/check-domain');
+  const yml = fs.readFileSync(path.join(__dirname, '..', '..', '.gitlab-ci.yml'), 'utf8');
+  for (const d of cd.DOMAINS) {
+    ok(new RegExp(`^tests:${d}:`, 'm').test(yml), `.gitlab-ci.yml has no job tests:${d}`);
+    ok(yml.includes(`--domain=${d}`), `the job tests:${d} does not run tests/js/run.js --domain=${d}`);
+  }
+  for (const f of fs.readdirSync(__dirname).filter((x) => x.endsWith('.test.js'))) {
+    ok(cd.DOMAINS.includes(cd.ownerOf('tests/js/' + f)), `tests/js/${f} has no domain, so no CI job would run it`);
+  }
+});

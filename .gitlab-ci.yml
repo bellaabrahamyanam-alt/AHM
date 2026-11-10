@@ -26,7 +26,7 @@ graph:
   stage: check
   # Builds graph/ from the source files (tools/make-graph.js) and keeps it as an artifact for a week. When the test "graph/ is up to date"
   # fails, take graph/ from this job and commit it (proposal 011). The job itself does not fail: the test reports a stale or oversized graph.
-  rules: !reference [tests, rules]
+  rules: !reference [.test-rules, rules]
   script:
     - node tools/make-graph.js || echo "make-graph.js reported a problem (see above)"
   artifacts:
@@ -35,11 +35,10 @@ graph:
     paths:
       - graph/
 
-tests:
-  stage: test
-  # Runs only when something the tests check or read changed. Documents skip it: changes/, todo/, proposals/, requests/, tasks/,
-  # tools/prompts/, .claude/, .gitlab/merge_request_templates/ and every *.md file (no test reads the text of a document).
-  # A new top-level folder with code or config must be added to this list.
+# When the test jobs run. Only when something the tests check or read changed. Documents skip them: changes/, todo/, proposals/,
+# requests/, tasks/, tools/prompts/, .claude/, .gitlab/merge_request_templates/ and every *.md file (no test reads the text of a document).
+# A new top-level folder with code or config must be added to this list.
+.test-rules:
   rules:
     - changes:
         - 'app/**/*'
@@ -59,13 +58,56 @@ tests:
         - '.gitlab-ci.yml'
         - '*.php'
         - '*.json'
+
+# Tests per domain (tools/domains.json says which test file belongs to which domain; `node tests/js/run.js --domain=<name>` runs the JS test
+# files of one domain). One job per domain, so a red job names the domain to fix. Every job runs under the same rules, so nothing is skipped
+# that the single job ran before (a change in one domain can break the tests of another). tests/js/ci.test.js fails if a domain has no job.
+# The five JS domains need only Node. `data` also needs PHP; `shared` needs ESLint and Playwright (browser and lint tests).
+.test-job:
+  stage: test
+  rules: !reference [.test-rules, rules]
+
+tests:sidebar:
+  extends: .test-job
+  script:
+    - node tests/js/run.js --no-browser --domain=sidebar
+
+tests:map:
+  extends: .test-job
+  script:
+    - node tests/js/run.js --no-browser --domain=map
+
+tests:core:
+  extends: .test-job
+  script:
+    - node tests/js/run.js --no-browser --domain=core
+
+tests:state:
+  extends: .test-job
+  script:
+    - node tests/js/run.js --no-browser --domain=state
+
+tests:campaigns:
+  extends: .test-job
+  script:
+    - node tests/js/run.js --no-browser --domain=campaigns
+
+tests:data:
+  extends: .test-job
   before_script:
     - apt-get update -qq
     - apt-get install -y -qq php-cli php-mbstring
+  script:
+    - php tests/php/run.php
+    - php tests/data/run.php
+    - node tests/js/run.js --no-browser --domain=data
+
+tests:shared:
+  extends: .test-job
+  before_script:
+    - apt-get update -qq
     - npm install -g eslint@9 playwright
     - npx playwright install --with-deps chromium
     - export NODE_PATH="$(npm root -g)"
   script:
-    - php tests/php/run.php
-    - php tests/data/run.php
-    - node tests/js/run.js
+    - node tests/js/run.js --domain=shared

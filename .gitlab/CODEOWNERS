@@ -99,6 +99,8 @@
 /context/ @bellaabrahamyan.am
 /tests/js/context.test.js @bellaabrahamyan.am
 /tests/js/ci.test.js @bellaabrahamyan.am
+/graph/ @bellaabrahamyan.am
+/tests/js/graph.test.js @bellaabrahamyan.am
 /changes/shared.md @bellaabrahamyan.am
 /todo/shared.md @bellaabrahamyan.am
 /diffs/shared/ @bellaabrahamyan.am

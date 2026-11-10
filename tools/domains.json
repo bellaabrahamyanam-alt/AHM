@@ -85,7 +85,9 @@
       "tests/js/icons.test.js",
       "context/",
       "tests/js/context.test.js",
-      "tests/js/ci.test.js"
+      "tests/js/ci.test.js",
+      "graph/",
+      "tests/js/graph.test.js"
     ]
   },
   "outside": {

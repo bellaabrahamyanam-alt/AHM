@@ -187,6 +187,12 @@ function defects()
                 return $j;
             });
         }, 'layer-member-missing'],
+        ['layer member that is not a border', function ($d) {
+            edit_json($d, 'layers.json', function ($j) {
+                $j['layers'][0]['members'][] = ['shape' => '88888888-8888-4888-8888-888888888888'];
+                return $j;
+            });
+        }, 'layer-member-missing'],
         ['layer member twice', function ($d) {
             edit_json($d, 'layers.json', function ($j) {
                 $j['layers'][0]['members'][] = $j['layers'][0]['members'][0];

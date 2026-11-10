@@ -26,14 +26,18 @@ function note_of($dir, $id)
 }
 
 // ---- categories ----
-test('sample data: 5 categories, one layer with 3 members that are real places', function () {
+test('sample data: 5 categories, one layer with 3 places and 1 border as members', function () {
     $s = fresh_store($dir);
     same(5, count($s->categories()['categories']));
     $l = $s->layers()['layers'];
     same(1, count($l));
-    same(3, count($l[0]['members']));
+    same(4, count($l[0]['members']));
     foreach ($l[0]['members'] as $m) {
-        ok(in_array($m['place'], place_ids($dir), true), 'member exists');
+        if (isset($m['shape'])) {
+            ok(preg_match(\ahm\map\service\store::UUID, $m['shape']) === 1, 'border member has a valid id');
+        } else {
+            ok(in_array($m['place'], place_ids($dir), true), 'member exists');
+        }
     }
     ok(find_by($s->categories()['categories'], 'id', $l[0]['category']) !== null, 'its category exists');
 });

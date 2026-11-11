@@ -8,7 +8,6 @@
 /tests/js/layers.test.js @bellaabrahamyanam-alt
 /tests/js/sidebar.test.js @bellaabrahamyanam-alt
 /changes/sidebar.md @bellaabrahamyanam-alt
-/todo/sidebar.md @bellaabrahamyanam-alt
 /diffs/sidebar/ @bellaabrahamyanam-alt
 
 # map
@@ -16,7 +15,6 @@
 /app/css/map.css @bellaabrahamyanam-alt
 /tests/js/map.test.js @bellaabrahamyanam-alt
 /changes/map.md @bellaabrahamyanam-alt
-/todo/map.md @bellaabrahamyanam-alt
 /diffs/map/ @bellaabrahamyanam-alt
 
 # core
@@ -26,21 +24,18 @@
 /tests/js/search.test.js @bellaabrahamyanam-alt
 /tests/fixtures/dates-vectors.json @bellaabrahamyanam-alt
 /changes/core.md @bellaabrahamyanam-alt
-/todo/core.md @bellaabrahamyanam-alt
 /diffs/core/ @bellaabrahamyanam-alt
 
 # state
 /app/js/state/ @bellaabrahamyanam-alt
 /tests/js/state.test.js @bellaabrahamyanam-alt
 /changes/state.md @bellaabrahamyanam-alt
-/todo/state.md @bellaabrahamyanam-alt
 /diffs/state/ @bellaabrahamyanam-alt
 
 # campaigns
 /app/features/campaigns/ @bellaabrahamyanam-alt
 /tests/js/campaigns.test.js @bellaabrahamyanam-alt
 /changes/campaigns.md @bellaabrahamyanam-alt
-/todo/campaigns.md @bellaabrahamyanam-alt
 /diffs/campaigns/ @bellaabrahamyanam-alt
 
 # data
@@ -59,7 +54,6 @@
 /tests/js/parity.test.js @bellaabrahamyanam-alt
 /tests/fixtures/rules.json @bellaabrahamyanam-alt
 /changes/data.md @bellaabrahamyanam-alt
-/todo/data.md @bellaabrahamyanam-alt
 /diffs/data/ @bellaabrahamyanam-alt
 
 # shared
@@ -74,9 +68,6 @@
 /changes/archive/ @bellaabrahamyanam-alt
 /TODO.md @bellaabrahamyanam-alt
 /tools/ @bellaabrahamyanam-alt
-/requests/ @bellaabrahamyanam-alt
-/proposals/ @bellaabrahamyanam-alt
-/tasks/ @bellaabrahamyanam-alt
 /app/index.html @bellaabrahamyanam-alt
 /app/js/config.js @bellaabrahamyanam-alt
 /app/js/ahm.js @bellaabrahamyanam-alt
@@ -106,7 +97,6 @@
 /graph/ @bellaabrahamyanam-alt
 /tests/js/graph.test.js @bellaabrahamyanam-alt
 /changes/shared.md @bellaabrahamyanam-alt
-/todo/shared.md @bellaabrahamyanam-alt
 /diffs/shared/ @bellaabrahamyanam-alt
 
 # repository root

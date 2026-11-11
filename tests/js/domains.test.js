@@ -26,7 +26,7 @@ test('domains: every entry of tools/domains.json points at something that exists
   const missing = [];
   for (const [d, list] of Object.entries(cd.cfg.domains)) {
     for (const e of list) if (!fs.existsSync(path.join(ROOT, e))) missing.push(d + ': ' + e);
-    for (const r of [`changes/${d}.md`, `todo/${d}.md`]) if (!fs.existsSync(path.join(ROOT, r))) missing.push(d + ': ' + r);
+    for (const r of [`changes/${d}.md`]) if (!fs.existsSync(path.join(ROOT, r))) missing.push(d + ': ' + r);
   }
   ok(missing.length === 0, '\n    missing: ' + missing.join('\n    missing: '));
 });
@@ -53,11 +53,10 @@ test('domains: a diff is accepted inside its domain and rejected outside it', ()
   eq(1, cd.check(['sidebar'], diff([R + 'app/js/new-file.js', true])).length, 'a file nobody owns');
   eq([], cd.check(['shared'], diff([R + 'INTERFACES.md'], [R + 'tools/domains.json'])));
   eq([], cd.check(['sidebar', 'map'], diff([R + 'app/js/sidebar/ui.js'], [R + 'app/js/map/map.js'])), 'several declared domains');
-  // requests and proposals: new files only, requests named after the asking domain
+  // requests: new files only, requests named after the asking domain
   eq([], cd.check(['sidebar'], diff([R + 'requests/sidebar-to-map-001-fly.md', true])));
   eq(1, cd.check(['map'], diff([R + 'requests/sidebar-to-map-001-fly.md', true])).length, 'a request is written by the asking domain');
   eq(1, cd.check(['sidebar'], diff([R + 'requests/sidebar-to-map-001-fly.md'])).length, 'an existing request may not be edited');
-  eq([], cd.check(['sidebar'], diff([R + 'proposals/001-run-options.md', true])));
-  eq(1, cd.check(['sidebar'], diff([R + 'proposals/001-run-options.md'])).length, 'an existing proposal may not be edited');
+  eq(1, cd.check(['sidebar'], diff([R + 'proposals/001-run-options.md', true])).length, 'proposals are closed: the owner decides through TODO.md');
   eq([], cd.check(['sidebar'], diff([R + 'app/node_modules/x/y.js'])), 'node_modules is ignored');
 });

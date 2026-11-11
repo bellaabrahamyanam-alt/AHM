@@ -16,7 +16,7 @@ The MapLibre map: base maps, place symbols, overlays, route, pins. Provides the 
 - `interfaces/I-9-shapes.md`
 - `graph/map.md`
 - `changes/map.md`
-- `todo/map.md`
+- `TODO.md`
 
 ## Code and documents of the domain (open the part the task needs, with offset and limit)
 
@@ -25,9 +25,9 @@ The MapLibre map: base maps, place symbols, overlays, route, pins. Provides the 
 - `app/js/map/typeicons.js`
 - `DESIGN.md`
 
-## Your files (the only ones you may change)
+## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)
 
-`app/js/map/`, `app/css/map.css`, `tests/js/map.test.js`, and your records `changes/map.md`, `todo/map.md`.
+`app/js/map/`, `app/css/map.css`, `tests/js/map.test.js`, and the log `changes/map.md`.
 
 ## Token rules
 

@@ -11,4 +11,4 @@ that is not listed is not requested, not run and not visible.
 - `AHM.features.enabled(name)`: boolean.
 - A feature uses only `AHM.features`, `AHM.on/emit` (its events are named `<name>:*`), the `AHM.map` commands of I-2 and the core functions of I-3. No top-level names, CSS selectors only `.<name>-…` / `#<name>-…`, and no other domain's file mentions its name.
   `tests/js/features.test.js` enforces all of this. Loading failures and exceptions of a feature are logged and never stop the app.
-- Not yet possible (proposal `proposals/002-map-extension-points.md`, pending): drawing custom layers on the map.
+- Not yet possible (old proposal 002, `changes/archive/proposals/002-map-extension-points.md`; decision: TODO.md T-001): drawing custom layers on the map.

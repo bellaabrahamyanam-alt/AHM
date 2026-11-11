@@ -18,7 +18,7 @@ The left panel: place list and details, search and period, layers, categories, l
 - `interfaces/I-9-shapes.md`
 - `graph/sidebar.md`
 - `changes/sidebar.md`
-- `todo/sidebar.md`
+- `TODO.md`
 
 ## Code and documents of the domain (open the part the task needs, with offset and limit)
 
@@ -27,9 +27,9 @@ The left panel: place list and details, search and period, layers, categories, l
 - `app/index.html`
 - `DESIGN.md`
 
-## Your files (the only ones you may change)
+## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)
 
-`app/js/sidebar/`, `app/css/sidebar.css`, `app/css/shapes.css`, `tests/js/layers.test.js`, `tests/js/sidebar.test.js`, and your records `changes/sidebar.md`, `todo/sidebar.md`.
+`app/js/sidebar/`, `app/css/sidebar.css`, `app/css/shapes.css`, `tests/js/layers.test.js`, `tests/js/sidebar.test.js`, and the log `changes/sidebar.md`.
 
 ## Token rules
 

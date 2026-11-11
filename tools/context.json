@@ -1,5 +1,5 @@
 {
-  "_comment": "Per-domain starter briefs for tools/make-context.js (output: context/<domain>.md). 'interfaces' = the interface files (interfaces/I-N-*.md) the domain provides or uses; 'read' = the code and documents to open when the task needs them. Read first (automatic): the common documents, the domain's interface files, graph/<domain>.md, changes/<domain>.md, todo/<domain>.md. Keep the 'read' list short (limit in tests/js/context.test.js).",
+  "_comment": "Per-domain starter briefs for tools/make-context.js (output: context/<domain>.md). 'interfaces' = the interface files (interfaces/I-N-*.md) the domain provides or uses; 'read' = the code and documents to open when the task needs them. Read first (automatic): the common documents, the domain's interface files, graph/<domain>.md, changes/<domain>.md, TODO.md. Keep the 'read' list short (limit in tests/js/context.test.js).",
   "common": [
     "AGENTS.md",
     "INTERFACES.md"
@@ -57,9 +57,9 @@
       ]
     },
     "state": {
-      "brief": "The state manager: the one module that holds state shared between domains, as AHM.state (I-6, proposal 003). Built test-first.",
+      "brief": "The state manager: the one module that holds state shared between domains, as AHM.state (I-6, old proposal 003). Built test-first.",
       "read": [
-        "proposals/003-state-manager.md",
+        "changes/archive/proposals/003-state-manager.md",
         "app/js/state/state.js",
         "tests/js/state.test.js"
       ],
@@ -72,7 +72,7 @@
       "read": [
         "app/features/campaigns/README.md",
         "app/features/campaigns/main.js",
-        "proposals/002-map-extension-points.md"
+        "changes/archive/proposals/002-map-extension-points.md"
       ],
       "interfaces": [
         "I-2",
@@ -94,7 +94,7 @@
       ]
     },
     "shared": {
-      "brief": "Owner-only integration: domain table, interfaces, config, index.html, shared tests and tools, reviewing and merging the agents' pull requests.",
+      "brief": "Owner-only integration: domain table, interfaces, config, index.html, shared tests and tools, the TODO.md list. Agent rules and CI are protected files (TODO.md: item with an Approved line).",
       "read": [
         "DOMAINS.md",
         "tools/domains.json",

@@ -13,17 +13,17 @@ The military-campaigns feature: an isolated add-on in app/features/campaigns/, l
 - `interfaces/I-6-state-manager.md`
 - `graph/campaigns.md`
 - `changes/campaigns.md`
-- `todo/campaigns.md`
+- `TODO.md`
 
 ## Code and documents of the domain (open the part the task needs, with offset and limit)
 
 - `app/features/campaigns/README.md`
 - `app/features/campaigns/main.js`
-- `proposals/002-map-extension-points.md`
+- `changes/archive/proposals/002-map-extension-points.md`
 
-## Your files (the only ones you may change)
+## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)
 
-`app/features/campaigns/`, `tests/js/campaigns.test.js`, and your records `changes/campaigns.md`, `todo/campaigns.md`.
+`app/features/campaigns/`, `tests/js/campaigns.test.js`, and the log `changes/campaigns.md`.
 
 ## Token rules
 

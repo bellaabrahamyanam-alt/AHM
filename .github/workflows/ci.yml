@@ -25,6 +25,7 @@ jobs:
       CI_SERVER_HOST: github.com
       CI_PROJECT_PATH: ${{ github.repository }}
       GRAPH_PUSH_TOKEN: ${{ secrets.GRAPH_PUSH_TOKEN }}
+      PR_BODY: ${{ github.event.pull_request.body }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -15,7 +15,7 @@ Pure logic without DOM: data loading, dates, search/sort/filter, layer rules, pr
 - `interfaces/I-9-shapes.md`
 - `graph/core.md`
 - `changes/core.md`
-- `todo/core.md`
+- `TODO.md`
 
 ## Code and documents of the domain (open the part the task needs, with offset and limit)
 
@@ -23,9 +23,9 @@ Pure logic without DOM: data loading, dates, search/sort/filter, layer rules, pr
 - `app/js/core/search.js`
 - `app/js/core/data.js`
 
-## Your files (the only ones you may change)
+## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)
 
-`app/js/core/`, `tests/js/dates.test.js`, `tests/js/data.test.js`, `tests/js/search.test.js`, `tests/fixtures/dates-vectors.json`, and your records `changes/core.md`, `todo/core.md`.
+`app/js/core/`, `tests/js/dates.test.js`, `tests/js/data.test.js`, `tests/js/search.test.js`, `tests/fixtures/dates-vectors.json`, and the log `changes/core.md`.
 
 ## Token rules
 

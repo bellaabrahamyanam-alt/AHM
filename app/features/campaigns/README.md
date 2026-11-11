@@ -7,6 +7,6 @@ Shows military campaigns on the map. It is a **switchable feature**: loaded only
   (it sends nothing today). Deleting this folder is also safe: the loader logs one warning and the app runs as before.
 - **Files:** `main.js` (calls `AHM.features.register('campaigns', init)`), `style.css` (selectors start with `.campaigns-`),
   `README.md`, tests in `tests/js/campaigns.test.js`. Put data, helpers and sub-folders here too.
-- **Rules:** touch nothing outside this folder, tests and your records (`changes/campaigns.md`, `todo/campaigns.md`,
+- **Rules:** touch nothing outside this folder, tests and your records (`changes/campaigns.md`,
   `diffs/campaigns/`). Use only `AHM.features.*`, `AHM.on/emit` (events you emit are named `campaigns:*`), the `AHM.map` commands of
-  INTERFACES.md I-2 and the core functions of I-3. Anything else: a request or proposal (`DOMAINS.md`).
+  INTERFACES.md I-2 and the core functions of I-3. Anything else: an item under "Needs you" in `TODO.md`.

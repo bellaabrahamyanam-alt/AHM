@@ -75,6 +75,22 @@
 .ahm-vtx:active {
   cursor: grabbing;
 }
+/* a point that sits on a place (a stop of a route) and the handle that inserts a point in the middle of a segment */
+.ahm-vtx.place {
+  width: 18px;
+  height: 18px;
+  border-color: #1b5e20;
+  background: #c8e6c9;
+}
+.ahm-vtx.mid {
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+  opacity: 0.65;
+}
+.ahm-vtx.mid:hover {
+  opacity: 1;
+}
 
 /* Routes: the start and end places of the card */
 .rt-ends {
@@ -83,4 +99,50 @@
 #rtForm input[list] {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Routes: the stops editor, the path finder */
+.rt-stop {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.rt-stop input {
+  flex: 1;
+  min-width: 0;
+}
+.rt-find {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 6px 0;
+}
+.rt-find input {
+  flex: 1;
+  min-width: 0;
+}
+#rtFinder summary {
+  font-weight: bold;
+  cursor: pointer;
+  margin: 6px 0;
+}
+.rt-found,
+.rt-legs {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+}
+.rt-found > li {
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.rt-found > li.on {
+  border-color: #1d6fd1;
+  box-shadow: inset 3px 0 0 #1d6fd1;
+}
+.rt-legs li {
+  padding: 2px 0;
 }

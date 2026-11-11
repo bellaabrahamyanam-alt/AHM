@@ -10,12 +10,13 @@ const SHAPE_TYPES = {
   district: { label: 'District', dash: 'dotted', width: 2, color: '#8d6e63', fill: 0.1 },
   territory: { label: 'Territory or area', dash: 'solid', width: 1.4, color: '#2e7d32', fill: 0.2 },
   disputed: { label: 'Disputed area', dash: 'dashdot', width: 2.2, color: '#e07b39', fill: 0.12 },
-  // Routes: lines that run from one place to another, drawn with direction arrows. Same store, layers and period filter as borders.
-  trade: { label: 'Trade route', dash: 'dashed', width: 2.4, color: '#b7791f', fill: 1, route: true },
-  military: { label: 'Military march', dash: 'solid', width: 3, color: '#c62828', fill: 1, route: true },
-  migration: { label: 'Migration', dash: 'dotted', width: 2.8, color: '#6a1b9a', fill: 1, route: true },
-  journey: { label: 'Journey or embassy', dash: 'dashdot', width: 2.4, color: '#00796b', fill: 1, route: true },
-  road: { label: 'Road', dash: 'solid', width: 2, color: '#5d4037', fill: 1, route: true },
+  // Routes: lines through places and free waypoints. `twoway`: usable both ways (trade, roads) or one way only (marches, migrations: drawn with
+  // direction arrows). Same store, layers and period filter as borders.
+  trade: { label: 'Trade route', dash: 'dashed', width: 2.4, color: '#b7791f', fill: 1, route: true, twoway: true },
+  military: { label: 'Military march', dash: 'solid', width: 3, color: '#c62828', fill: 1, route: true, twoway: false },
+  migration: { label: 'Migration', dash: 'dotted', width: 2.8, color: '#6a1b9a', fill: 1, route: true, twoway: false },
+  journey: { label: 'Journey or embassy', dash: 'dashdot', width: 2.4, color: '#00796b', fill: 1, route: true, twoway: false },
+  road: { label: 'Road', dash: 'solid', width: 2, color: '#5d4037', fill: 1, route: true, twoway: true },
 };
 const isRouteType = (t) => !!(SHAPE_TYPES[t] && SHAPE_TYPES[t].route);
 const isRoute = (s) => isRouteType(s.type);
@@ -24,12 +25,14 @@ const ROUTE_TYPE_LIST = Object.keys(SHAPE_TYPES).filter(isRouteType);
 const shapeType = (t) => SHAPE_TYPES[t] || SHAPE_TYPES.territory;
 const MAX_SHAPE_POINTS = 20000; // the server refuses more; imports are simplified to IMPORT_POINTS
 const IMPORT_POINTS = 3000;
-let shapes = []; // [{ id, names, type, color, opacity, label, date_from, date_to, source, geometry, from_place?, to_place? }] (routes have the two place ids)
+let shapes = []; // [{ id, names, type, color, opacity, label, date_from, date_to, source, geometry, from_place?, to_place? }] (routes: stops = ordered ids of the places the line passes, twoway = boolean)
 
 const normShape = (f) => ({
   ...f.properties,
   geometry: f.geometry,
-  ...(isRouteType(f.properties.type) ? { from_place: f.properties.from_place || '', to_place: f.properties.to_place || '' } : {}),
+  ...(isRouteType(f.properties.type)
+    ? { stops: Array.isArray(f.properties.stops) ? f.properties.stops : [], twoway: typeof f.properties.twoway === 'boolean' ? f.properties.twoway : shapeType(f.properties.type).twoway }
+    : {}),
   date_from: f.properties.date_from ? dateUpgrade(f.properties.date_from) : null,
   date_to: f.properties.date_to ? dateUpgrade(f.properties.date_to) : null,
 });
@@ -44,6 +47,7 @@ const shapeDefaults = (type, kind) => ({
   color: shapeType(type).color,
   opacity: kind === 'line' ? 1 : shapeType(type).fill,
   label: true,
+  ...(isRouteType(type) ? { twoway: shapeType(type).twoway, stops: [] } : {}),
 });
 
 /** The shapes that pass the filters, sorted by name. options: q = text, lang = language code or '', types = Set (empty = all), period = [start, end) in seconds,
@@ -72,19 +76,20 @@ const GEOM_LINES = { Polygon: (c) => c, MultiPolygon: (c) => c.flat(), LineStrin
 /** Every line or ring of a geometry, as a list of point lists. */
 const geomLines = (g) => GEOM_LINES[g.type](g.coordinates);
 const geomPoints = (g) => geomLines(g).flat();
-/** Length of a line in km (haversine along the points; MultiLineString: the parts added). */
-function geomLengthKm(g) {
+/** Length in km of one list of points [lon, lat] (haversine). */
+function lineKm(pts) {
   const rad = Math.PI / 180;
   let km = 0;
-  geomLines(g).forEach((l) =>
-    l.slice(1).forEach((p, i) => {
-      const a = l[i],
-        h = Math.sin(((p[1] - a[1]) * rad) / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(p[1] * rad) * Math.sin(((p[0] - a[0]) * rad) / 2) ** 2;
-      km += 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(h)));
-    })
-  );
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1],
+      p = pts[i],
+      h = Math.sin(((p[1] - a[1]) * rad) / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(p[1] * rad) * Math.sin(((p[0] - a[0]) * rad) / 2) ** 2;
+    km += 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
   return km;
 }
+/** Length of a line in km (MultiLineString: the parts added). */
+const geomLengthKm = (g) => geomLines(g).reduce((n, l) => n + lineKm(l), 0);
 /** The line the other way round (a route's direction is its point order). */
 const geomReverse = (g) => ({ type: g.type, coordinates: g.type === 'LineString' ? g.coordinates.slice().reverse() : g.coordinates.map((l) => l.slice().reverse()).reverse() });
 const geomCount = (g) => geomPoints(g).length;

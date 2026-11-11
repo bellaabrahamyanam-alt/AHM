@@ -718,14 +718,17 @@ function cleanShape(inp, codes, places) {
     to = D.dateClean(inp.date_to === undefined ? null : inp.date_to, 'end date');
   D.dateOrderCheck(from, to);
   const out = { names, type: inp.type, color: inp.color.toLowerCase(), opacity: Math.round(opacity * 100) / 100, label: inp.label, date_from: from, date_to: to, source };
-  if (ROUTE_TYPES.includes(inp.type))
-    // a route may start and end at places: ids of existing places, or '' for none. Absent = unchanged.
-    ['from_place', 'to_place'].forEach((k) => {
-      if (inp[k] === undefined) return;
-      const v = inp[k] === null ? '' : inp[k];
-      if (typeof v !== 'string' || (v !== '' && !places.has(v))) throw bad('unknown place in the route ends');
-      out[k] = v;
-    });
+  if (ROUTE_TYPES.includes(inp.type)) {
+    // stops: the places the route passes, in order (ids of existing places; at most 60). twoway: usable both ways. Absent = unchanged.
+    if (inp.stops !== undefined) {
+      if (!Array.isArray(inp.stops) || inp.stops.length > 60 || inp.stops.some((id) => typeof id !== 'string' || !places.has(id))) throw bad('unknown place among the route stops');
+      out.stops = inp.stops;
+    }
+    if (inp.twoway !== undefined) {
+      if (typeof inp.twoway !== 'boolean') throw bad('twoway must be true or false');
+      out.twoway = inp.twoway;
+    }
+  }
   return out;
 }
 // A route is a line: refuses an area for a route type.

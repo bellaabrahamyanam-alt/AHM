@@ -87,7 +87,7 @@ function shPush() {
           width: t.width,
           dash: t.dash,
           label: s.label,
-          route: isRoute(s),
+          arrows: isRoute(s) && !s.twoway,
           halo: lyState.editing ? lyHalo(s.id) : '', // while members are chosen, the members of the layer get a ring
           size: bboxArea(shBox(s)),
         };

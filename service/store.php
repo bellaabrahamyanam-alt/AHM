@@ -1218,15 +1218,24 @@ class store
             'source' => $source
         ];
         if (in_array($in['type'], self::ROUTE_TYPES, true)) {
-            // a route may start and end at places: ids of existing places, or '' for none. Absent = unchanged.
-            foreach (['from_place', 'to_place'] as $k) {
-                if (array_key_exists($k, $in)) {
-                    $v = $in[$k] === null ? '' : $in[$k];
-                    if (!is_string($v) || ($v !== '' && !isset($places[$v]))) {
-                        throw self::bad('unknown place in the route ends');
-                    }
-                    $out[$k] = $v;
+            // stops: the places the route passes, in order (ids of existing places; at most 60). twoway: usable both ways. Absent = unchanged.
+            if (array_key_exists('stops', $in)) {
+                $st = $in['stops'];
+                if (!is_array($st) || count($st) > 60) {
+                    throw self::bad('unknown place among the route stops');
                 }
+                foreach ($st as $id) {
+                    if (!is_string($id) || !isset($places[$id])) {
+                        throw self::bad('unknown place among the route stops');
+                    }
+                }
+                $out['stops'] = array_values($st);
+            }
+            if (array_key_exists('twoway', $in)) {
+                if (!is_bool($in['twoway'])) {
+                    throw self::bad('twoway must be true or false');
+                }
+                $out['twoway'] = $in['twoway'];
             }
         }
         return $out;

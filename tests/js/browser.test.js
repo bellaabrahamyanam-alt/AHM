@@ -76,11 +76,12 @@ scenario('browser: languages, optional dates in many formats, mountain height, n
     ok(await pg.evaluate(()=>languages.length)===6, 'language dictionary loaded (6)');
     await pg.click('[data-tab=more]'); await pg.click('#more-lang > summary'); // Languages is a fold in More
     ok((await pg.locator('#langList li').count())===6, 'Languages tab lists 6');
-    ok(await pg.locator('#lgAdd').count()===1, 'admin sees the add-language form (dev has no login)');
+    ok(await pg.locator('#lgNew').count()===1 && await pg.locator('#lgAdd').count()===0, 'admin sees the + Add language button, no form yet (dev has no login)');
+    await pg.click('#lgNew'); ok(await pg.locator('#lgAdd').count()===1, '+ Add language opens the form');
     // add language
     await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','Classical Armenian'); await pg.fill('#lgNative','Գրաբար'); await pg.click('#lgAdd'); await pg.waitForTimeout(500);
     ok((await pg.locator('#langList li').count())===7, 'language added -> 7');
-    await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','dup'); await pg.click('#lgAdd'); await pg.waitForTimeout(400);
+    await pg.click('#lgNew'); await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','dup'); await pg.click('#lgAdd'); await pg.waitForTimeout(400);
     ok(/already/.test(await pg.locator('#lgErr').innerText()), 'duplicate language refused: '+await pg.locator('#lgErr').innerText());
     // new place dialog
     await pg.evaluate(()=>openDlg('place',{lon:44.5,lat:40.1,name:'Testville'}));
@@ -139,7 +140,7 @@ scenario('browser: languages, optional dates in many formats, mountain height, n
 
 scenario('browser: tabs, sheets, filters, layers (only / hide / search / create / choose places / notes / delete), categories', null, async (pg, S) => {
   await pg.goto(S.base + '/'); await pg.waitForTimeout(1200);
-    ok(await pg.locator('.tabs button').count()===3 && await pg.locator('#more-maps #basemap').count()===1, 'three tabs; Maps is a fold in More');
+    ok(await pg.locator('.tabs button').count()===4 && await pg.locator('#more-maps #basemap').count()===1, 'four tabs (Explore, Borders, Layers, More); Maps is a fold in More');
     await pg.evaluate(()=>tab('route')); ok(await pg.locator('#more-route').evaluate(e=>e.open) && !(await pg.locator('#more-maps').evaluate(e=>e.open)) && await pg.locator('#tab-more').isVisible(), 'tab(route) opens the Directions fold in More');
     await pg.evaluate(()=>tab('explore'));
     // selected types are shown inside Filters only: no chips under the Filters block

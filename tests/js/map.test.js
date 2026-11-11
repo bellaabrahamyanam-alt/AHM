@@ -134,6 +134,10 @@ function boot({ ready = true, before } = {}) {
     registerTypeIcons() {},
     overlaysInit() {},
     syncOverlays() {},
+    shapesInit() {}, // shapes.js is not loaded here: no borders to draw
+    shapeLineAt: () => null,
+    shapesAt: () => [],
+    shapeDrawing: null,
     console: { log() {}, warn() {}, error: (...a) => errors.push(a.map(String).join(' ')) },
   });
   let onBasemap = null;
@@ -355,6 +359,7 @@ function makeClock() {
   let seq = 0;
   const q = [];
   return {
+    now: () => now,
     setTimeout(fn, ms = 0) {
       const id = ++seq;
       q.push({ id, at: now + ms, fn });
@@ -461,6 +466,11 @@ function bootUx({ ready = true, glyphs = true } = {}) {
     registerTypeIcons() {},
     overlaysInit() {},
     syncOverlays() {},
+    shapesInit() {}, // shapes.js is not loaded here: no borders to draw
+    shapeLineAt: () => null,
+    shapesAt: () => [],
+    shapeDrawing: null,
+    performance: { now: () => 100000 + clock.now() }, // map.js times double clicks with it; a large start: lastDblAt = 0 means long ago
     setTimeout: clock.setTimeout,
     clearTimeout: clock.clearTimeout,
     console: { log() {}, warn() {}, error: (...a) => errors.push(a.map(String).join(' ')) },

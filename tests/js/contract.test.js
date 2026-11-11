@@ -14,7 +14,7 @@ const READ = ['places', 'notesIndex', 'note', 'languages', 'overlays', 'overlayI
 const WRITE = ['save', 'languageSave', 'overlaySave', 'overlayUpload', 'overlayDelete', 'layerSave', 'layerDelete', 'categorySave'];
 // Names added by proposal 010 (INTERFACES.md 1.5): accepted before they exist, not required yet (tightened after tasks 010, 011 and 013 are merged; the owner decides).
 const NEW_READ = ['types', 'shapes'];
-const NEW_WRITE = ['typeSave', 'typeDelete', 'shapeSave'];
+const NEW_WRITE = ['typeSave', 'typeDelete', 'shapeSave', 'shapeDelete'];
 /** `have` must hold every name of `need` and may hold others only from `optional`. */
 const within = (need, optional, have, what) => {
   const missing = need.filter((k) => !have.includes(k)),
@@ -55,8 +55,8 @@ const MAP_COMMANDS = ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint'
 const MAP_EVENTS = ['map:click', 'map:ready', 'map:show-controls', 'place:click', 'place:dblclick'];
 const SIDEBAR_EVENTS = ['sidebar:resized'];
 // Added by proposal 010 (1.5): accepted, not required yet.
-const NEW_MAP_COMMANDS = ['drawShape', 'getSymbols', 'hideMenu', 'hideShape', 'highlightShape', 'setShapes', 'setTypes', 'showMenu'];
-const NEW_MAP_EVENTS = ['map:menu', 'shape:click'];
+const NEW_MAP_COMMANDS = ['drawShape', 'getSymbols', 'hideMenu', 'hideShape', 'highlightShape', 'isDrawing', 'previewShape', 'setShapes', 'setTypes', 'showMenu', 'showPreview'];
+const NEW_MAP_EVENTS = ['draw:cancel', 'draw:finish', 'map:menu', 'map:menu-close', 'shape:click'];
 
 test('contract I-2: AHM.map has exactly the commands of INTERFACES.md', () => {
   const p = load(['typeicons.js', 'map.js']);

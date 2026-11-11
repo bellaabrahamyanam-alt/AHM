@@ -68,6 +68,7 @@ function load(scripts, pre = '') {
     console,
     setTimeout,
     clearTimeout,
+    performance: globalThis.performance,
     alert() {},
     confirm: () => true,
     __calls: calls,
@@ -76,7 +77,7 @@ function load(scripts, pre = '') {
   sandbox.window = sandbox;
   const ctx = vm.createContext(sandbox);
   vm.runInContext(pre, ctx, { filename: 'stand-ins' });
-  for (const f of ['ahm.js', ...scripts]) vm.runInContext(fs.readFileSync(scriptPath(f), 'utf8'), ctx, { filename: f });
+  for (const f of ['ahm.js', 'icons.js', ...scripts]) vm.runInContext(fs.readFileSync(scriptPath(f), 'utf8'), ctx, { filename: f });
   return {
     ctx,
     els,
@@ -97,6 +98,7 @@ const UI_STANDINS = `
   function tab(n) { curTab = n; __calls.push('tab:' + n); }
   function show(id) { __calls.push('show:' + id); }
   function closeDetail() { __calls.push('closeDetail'); }
+  function dockSync() {}
   const typeIcon = () => '', typeLabel = (t) => String(t).replace(/_/g, ' ');
 `;
 const SAMPLE = {

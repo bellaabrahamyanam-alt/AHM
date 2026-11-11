@@ -19,7 +19,7 @@ forum controller through `window.AHM_BACKEND` in production). Names are fixed:
 - Read (GET): `places`, `notesIndex`, `note(place, id)`, `languages`, `overlays`, `overlayImage(o)`, `layers`,
   `layerNotesIndex`, `categories`; **[1.5]** `types`, `shapes`.
 - Write (POST, JSON unless noted): `save`, `languageSave`, `overlaySave`, `overlayUpload(id)` (multipart), `overlayDelete`,
-  `layerSave`, `layerDelete`, `categorySave`; **[1.5]** `typeSave`, `typeDelete`, `shapeSave`.
+  `layerSave`, `layerDelete`, `categorySave`; **[1.5]** `typeSave`, `typeDelete`, `shapeSave`, `shapeDelete` (`{ id }`; the sidebar deletes a border with it).
 - Permission flags in config: `canEdit`, `loggedIn`, `loginUrl`, `canOverlay`, `canLanguage`, `canLayerAdmin`; **[1.5]** `canTypeAdmin`.
 - Errors: HTTP 4xx with `{ "error": "<message>" }`; 400 for invalid input, 403 for no permission.
 
@@ -65,6 +65,9 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `drawShape({ geometry: 'line' \| 'area', type_code, coords? }, onChange) → { getGeometry(), setType(code), remove() }` **[1.5]** | the interactive editor for a line or an area; `coords` edits an existing shape; `onChange(geometry \| null)` |
 | `showMenu({ lon, lat }, { title?, actions: [{ id, icon, label }] })` **[1.5]** | a small menu at a point; `icon` is a name of I-7, `label` is the tooltip and the `aria-label`; one menu at a time |
 | `hideMenu()` **[1.5]** | close the menu |
+| `previewShape(id, { color?, opacity? } \| null)` **[1.5]** | show a colour or an opacity of a shape before it is saved; `null` puts the saved look back |
+| `showPreview(geometry \| null)` **[1.5]** | a blue draft outline of a search result, shown before it is added |
+| `isDrawing()` **[1.5]** | `true` while the drawing tool is active; read only |
 
 ### Events, emitted by the map (`AHM.on(name, handler)`), handled by the sidebar
 | Event | Payload | When |
@@ -76,6 +79,9 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `map:show-controls` **[1.1]** | none | the map asks the sidebar to open the Maps fold (when an historical map is edited) |
 | `shape:click` **[1.5]** | `{ id }` | click on a line or on the outline of an area (6 px tolerance) |
 | `map:menu` **[1.5]** | `{ id, lon, lat }` | a button of the point menu was used (`id` = the action's id, `lon`/`lat` = the point the menu was opened at); the menu closes |
+| `map:menu-close` **[1.5]** | none | the point menu closed (a button, Esc, or another menu opened) |
+| `draw:finish` **[1.5]** | none | Enter or a double click while a shape is being drawn |
+| `draw:cancel` **[1.5]** | none | Esc while a shape is being drawn |
 
 ### Events handled by the map (from the sidebar and from the state manager)
 | Event | Payload | When |
@@ -177,5 +183,6 @@ Lines and areas on the map (borders, routes, territories). Built by tasks 011 (d
 2. The sidebar and the map share HTML ids by design inside the Maps fold (`#more-maps`, owned by the map); outside it neither touches
    the other's ids.
 3. `app/index.html` is edited by several domains (script list: shared; the sidebar parts and the Maps fold by their domains); step 4 may need markers or a split.
+4. (2026-11-10, found by the red pipeline) The code differs from three rows above; the owner decides which side changes. `drawShape` takes `{ kind: 'line' \| 'area', coords?, color? }` and returns `{ getGeometry(), count(), undo(), remove() }`. `showMenu(point, actions, title, hint)` takes the actions as the second argument. `map:menu` carries `{ action, lon, lat, name }`, not `{ id, lon, lat }`.
 
 Contract tests for this file: `tests/js/contract.test.js` (I-1 to I-4 and I-6; the [1.5] names are accepted but not yet required), `tests/js/icons.test.js` (I-7), `tests/js/features.test.js` (I-5), `tests/js/boundaries.test.js` (the only written-down exception left there is `typeIcon`, I-4).

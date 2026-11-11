@@ -16,7 +16,7 @@ Owner-only integration: domain table, interfaces, config, index.html, shared tes
 
 ## Your files (the only ones you may change)
 
-all files not owned by another domain, plus `.gitlab/`, `.gitlab-ci.yml`, `.claude/`, `.gitignore`, and your records `changes/shared.md`, `todo/shared.md`.
+all files not owned by another domain, plus `.gitlab/`, `.gitlab-ci.yml`, `.github/`, `.claude/`, `.gitignore`, and your records `changes/shared.md`, `todo/shared.md`.
 
 ## Token rules
 

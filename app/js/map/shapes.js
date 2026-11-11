@@ -190,11 +190,17 @@ function drawShape(opts, onChange) {
   endDraw();
   setShapeHover(null);
   // opts: kind 'area' | 'line'; coords = the points to start with; ids = for each of them the id of the place it sits on, or null;
-  //   snap: a click or a drop on a place marker uses the place's position and remembers its id (routes: the stops).
+  //   snap: a click or a drop on a place marker uses the place's position and remembers its id (routes: the stops);
+  //   locate(id): the exact [lon, lat] of that place.
   // A line also gets a small handle at the middle of every segment: drag it to insert a point there.
+  //   labels: the first point is marked A and the last B (a route: from A through the points to B).
+  //   expand(a, b): async, called for each new point after the first; gives the points to add between a and b (a modern road, say) or nothing.
+  //   onNote(text): a short message about what happened (a road that was not found).
   const kind = opts.kind,
     pts = (opts.coords || []).map((c) => c.slice()),
     ids = pts.map((_, i) => (opts.ids && opts.ids[i]) || null),
+    flags = pts.map(() => null), // 'road' for a point that only gives a road its course
+    groups = pts.map(() => 1), // how many points each click added, so that Undo takes the road of a click away at once
     marks = [],
     mids = [],
     geom = () =>
@@ -217,11 +223,24 @@ function drawShape(opts, onChange) {
       const layers = ['ahm-places', SEL.symbol].filter((l) => map.getLayer(l)),
         r = 12,
         hit = layers.length && map.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]], { layers }).find((f) => f.properties.id && !f.properties.point_count && f.geometry.type === 'Point');
-      return hit ? { id: hit.properties.id, ll: hit.geometry.coordinates.slice(0, 2) } : null;
+      // the position of the rendered feature is rounded to the map tile: the caller knows the exact one
+      return hit ? { id: hit.properties.id, ll: (opts.locate && opts.locate(hit.properties.id)) || hit.geometry.coordinates.slice(0, 2) } : null;
     },
+    decorate = () => {
+      const n = pts.length;
+      marks.forEach((m, i) => {
+        const el = m.getElement();
+        el.classList.toggle('first', !!opts.labels && i === 0);
+        el.classList.toggle('last', !!opts.labels && n > 1 && i === n - 1);
+        el.classList.toggle('road', flags[i] === 'road');
+        el.textContent = opts.labels && i === 0 ? 'A' : opts.labels && n > 1 && i === n - 1 ? 'B' : '';
+      });
+    },
+    ungroup = () => groups.splice(0, groups.length, ...pts.map(() => 1)),
     changed = () => {
       paint();
       rebuildMids();
+      decorate();
       if (onChange) onChange(geom());
     },
     wire = (m, el) => {
@@ -238,6 +257,7 @@ function drawShape(opts, onChange) {
           m.setLngLat(s.ll);
         }
         ids[i] = s ? s.id : null;
+        flags[i] = null; // a moved point is a point of the person now
         el.classList.toggle('place', !!ids[i]);
         changed();
       });
@@ -248,8 +268,10 @@ function drawShape(opts, onChange) {
         const i = marks.indexOf(m);
         pts.splice(i, 1);
         ids.splice(i, 1);
+        flags.splice(i, 1);
         marks.splice(i, 1);
         m.remove();
+        ungroup();
         changed();
       });
     },
@@ -275,7 +297,9 @@ function drawShape(opts, onChange) {
           mids.splice(mids.indexOf(m), 1);
           pts.splice(i + 1, 0, [l.lng, l.lat]);
           ids.splice(i + 1, 0, null);
+          flags.splice(i + 1, 0, null);
           marks.splice(i + 1, 0, m);
+          ungroup();
           el.classList.remove('mid');
           el.title = '';
           wire(m, el);
@@ -285,22 +309,47 @@ function drawShape(opts, onChange) {
     },
     undo = () => {
       if (!pts.length) return;
-      pts.pop();
-      ids.pop();
-      marks.pop().remove();
+      for (let k = groups.pop() || 1; k > 0 && pts.length; k--) {
+        pts.pop();
+        ids.pop();
+        flags.pop();
+        marks.pop().remove();
+      }
+      changed();
+    },
+    // a new point: with `expand`, the points of the road between the last point and this one come first
+    add = async (ll, id) => {
+      let between = [];
+      if (opts.expand && pts.length) {
+        try {
+          between = (await opts.expand(pts[pts.length - 1], ll)) || [];
+        } catch (e) {
+          between = [];
+        }
+        if (!shapeDrawing || shapeDrawing.dead) return; // the tool was closed while the road was being asked for
+      }
+      between.forEach((c) => {
+        pts.push(c);
+        ids.push(null);
+        flags.push('road');
+        vertex(c, null);
+      });
+      pts.push(ll);
+      ids.push(id || null);
+      flags.push(null);
+      groups.push(between.length + 1);
+      vertex(ll, id);
       changed();
     };
-  let last = { t: 0, x: -99, y: -99 };
+  let last = { t: 0, x: -99, y: -99 },
+    queue = Promise.resolve(); // the points are added in the order of the clicks, also when a road takes a moment
   const onClick = (e) => {
       const now = performance.now();
       if (now - last.t < 400 && Math.hypot(e.point.x - last.x, e.point.y - last.y) < 6) return; // the second click of a double click
       last = { t: now, x: e.point.x, y: e.point.y };
       const s = snapAt(e.point),
         ll = s ? s.ll : [e.lngLat.lng, e.lngLat.lat];
-      pts.push(ll);
-      ids.push(s ? s.id : null);
-      vertex(ll, s && s.id);
-      changed();
+      queue = queue.then(() => add(ll, s && s.id));
     },
     onDbl = (e) => {
       e.preventDefault();
@@ -316,6 +365,7 @@ function drawShape(opts, onChange) {
       }
     };
   pts.forEach((p, i) => vertex(p, ids[i]));
+  decorate();
   map.on('click', onClick);
   map.on('dblclick', onDbl);
   document.addEventListener('keydown', onKey);
@@ -329,8 +379,11 @@ function drawShape(opts, onChange) {
     count: () => pts.length,
     points: () => pts.map((p) => p.slice()), // the points, also when there are too few for a geometry
     ids: () => ids.slice(), // for each point the place it sits on, or null (a free waypoint)
+    flags: () => flags.slice(), // for each point 'road' (it only gives a road its course) or null
+    ready: () => queue, // resolves when every click so far has become a point
     undo,
     remove() {
+      shapeDrawing.dead = true;
       map.off('click', onClick);
       map.off('dblclick', onDbl);
       document.removeEventListener('keydown', onKey);

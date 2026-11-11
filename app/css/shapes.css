@@ -82,6 +82,27 @@
   border-color: #1b5e20;
   background: #c8e6c9;
 }
+.ahm-vtx.first,
+.ahm-vtx.last {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: bold 12px/1 sans-serif;
+  color: #fff;
+  background: #2e7d32;
+  border-color: #fff;
+}
+.ahm-vtx.last {
+  background: #c62828;
+}
+.ahm-vtx.road {
+  width: 8px;
+  height: 8px;
+  border-width: 1px;
+  opacity: 0.8;
+}
 .ahm-vtx.mid {
   width: 10px;
   height: 10px;
@@ -101,16 +122,7 @@
   box-sizing: border-box;
 }
 
-/* Routes: the stops editor, the path finder */
-.rt-stop {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-.rt-stop input {
-  flex: 1;
-  min-width: 0;
-}
+/* Routes: the path finder */
 .rt-find {
   display: flex;
   gap: 4px;
@@ -145,4 +157,7 @@
 }
 .rt-legs li {
   padding: 2px 0;
+}
+#tab-routes.rt-drawing > :not(#rtAdd) {
+  display: none;
 }

@@ -2,8 +2,9 @@
 // A route is a shape (core/shapes.js) of a route type: a line stored in the same file, with the same layers, period filter and drawing tool
 // as a border. Extra fields: stops (the ordered ids of the places the line passes: a place is a stop when a point of the line sits on it) and
 // twoway (usable both ways; a one-way route is drawn with arrows). Routes that share a stop chain into journeys: "Find a path" (core/routes.js).
-// Ways to add one: draw it on the map (click places and free points, drag the handle of a segment to insert a point), or give the stops and
-// let the line run straight between them or along modern roads (OSRM).
+// Add one by drawing it on the map: click the start (A), the points it passes and the destination (B); a click on a place marker makes that
+// place a stop, any other click is a free point. Optionally the line follows modern roads between the clicks (OSRM). Then its names, type,
+// direction and dates. Drag the handle of a segment to insert a point.
 const rts = {
   open: null, // id of the route whose card is open
   types: new Set(), // type filter
@@ -13,6 +14,8 @@ const rts = {
   found: null, // { a, b, paths, pick } the path search of the finder
   note: '', // a message for the card that opens next
   keys: null, // place name → id for the inputs, see rtKeys
+  pending: null, // { coords, ids, road }: the line just drawn, while its form is open
+  roads: false, // follow modern roads between the clicks
 };
 const rtCan = () => AHM_CONFIG.canEdit;
 const rtErr = (m) => ($('#rtErr') ? ($('#rtErr').textContent = m || '') : m && alert(m));
@@ -336,7 +339,7 @@ $('#rtDetail').addEventListener('click', async (e) => {
   if (!b) return;
   const act = b.dataset.rtact,
     s = rtCur();
-  if (act === 'close') return rts.form ? rtCancelForm() : rtClose();
+  if (act === 'close') return rts.form ? rtDiscardForm() : rtClose();
   if (act === 'typepick') {
     b.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === b));
     const two = $('#rtTwo');
@@ -344,8 +347,8 @@ $('#rtDetail').addEventListener('click', async (e) => {
     return;
   }
   if (act === 'save') return rtSaveForm();
-  if (act === 'cancel') return rtCancelForm();
-  if (act === 'stopadd' || act === 'stopup' || act === 'stopdown' || act === 'stopdel') return rtStopAction(act, b);
+  if (act === 'cancel') return rtDiscardForm();
+  if (act === 'back') return rtStartDraw({ mode: 'new', pending: rts.pending });
   if (act === 'open') return rtOpen(b.dataset.sid, true);
   if (act === 'place') {
     const p = placeById(b.dataset.pid);
@@ -377,60 +380,39 @@ $('#rtDetail').addEventListener('click', async (e) => {
   }
 });
 
-// ---- the form: names, type, direction, dates; for a new route also the stops and how the path is made ----
+// ---- the form: after the line is drawn, its names, type, direction and dates ----
 const rtTypeChips = (cur) =>
   ROUTE_TYPE_LIST.map((t) => `<button type="button" class="chip${t === cur ? ' on' : ''}" data-rtact="typepick" data-t="${t}" title="${esc(SHAPE_TYPES[t].label)}">${shIcon(t)}${esc(SHAPE_TYPES[t].label)}</button>`).join('');
-/** The rows of the stops editor for the typed values `vals`: the first is the start, the last the end, the ones between are places passed on the way. */
-function rtStopRows(vals) {
-  const n = vals.length;
-  return vals
-    .map(
-      (v, i) =>
-        `<div class="rt-stop"><input class="rt-stopin" list="rtPlaceList" value="${esc(v)}" placeholder="${i === 0 ? 'Start' : i === n - 1 ? 'End' : 'Then'} (type a place name)" aria-label="Stop ${i + 1}" autocomplete="off">` +
-        `<button type="button" class="icon-btn" data-rtact="stopup" title="Move up" aria-label="Move up"${i ? '' : ' disabled'}>↑</button>` +
-        `<button type="button" class="icon-btn" data-rtact="stopdown" title="Move down" aria-label="Move down"${i < n - 1 ? '' : ' disabled'}>↓</button>` +
-        `<button type="button" class="icon-btn" data-rtact="stopdel" title="Remove" aria-label="Remove">✕</button></div>`
-    )
-    .join('');
-}
-function rtStopAction(act, b) {
-  const box = $('#rtStops'),
-    vals = [...box.querySelectorAll('.rt-stopin')].map((i) => i.value),
-    i = [...box.querySelectorAll('.rt-stop')].indexOf(b.closest('.rt-stop'));
-  if (act === 'stopadd') vals.push('');
-  else if (act === 'stopdel') vals.splice(i, 1);
-  else {
-    const j = act === 'stopup' ? i - 1 : i + 1;
-    [vals[i], vals[j]] = [vals[j], vals[i]];
-  }
-  box.innerHTML = rtStopRows(vals);
-}
+/** f: a route being edited ({ id, ... }) or { id: null } for the line just drawn (rts.pending). */
 function rtOpenForm(f) {
   rts.form = f;
-  const names = f.names && f.names.length ? f.names : [{ lang: $('#lang').value || 'en', name: '' }],
-    type = f.type || 'trade';
+  const pend = f.id ? null : rts.pending,
+    stops = pend ? rtStopsOf(pend.ids) : [],
+    names = f.names && f.names.length ? f.names : [{ lang: $('#lang').value || 'en', name: stops.length > 1 ? `${rtName(stops[0])} – ${rtName(stops[stops.length - 1])}` : '' }],
+    type = f.type || 'trade',
+    chain = pend
+      ? stops.length
+        ? stops.map((id) => `<span class="chip">${esc(rtName(id))}</span>`).join(' <span class="sn">→</span> ')
+        : '<span class="sn">No place on the way: it runs between free points.</span>'
+      : rtChainHTML(f);
   rtKeys();
   $('#rtDetail').innerHTML =
     `<div class="dock-head"><span class="tmark">${shIcon(type)}</span><h3 class="dock-title">${f.id ? 'Edit route' : 'New route'}</h3><span class="dock-btns">${rtBtn('cancel', 'close', 'Cancel')}</span></div>` +
-    `<div class="dock-body"><div class="pf" id="rtForm"><div class="label">Names</div><div class="pf-names">${names.map(pfRow).join('')}</div>` +
+    `<div class="dock-body"><div class="pf" id="rtForm">` +
+    (pend ? `<div class="sn">${pend.coords.length} points drawn, ${rtKm(lineKm(pend.coords))}.</div>` : '') +
+    `<div class="label">Places on the way</div><div class="chips rt-ends">${chain}</div>` +
+    (f.id ? `<div class="sn">To change the places or the course of the line, close this and use “Edit path”.</div>` : `<div class="sn">A place is a stop when a point of the line sits on it. The other points only give the line its course.</div>`) +
+    `<div class="label">Names</div><div class="pf-names">${names.map(pfRow).join('')}</div>` +
     `<button type="button" class="pf-add">+ Add another name</button><div class="sn">${LANG_HINT}</div>` +
     `<div class="label">Type</div><div class="chips sh-typepick">${rtTypeChips(type)}</div>` +
     `<div class="sn">The type sets the line pattern, the first colour and the usual direction.</div>` +
     `<label class="sh-check"><input type="checkbox" id="rtTwo"${f.id ? (f.twoway ? ' checked' : '') : SHAPE_TYPES[type].twoway ? ' checked' : ''}> Usable both ways</label>` +
-    `<div class="sn">Switched off, the route is drawn with arrows and a path only follows it from the first place to the last.</div>` +
-    (f.id
-      ? `<div class="label">Places on the way</div><div class="chips rt-ends">${rtChainHTML(f)}</div><div class="sn">To change the places or the course of the line, close this and use “Edit path”.</div>`
-      : `<div class="label">Places on the way (optional)</div><div id="rtStops">${rtStopRows(['', ''])}</div>` +
-        `<button type="button" class="pf-add" data-rtact="stopadd">+ Add a place</button>` +
-        `<div class="sn">In order, from the start to the end. A route can also pass free points that are not places: add them on the map.</div>` +
-        `<div class="label">Path</div><div class="chips sh-typepick rt-path">` +
-        `<button type="button" class="chip on" data-rtact="typepick" data-p="draw">Draw on the map</button>` +
-        `<button type="button" class="chip" data-rtact="typepick" data-p="straight">Straight between places</button>` +
-        `<button type="button" class="chip" data-rtact="typepick" data-p="roads">Modern roads between places</button></div>` +
-        `<div class="sn">Drawing starts with the places above and lets you click more places and free points, and drag the small handle of a segment to bend it. The other two need at least two places; afterwards “Edit path” bends them to the historical course.</div>`) +
+    `<div class="sn">Switched off, the route is drawn with arrows and a path only follows it from A to B.</div>` +
     `<div class="label">Dates (optional)</div><div class="sn">When the route was used. Routes with dates follow the period filter.</div>` +
     `<div class="pf-sub">Began</div>${dfHTML('pf-from', f.date_from || null)}<div class="pf-sub">Ended</div>${dfHTML('pf-to', f.date_to || null)}</div>` +
-    `<div class="err-line" id="rtErr"></div></div><div class="dock-foot"><button type="button" class="primary" data-rtact="save">${f.id ? 'Save' : 'Next'}</button><button type="button" data-rtact="cancel">Cancel</button></div>`;
+    `<div class="err-line" id="rtErr"></div></div><div class="dock-foot"><button type="button" class="primary" data-rtact="save">${f.id ? 'Save' : 'Save route'}</button>` +
+    (pend ? '<button type="button" data-rtact="back">Back to the map</button>' : '') +
+    `<button type="button" data-rtact="cancel">${pend ? 'Discard' : 'Cancel'}</button></div>`;
   rtShow(true);
   tab('routes');
   const n = $('#rtForm .nn');
@@ -447,64 +429,37 @@ function rtReadForm() {
   const from = dfRead(root.querySelector('.pf-from'), 'Began'),
     to = dfRead(root.querySelector('.pf-to'), 'Ended');
   dateOrderCheck(from, to);
-  const stops = [...root.querySelectorAll('.rt-stopin')].map((i, k, all) => rtPlaceIn(i, k === 0 ? 'start' : k === all.length - 1 ? 'end' : 'place')).filter(Boolean),
-    path = root.querySelector('.rt-path .chip.on');
-  stops.forEach((id, i) => {
-    if (i && id === stops[i - 1]) throw Error('The same place twice in a row.');
-  });
-  return { names, type: root.querySelector('.sh-typepick .chip.on').dataset.t, date_from: from, date_to: to, twoway: $('#rtTwo').checked, stops, path: path ? path.dataset.p : null };
+  return { names, type: root.querySelector('.sh-typepick .chip.on').dataset.t, date_from: from, date_to: to, twoway: $('#rtTwo').checked };
 }
 async function rtSaveForm() {
   const f = rts.form,
     btn = $('#rtDetail [data-rtact="save"]');
   try {
-    const { path, ...fields } = rtReadForm();
+    const fields = rtReadForm();
+    btn.disabled = true;
     if (f.id) {
-      delete fields.stops; // the places belong to the path
       await postJSON(shUrl().shapeSave, rtBody(shapeById(f.id), fields));
       rts.form = null;
       await rtReload();
       return rtOpen(f.id);
     }
-    const body = { ...shapeDefaults(fields.type, 'line'), ...fields, source: '' },
-      st = fields.stops.map(placeById);
-    if (path === 'draw') {
-      rts.form = null;
-      return rtStartDraw({ mode: 'new', body });
-    }
-    if (st.length < 2) throw Error('Choose at least two places for this kind of path, or draw it.');
-    btn.disabled = true;
-    const at = (p) => [p.lon, p.lat];
-    if (path === 'straight') body.geometry = { type: 'LineString', coordinates: st.map(at) };
-    else {
-      // modern roads, one leg between each two places; a leg that has no road stays a straight line
-      const coords = [at(st[0])];
-      let missing = 0;
-      for (let i = 1; i < st.length; i++) {
-        rtErr(`Following modern roads… ${i} of ${st.length - 1}`);
-        let leg;
-        try {
-          leg = simplifyGeometry((await route(st[i - 1], st[i])).geometry).coordinates;
-          leg = [at(st[i - 1]), ...leg.slice(1, -1), at(st[i])]; // the places themselves at the ends, so they stay stops
-        } catch (e) {
-          missing++;
-          leg = [at(st[i - 1]), at(st[i])];
-        }
-        coords.push(...leg.slice(1));
-      }
-      body.geometry = { type: 'LineString', coordinates: coords };
-      body.source = 'osrm:driving';
-      if (missing) rts.note = `${missing} leg${missing > 1 ? 's' : ''} had no road and ${missing > 1 ? 'are' : 'is'} a straight line.`;
-    }
-    await rtCreate(body);
+    const p = rts.pending;
+    await rtCreate({
+      ...shapeDefaults(fields.type, 'line'),
+      ...fields,
+      source: p.road ? 'osrm:driving' : '',
+      stops: rtStopsOf(p.ids),
+      geometry: { type: 'LineString', coordinates: p.coords },
+    });
   } catch (e) {
-    if (btn) btn.disabled = false;
+    btn.disabled = false;
     rtErr(e.message);
   }
 }
 async function rtCreate(body) {
   const id = (await postJSON(shUrl().shapeSave, body)).id;
   rts.form = null;
+  rts.pending = null;
   await rtReload();
   rtRenderAdd();
   rtOpen(id, true);
@@ -512,41 +467,81 @@ async function rtCreate(body) {
 function rtCancelForm() {
   if (!rts.form) return;
   rts.form = null;
+  rts.pending = null;
   rtRenderView();
+  rtRenderAdd();
+}
+/** The person closes the form: a line that was just drawn is only lost after a confirmation. */
+function rtDiscardForm() {
+  if (rts.pending && !confirm('Discard this route? The line you drew is lost.')) return;
+  rtCancelForm();
 }
 
-// ---- drawing: the same tool as for borders, with places that snap and handles that insert points ----
-function rtStartDraw({ mode, id, body }) {
+// ---- drawing: click the map for the start (A), the points the route passes, and the destination (B) ----
+// A click on a place marker makes it a stop; any other click is a free point. Options: follow modern roads between the clicks.
+async function rtRoad(a, b) {
+  const msg = $('#rtAddMsg');
+  if (!rts.roads) return null;
+  try {
+    const leg = simplifyGeometry((await route({ lon: a[0], lat: a[1] }, { lon: b[0], lat: b[1] })).geometry, 30).coordinates;
+    if (msg) msg.textContent = '';
+    return leg.slice(1, -1);
+  } catch (e) {
+    if (msg) msg.textContent = 'No road between these two points: a straight line was used.';
+    return null;
+  }
+}
+function rtDrawInfo() {
+  const d = rts.draw,
+    el = $('#rtDrawInfo');
+  if (!d || !el) return;
+  const n = d.ctl.count();
+  el.textContent = !n
+    ? 'Click the map to set the start (A).'
+    : n === 1
+      ? 'Start set. Click the map to add the next point.'
+      : `${n} points · ${rtKm(lineKm(d.ctl.points())) || '< 1 km'}. The last point is the destination (B): keep clicking to continue the route.`;
+}
+/** mode 'new': a fresh line (pending: the points of a line that came back from the form; startPlace: a place to start from); mode 'edit': the line of route `id`. */
+function rtStartDraw({ mode, id, pending, startPlace }) {
   rtCancelForm();
   if (rts.draw) rts.draw.ctl.remove();
   if (sh.draw) shCancelDraw();
   const s = id && shapeById(id),
-    st = body ? body.stops.map(placeById).filter(Boolean) : [],
-    coords = s ? (geomLines(s.geometry)[0] || []).map((c) => c.slice()) : st.map((p) => [p.lon, p.lat]),
-    ids = s ? rtVertexIds(coords) : st.map((p) => p.id),
-    ctl = AHM.map.drawShape({ kind: 'line', coords, ids, snap: true }, () => {
+    sp = startPlace && placeById(startPlace),
+    coords = s ? (geomLines(s.geometry)[0] || []).map((c) => c.slice()) : pending ? pending.coords : sp ? [[sp.lon, sp.lat]] : [],
+    ids = s ? rtVertexIds(coords) : pending ? pending.ids : sp ? [sp.id] : [],
+    ctl = AHM.map.drawShape({ kind: 'line', coords, ids, snap: true, locate: (pid) => (placeById(pid) ? [placeById(pid).lon, placeById(pid).lat] : null), labels: true, expand: rtRoad }, () => {
       const f = $('#rtFinish');
       if (f) f.disabled = ctl.count() < 2;
+      rtDrawInfo();
     });
   rts.open = null;
-  rts.draw = { mode, id, ctl, body };
+  rts.draw = { mode, id, ctl };
+  rts.pending = null;
   rtRenderList();
   rtRenderView();
   shPush();
   rtRenderAdd();
-  const all = coords.length ? coords : null;
-  if (all) AHM.map.fitTo(all);
+  if (coords.length) AHM.map.fitTo(coords.length > 1 ? coords : [coords[0], coords[0]]);
 }
 async function rtFinishDraw() {
   const d = rts.draw;
-  if (d.ctl.count() < 2) return ($('#rtAddMsg').textContent = 'A route needs at least 2 points.');
-  const geometry = { type: 'LineString', coordinates: d.ctl.points() },
-    stops = rtStopsOf(d.ctl.ids());
+  await d.ctl.ready(); // a click that is still asking for its road
+  if (d.ctl.count() < 2) return ($('#rtAddMsg').textContent = 'A route needs a start and at least one more point.');
+  const coords = d.ctl.points(),
+    ids = d.ctl.ids(),
+    road = d.ctl.flags().includes('road');
   d.ctl.remove();
   rts.draw = null;
+  if (d.mode === 'new') {
+    rts.pending = { coords, ids, road };
+    rtRenderAdd();
+    return rtOpenForm({ id: null });
+  }
+  const s = shapeById(d.id);
   try {
-    if (d.mode === 'new') return await rtCreate({ ...d.body, geometry, stops });
-    await postJSON(shUrl().shapeSave, rtBody(shapeById(d.id), { geometry, stops }));
+    await postJSON(shUrl().shapeSave, rtBody(s, { geometry: { type: 'LineString', coordinates: coords }, stops: rtStopsOf(ids), source: road ? 'osrm:driving' : s.source || '' }));
   } catch (e) {
     alert(e.message);
   }
@@ -557,6 +552,7 @@ async function rtFinishDraw() {
 function rtCancelDraw() {
   const d = rts.draw;
   if (!d) return;
+  if (d.mode === 'new' && d.ctl.count() >= 2 && !confirm('Discard this route? The points you clicked are lost.')) return;
   d.ctl.remove();
   rts.draw = null;
   shPush();
@@ -569,24 +565,31 @@ AHM.on('draw:cancel', () => rts.draw && rtCancelDraw());
 // ---- adding ----
 function rtRenderAdd() {
   const box = $('#rtAdd');
+  $('#tab-routes').classList.toggle('rt-drawing', !!rts.draw); // while drawing, only the drawing panel is shown
   if (!rtCan()) return (box.innerHTML = '');
   if (rts.draw) {
     const d = rts.draw;
     box.innerHTML =
       `<div class="sh-banner"><b>${d.mode === 'edit' ? 'Editing the path' : 'Drawing the route'}</b>` +
-      `<div class="sn">Click the map to add free points, or click a place to make it a stop (a green point). Drag a point to move it (drop it on a place to make it a stop), drag the small handle in the middle of a segment to insert a point, right-click a point to remove it, Backspace undoes. Enter or a double click finishes, Esc cancels.</div>` +
+      `<div class="sn" id="rtDrawInfo"></div>` +
+      `<label class="sh-check"><input type="checkbox" id="rtRoads"${rts.roads ? ' checked' : ''}> Follow modern roads between the points I click</label>` +
+      `<div class="sn">Click a place to make it a stop (green), or anywhere else for a free point. Drag a point to move it (drop it on a place to make it a stop), drag the small handle in the middle of a segment to insert a point, right-click a point to remove it, Backspace undoes. Enter or a double click finishes, Esc cancels.</div>` +
       `<div class="row"><button type="button" data-rtadd="undo">Undo</button><button type="button" class="primary" id="rtFinish" data-rtadd="finish"${d.ctl.count() < 2 ? ' disabled' : ''}>${d.mode === 'edit' ? 'Save path' : 'Finish'}</button>` +
       `<button type="button" data-rtadd="canceldraw">Cancel</button></div><div class="err-line" id="rtAddMsg"></div></div>`;
-  } else box.innerHTML = `<button type="button" class="wide" data-rtadd="new">+ Add route</button>`;
+    rtDrawInfo();
+  } else box.innerHTML = rts.pending ? '' : `<button type="button" class="wide" data-rtadd="new">+ Add route</button>`;
 }
 $('#rtAdd').addEventListener('click', (e) => {
   const b = e.target.closest('[data-rtadd]');
   if (!b) return;
   const a = b.dataset.rtadd;
-  if (a === 'new') (rts.open = null), rtRenderList(), rtOpenForm({ id: null });
+  if (a === 'new') (rts.open = null), rtRenderList(), rtStartDraw({ mode: 'new' });
   else if (a === 'undo') rts.draw.ctl.undo();
   else if (a === 'finish') rtFinishDraw();
   else if (a === 'canceldraw') rtCancelDraw();
+});
+$('#rtAdd').addEventListener('change', (e) => {
+  if (e.target.id === 'rtRoads') rts.roads = e.target.checked;
 });
 rtRenderAdd();
 
@@ -601,13 +604,19 @@ function rtPlaceHTML(p) {
     (through.length
       ? through.map((r) => `<button type="button" class="chip" data-rtopen="${r.id}">${shIcon(r.type)}${esc(shapeName(r, l))}</button>`).join('')
       : '<span class="sn">No route passes here.</span>') +
-    `<button type="button" class="chip" data-rtfrom="${p.id}" title="Open “Find a path” with this place as the start">Find a path from here…</button></div>`
+    `<button type="button" class="chip" data-rtfrom="${p.id}" title="Open “Find a path” with this place as the start">Find a path from here…</button>` +
+    (rtCan() ? `<button type="button" class="chip" data-rtstart="${p.id}" title="Start drawing a route at this place">Start a route here</button>` : '') +
+    `</div>`
   );
 }
 $('#detail').addEventListener('click', (e) => {
   const o = e.target.closest('[data-rtopen]'),
-    f = e.target.closest('[data-rtfrom]');
-  if (o) rtOpen(o.dataset.rtopen, true);
+    f = e.target.closest('[data-rtfrom]'),
+    st = e.target.closest('[data-rtstart]');
+  if (st) {
+    tab('routes');
+    rtStartDraw({ mode: 'new', startPlace: st.dataset.rtstart });
+  } else if (o) rtOpen(o.dataset.rtopen, true);
   else if (f) {
     tab('routes');
     $('#rtFinder').open = true;

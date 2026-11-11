@@ -1072,7 +1072,8 @@ class store
     // shapes.geojson: one feature per shape. Geometry: Polygon, MultiPolygon, LineString or MultiLineString. Properties: id, names, type,
     // color, opacity (the fill of an area, the line of a line), label (draw the name on the map), date_from, date_to, source, created,
     // updated. Same rules as dev/save-handler.js (the browser-sync handler).
-    const SHAPE_TYPES = ['country', 'kingdom', 'region', 'district', 'territory', 'disputed'];
+    const ROUTE_TYPES = ['trade', 'military', 'migration', 'journey', 'road'];
+    const SHAPE_TYPES = ['country', 'kingdom', 'region', 'district', 'territory', 'disputed', 'trade', 'military', 'migration', 'journey', 'road'];
     const SHAPE_GEOMS = ['Polygon', 'MultiPolygon', 'LineString', 'MultiLineString'];
     const MAX_SHAPE_POINTS = 20000;
     const SHAPE_SOURCE = '/^[A-Za-z0-9:_.\/ -]{0,100}$/';
@@ -1182,7 +1183,7 @@ class store
     }
 
     /** Checks the fields of a shape (not the geometry) and returns them ready to store. */
-    private static function clean_shape(array $in, array $codes)
+    private static function clean_shape(array $in, array $codes, array $places)
     {
         $names = self::clean_names($in['names'] ?? [], $codes, 'a border needs at least one name');
         if (!in_array($in['type'] ?? '', self::SHAPE_TYPES, true)) {
@@ -1206,7 +1207,7 @@ class store
         $from = dates::clean($in['date_from'] ?? null, 'begin date');
         $to = dates::clean($in['date_to'] ?? null, 'end date');
         dates::order_check($from, $to);
-        return [
+        $out = [
             'names' => $names,
             'type' => $in['type'],
             'color' => strtolower($color),
@@ -1216,6 +1217,27 @@ class store
             'date_to' => $to,
             'source' => $source
         ];
+        if (in_array($in['type'], self::ROUTE_TYPES, true)) {
+            // a route may start and end at places: ids of existing places, or '' for none. Absent = unchanged.
+            foreach (['from_place', 'to_place'] as $k) {
+                if (array_key_exists($k, $in)) {
+                    $v = $in[$k] === null ? '' : $in[$k];
+                    if (!is_string($v) || ($v !== '' && !isset($places[$v]))) {
+                        throw self::bad('unknown place in the route ends');
+                    }
+                    $out[$k] = $v;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** A route is a line: refuses an area for a route type. */
+    private static function route_geometry_check($type, array $g)
+    {
+        if (in_array($type, self::ROUTE_TYPES, true) && !in_array($g['type'], ['LineString', 'MultiLineString'], true)) {
+            throw self::bad('a route must be a line');
+        }
     }
 
     /** Editors (checked by the controller): creates a shape (no id; geometry required) or changes one (geometry only when given). Returns the id. */
@@ -1223,7 +1245,7 @@ class store
     {
         return $this->locked(function () use ($in) {
             $codes = array_column($this->lang_load(), 'code');
-            $c = self::clean_shape($in, $codes);
+            $c = self::clean_shape($in, $codes, $this->place_ids());
             $d = $this->read_shapes();
             $now = self::now_utc();
             $id = (string) ($in['id'] ?? '');
@@ -1242,12 +1264,15 @@ class store
                 if (array_key_exists('geometry', $in)) {
                     $d['features'][$at]['geometry'] = self::clean_geometry($in['geometry']);
                 }
+                self::route_geometry_check($c['type'], $d['features'][$at]['geometry']);
                 $d['features'][$at]['properties'] = array_merge($d['features'][$at]['properties'], $c, ['updated' => $now]);
             } else {
                 $id = self::uuid4();
+                $geom = self::clean_geometry($in['geometry'] ?? null);
+                self::route_geometry_check($c['type'], $geom);
                 $d['features'][] = [
                     'type' => 'Feature',
-                    'geometry' => self::clean_geometry($in['geometry'] ?? null),
+                    'geometry' => $geom,
                     'properties' => ['id' => $id] + $c + ['created' => $now, 'updated' => $now]
                 ];
             }

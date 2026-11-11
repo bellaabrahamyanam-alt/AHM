@@ -1,11 +1,13 @@
 /* Borders: the card in the dock, the list, the drawing handles. Colours come from base.css. */
-#shDetail {
+#shDetail,
+#rtDetail {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-#shList li .t {
+#shList li .t,
+#rtList li .t {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -72,4 +74,13 @@
 }
 .ahm-vtx:active {
   cursor: grabbing;
+}
+
+/* Routes: the start and end places of the card */
+.rt-ends {
+  align-items: center;
+}
+#rtForm input[list] {
+  width: 100%;
+  box-sizing: border-box;
 }

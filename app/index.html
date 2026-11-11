@@ -21,6 +21,7 @@
       <nav class="tabs">
         <button data-tab="explore" class="on">Explore</button>
         <button data-tab="shapes">Borders</button>
+        <button data-tab="routes">Routes</button>
         <button data-tab="layers">Layers</button>
         <button data-tab="more">More</button>
       </nav>
@@ -64,7 +65,7 @@
             </span>
           </div>
           <ul id="list"></ul>
-          <div id="dock" hidden><div id="detail" hidden></div><div id="lyDetail" hidden></div><div id="shDetail" hidden></div></div>
+          <div id="dock" hidden><div id="detail" hidden></div><div id="lyDetail" hidden></div><div id="shDetail" hidden></div><div id="rtDetail" hidden></div></div>
           <div id="geo"></div>
         </section>
         <section id="tab-more" hidden>
@@ -148,6 +149,22 @@
           </div>
           <ul id="shList"></ul>
           <div id="shAdd"></div>
+        </section>
+        <section id="tab-routes" hidden>
+          <p class="sn">
+            Historical routes from one place to another: trade routes, marches,
+            migrations, journeys and roads. Arrows show the direction. They can
+            belong to layers and follow the period filter of Explore.
+          </p>
+          <div class="label">Search routes</div>
+          <div data-searchfield="rtQ" data-placeholder="Search routes…"></div>
+          <div id="rtTypes" class="chips"></div>
+          <div class="bar">
+            <span id="rtCount"></span>
+            <button id="rtFit" title="Zoom the map to the routes in the list">Fit map</button>
+          </div>
+          <ul id="rtList"></ul>
+          <div id="rtAdd"></div>
         </section>
         <section id="tab-layers" hidden>
           <div id="lyListView">
@@ -238,6 +255,7 @@
     <script src="js/map/overlays.js"></script>
     <script src="js/sidebar/layers.js"></script>
     <script src="js/sidebar/shapes.js"></script>
+    <script src="js/sidebar/routes.js"></script>
     <script src="js/sidebar/ui.js"></script>
     <script src="js/features.js"></script>
   </body>

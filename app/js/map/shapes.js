@@ -5,7 +5,7 @@
 // Events: shape:click { id } (a click on a line or an outline, 6 px tolerance), map:click now carries shapes: [{ id }] (areas under the
 //   cursor), draw:finish (Enter or double click while drawing), draw:cancel (Esc).
 // Feature properties: kind ('area' | 'line' | 'label'), id, name, type (text), dates (text), color, ink (label colour), opacity, width,
-//   dash (solid | dashed | dotted | dashdot), label (boolean), halo ('' or a colour), size (area of the bounding box: smaller shapes are drawn on top and hit first).
+//   dash (solid | dashed | dotted | dashdot), route (boolean: a line with direction arrows), label (boolean), halo ('' or a colour), size (area of the bounding box: smaller shapes are drawn on top and hit first).
 //   A 'label' feature is a Point where an area's name is drawn.
 const SHAPE_DASH = { solid: null, dashed: [3, 2], dotted: [0.1, 2.2], dashdot: [4, 1.6, 0.8, 1.6] };
 const SHAPE_HIT_PX = 6;
@@ -71,6 +71,36 @@ function shapesInit() {
       },
     })
   );
+  // direction of a route: arrowheads along the line, in the colour of the route (an SDF image, so one picture serves every colour)
+  if (!map.hasImage('ahm-arrow')) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const x = c.getContext('2d');
+    x.fillStyle = '#000';
+    x.beginPath();
+    x.moveTo(26, 16); // the tip points right: the line direction
+    x.lineTo(8, 5);
+    x.lineTo(13, 16);
+    x.lineTo(8, 27);
+    x.closePath();
+    x.fill();
+    map.addImage('ahm-arrow', x.getImageData(0, 0, 32, 32), { sdf: true, pixelRatio: 2 });
+  }
+  add({
+    id: 'ahm-shape-arrows',
+    type: 'symbol',
+    filter: ['all', ['==', ['get', 'kind'], 'line'], ['==', ['get', 'route'], true]],
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 130,
+      'icon-image': 'ahm-arrow',
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 8, 1.1, 12, 1.4],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: { 'icon-color': col, 'icon-halo-color': '#ffffff', 'icon-halo-width': 1.2, 'icon-opacity': ['coalesce', ['feature-state', 'opacity'], ['get', 'opacity']] },
+  });
   if (map.getStyle().glyphs) {
     const text = {
         'text-field': ['get', 'name'],
@@ -236,6 +266,7 @@ function drawShape(opts, onChange) {
   shapeDrawing = {
     getGeometry: geom,
     count: () => pts.length,
+    points: () => pts.map((p) => p.slice()), // the clicked points, also when there are too few for a geometry
     undo,
     remove() {
       map.off('click', onClick);

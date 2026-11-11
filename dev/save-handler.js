@@ -655,10 +655,11 @@ function layerSave(inp) {
   if (inp.layer_note && typeof inp.layer_note === 'object') return { id: saveLayerNote(inp.layer_note) };
   throw bad('nothing to save');
 }
-// ---------------- shapes: borders now, routes later (same rules as service/store.php) ----------------
+// ---------------- shapes: borders and routes (same rules as service/store.php) ----------------
 // data/shapes.geojson: one feature per shape. Geometry: Polygon, MultiPolygon, LineString or MultiLineString. Properties: id, names, type,
 // color, opacity (the fill of an area, the line of a line), label (draw the name on the map), date_from, date_to, source, created, updated.
-const SHAPE_TYPES = ['country', 'kingdom', 'region', 'district', 'territory', 'disputed'];
+const ROUTE_TYPES = ['trade', 'military', 'migration', 'journey', 'road'];
+const SHAPE_TYPES = ['country', 'kingdom', 'region', 'district', 'territory', 'disputed', ...ROUTE_TYPES];
 const SHAPE_GEOMS = ['Polygon', 'MultiPolygon', 'LineString', 'MultiLineString'];
 const MAX_SHAPE_POINTS = 20000,
   SOURCE = /^[A-Za-z0-9:_./ -]{0,100}$/;
@@ -704,7 +705,7 @@ function cleanGeometry(g) {
   if (n > MAX_SHAPE_POINTS) throw bad(`a border can have at most ${MAX_SHAPE_POINTS} points (it has ${n}); simplify it`);
   return { type: g.type, coordinates };
 }
-function cleanShape(inp, codes) {
+function cleanShape(inp, codes, places) {
   const names = cleanNames(inp.names, codes, 'a border needs at least one name');
   if (!SHAPE_TYPES.includes(inp.type)) throw bad('unknown border type');
   if (typeof inp.color !== 'string' || !COLOR.test(inp.color)) throw bad('the colour must look like #aa3344');
@@ -716,11 +717,24 @@ function cleanShape(inp, codes) {
   const from = D.dateClean(inp.date_from === undefined ? null : inp.date_from, 'begin date'),
     to = D.dateClean(inp.date_to === undefined ? null : inp.date_to, 'end date');
   D.dateOrderCheck(from, to);
-  return { names, type: inp.type, color: inp.color.toLowerCase(), opacity: Math.round(opacity * 100) / 100, label: inp.label, date_from: from, date_to: to, source };
+  const out = { names, type: inp.type, color: inp.color.toLowerCase(), opacity: Math.round(opacity * 100) / 100, label: inp.label, date_from: from, date_to: to, source };
+  if (ROUTE_TYPES.includes(inp.type))
+    // a route may start and end at places: ids of existing places, or '' for none. Absent = unchanged.
+    ['from_place', 'to_place'].forEach((k) => {
+      if (inp[k] === undefined) return;
+      const v = inp[k] === null ? '' : inp[k];
+      if (typeof v !== 'string' || (v !== '' && !places.has(v))) throw bad('unknown place in the route ends');
+      out[k] = v;
+    });
+  return out;
 }
+// A route is a line: refuses an area for a route type.
+const routeGeomCheck = (type, g) => {
+  if (ROUTE_TYPES.includes(type) && !/^(Multi)?LineString$/.test(g.type)) throw bad('a route must be a line');
+};
 // Creates a shape (no id; geometry required) or changes one (geometry only when given). Returns the id.
 function saveShape(inp) {
-  const c = cleanShape(inp, langLoad().map((l) => l.code)),
+  const c = cleanShape(inp, langLoad().map((l) => l.code), placeIds()),
     d = readShapes(),
     now = nowUtc();
   let id = String(inp.id || '');
@@ -728,10 +742,13 @@ function saveShape(inp) {
     const f = UUID.test(id) ? d.features.find((x) => x.properties.id === id) : null;
     if (!f) throw bad('unknown border');
     if (inp.geometry !== undefined) f.geometry = cleanGeometry(inp.geometry);
+    routeGeomCheck(c.type, f.geometry);
     f.properties = Object.assign({}, f.properties, c, { updated: now });
   } else {
     id = crypto.randomUUID();
-    d.features.push({ type: 'Feature', geometry: cleanGeometry(inp.geometry), properties: Object.assign({ id }, c, { created: now, updated: now }) });
+    const geometry = cleanGeometry(inp.geometry);
+    routeGeomCheck(c.type, geometry);
+    d.features.push({ type: 'Feature', geometry, properties: Object.assign({ id }, c, { created: now, updated: now }) });
   }
   putShapes(d);
   return id;

@@ -1,4 +1,4 @@
-// Shapes (core domain): borders of countries, regions and other areas, and lines. Routes will use the same store later.
+// Shapes (core domain): borders of countries, regions and other areas, lines, and historical routes (types with `route: true`).
 // Types, loading, the filter rules and plain geometry helpers. No DOM and no map here (the sidebar draws the list, the map draws the shapes).
 // A shape is a GeoJSON feature in data/shapes.geojson; layers hold shapes as `{ shape: id }` members next to `{ place: id }`.
 // Its look follows its TYPE (line pattern, width, default colour and fill), exactly as the look of a place follows its type.
@@ -10,15 +10,26 @@ const SHAPE_TYPES = {
   district: { label: 'District', dash: 'dotted', width: 2, color: '#8d6e63', fill: 0.1 },
   territory: { label: 'Territory or area', dash: 'solid', width: 1.4, color: '#2e7d32', fill: 0.2 },
   disputed: { label: 'Disputed area', dash: 'dashdot', width: 2.2, color: '#e07b39', fill: 0.12 },
+  // Routes: lines that run from one place to another, drawn with direction arrows. Same store, layers and period filter as borders.
+  trade: { label: 'Trade route', dash: 'dashed', width: 2.4, color: '#b7791f', fill: 1, route: true },
+  military: { label: 'Military march', dash: 'solid', width: 3, color: '#c62828', fill: 1, route: true },
+  migration: { label: 'Migration', dash: 'dotted', width: 2.8, color: '#6a1b9a', fill: 1, route: true },
+  journey: { label: 'Journey or embassy', dash: 'dashdot', width: 2.4, color: '#00796b', fill: 1, route: true },
+  road: { label: 'Road', dash: 'solid', width: 2, color: '#5d4037', fill: 1, route: true },
 };
+const isRouteType = (t) => !!(SHAPE_TYPES[t] && SHAPE_TYPES[t].route);
+const isRoute = (s) => isRouteType(s.type);
+const BORDER_TYPES = Object.keys(SHAPE_TYPES).filter((t) => !isRouteType(t));
+const ROUTE_TYPE_LIST = Object.keys(SHAPE_TYPES).filter(isRouteType);
 const shapeType = (t) => SHAPE_TYPES[t] || SHAPE_TYPES.territory;
 const MAX_SHAPE_POINTS = 20000; // the server refuses more; imports are simplified to IMPORT_POINTS
 const IMPORT_POINTS = 3000;
-let shapes = []; // [{ id, names, type, color, opacity, label, date_from, date_to, source, geometry }]
+let shapes = []; // [{ id, names, type, color, opacity, label, date_from, date_to, source, geometry, from_place?, to_place? }] (routes have the two place ids)
 
 const normShape = (f) => ({
   ...f.properties,
   geometry: f.geometry,
+  ...(isRouteType(f.properties.type) ? { from_place: f.properties.from_place || '', to_place: f.properties.to_place || '' } : {}),
   date_from: f.properties.date_from ? dateUpgrade(f.properties.date_from) : null,
   date_to: f.properties.date_to ? dateUpgrade(f.properties.date_to) : null,
 });
@@ -35,11 +46,13 @@ const shapeDefaults = (type, kind) => ({
   label: true,
 });
 
-/** The shapes that pass the filters, sorted by name. options: q = text, lang = language code or '', types = Set (empty = all), period = [start, end) in seconds. */
-function shapesRun({ q: text = '', lang: l = '', types = new Set(), period: [a, b] = [null, null] } = {}) {
+/** The shapes that pass the filters, sorted by name. options: q = text, lang = language code or '', types = Set (empty = all), period = [start, end) in seconds,
+ *  group = 'border' | 'route' (omitted = both). */
+function shapesRun({ q: text = '', lang: l = '', types = new Set(), period: [a, b] = [null, null], group = '' } = {}) {
   const q = norm(text);
   return shapes
     .filter((s) => {
+      if (group && isRoute(s) !== (group === 'route')) return false;
       if (types.size && !types.has(s.type)) return false;
       if (!layerAllows(s.id)) return false; // the Only / Hide filters of the layers work on shapes too
       if (a !== null || b !== null) {
@@ -59,6 +72,21 @@ const GEOM_LINES = { Polygon: (c) => c, MultiPolygon: (c) => c.flat(), LineStrin
 /** Every line or ring of a geometry, as a list of point lists. */
 const geomLines = (g) => GEOM_LINES[g.type](g.coordinates);
 const geomPoints = (g) => geomLines(g).flat();
+/** Length of a line in km (haversine along the points; MultiLineString: the parts added). */
+function geomLengthKm(g) {
+  const rad = Math.PI / 180;
+  let km = 0;
+  geomLines(g).forEach((l) =>
+    l.slice(1).forEach((p, i) => {
+      const a = l[i],
+        h = Math.sin(((p[1] - a[1]) * rad) / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(p[1] * rad) * Math.sin(((p[0] - a[0]) * rad) / 2) ** 2;
+      km += 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(h)));
+    })
+  );
+  return km;
+}
+/** The line the other way round (a route's direction is its point order). */
+const geomReverse = (g) => ({ type: g.type, coordinates: g.type === 'LineString' ? g.coordinates.slice().reverse() : g.coordinates.map((l) => l.slice().reverse()).reverse() });
 const geomCount = (g) => geomPoints(g).length;
 /** [west, south, east, north] */
 function geomBBox(g) {

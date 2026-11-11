@@ -3,7 +3,7 @@ const { load, UI_STANDINS } = require('./lib/ctx');
 const L = (id, name, ...m) => ({ id, names: [{ lang: 'en', name }], descriptions: [], category: null, color: null, date_from: null, date_to: null, members: m.map((x) => ({ place: x })) });
 
 function page(layers = [L('A', 'Alpha', 'p1', 'p2'), L('B', 'Beta', 'p2')], cats = []) {
-  const p = load(['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'search.js', 'searchfield.js', 'placeform.js', 'layers.js'], UI_STANDINS);
+  const p = load(['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'shapes.js', 'search.js', 'searchfield.js', 'placeform.js', 'layers.js'], UI_STANDINS);
   p.X('places = __0', [{ id: 'p1', type: 'city', names: [{ lang: 'en', name: 'One' }] }, { id: 'p2', type: 'city', names: [{ lang: 'en', name: 'Two' }] }, { id: 'p3', type: 'city', names: [{ lang: 'en', name: 'Three' }] }]);
   p.X('lySet(__0, [], __1)', layers, cats);
   return p;
@@ -179,7 +179,7 @@ const gated = (isBuilt, name, fn) =>
   });
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-const UI_SCRIPTS = ['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'search.js', 'searchfield.js', 'period.js', 'placeform.js', 'layers.js'];
+const UI_SCRIPTS = ['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'shapes.js', 'search.js', 'searchfield.js', 'period.js', 'placeform.js', 'layers.js', 'sidebar/shapes.js'];
 /** The page with ui.js itself running (it declares cur, tab, show, update ...), a map stand-in, and recorded event handlers. */
 function uiPage() {
   const p = load(UI_SCRIPTS);
@@ -199,7 +199,7 @@ function uiPage() {
   doc.addEventListener = (ev, fn) => (h['document:' + ev] ||= []).push(fn);
   doc.activeElement = { tagName: 'BODY' };
   p.X(`var typeIcon = () => '';
-    AHM.map = { setFeatures() {}, hidePlace() {}, focusPlace() {}, focusPoint() {}, fitTo() {}, fitRoute() {}, setRoute() {}, setRouteMarkers() {}, setPick() {}, resize() {}, getZoom: () => 6, editPin: () => ({ getPosition() {}, setPosition() {}, remove() {} }) };`);
+    AHM.map = { setFeatures() {}, hidePlace() {}, focusPlace() {}, focusPoint() {}, fitTo() {}, fitRoute() {}, setRoute() {}, setRouteMarkers() {}, setPick() {}, resize() {}, getZoom: () => 6, showMenu() {}, hideMenu() {}, setShapes() {}, highlightShape() {}, previewShape() {}, showPreview() {}, editPin: () => ({ getPosition() {}, setPosition() {}, remove() {} }) };`);
   p.X(fs.readFileSync(path.join(JS, 'sidebar', 'ui.js'), 'utf8'));
   p.X('setData(__0, [])', SAMPLE.places);
   p.X(`globalThis.__sel = []; globalThis.__reads = []; globalThis.__peek = AHM.state.get;

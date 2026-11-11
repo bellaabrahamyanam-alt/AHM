@@ -17,7 +17,7 @@ function eslint() {
 }
 const BROWSER = ['window', 'document', 'location', 'history', 'fetch', 'localStorage', 'matchMedia', 'navigator', 'console', 'setTimeout', 'clearTimeout',
   'requestAnimationFrame', 'maplibregl', 'alert', 'confirm', 'URL', 'FormData', 'Image', 'Blob', 'FileReader', 'AbortController', 'innerWidth', 'innerHeight',
-  'getComputedStyle', 'HTMLElement', 'Event', 'module', 'devicePixelRatio', 'createImageBitmap', 'OffscreenCanvas', 'Promise', 'Intl'];
+  'getComputedStyle', 'HTMLElement', 'Event', 'module', 'devicePixelRatio', 'createImageBitmap', 'OffscreenCanvas', 'Promise', 'Intl', 'performance', 'ResizeObserver', 'cancelAnimationFrame'];
 
 async function lint(code, file, globals, extra = {}) {
   const { ESLint } = eslint();

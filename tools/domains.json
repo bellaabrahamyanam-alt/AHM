@@ -9,6 +9,7 @@
     "sidebar": [
       "app/js/sidebar/",
       "app/css/sidebar.css",
+      "app/css/shapes.css",
       "tests/js/layers.test.js",
       "tests/js/sidebar.test.js"
     ],

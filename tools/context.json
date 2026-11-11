@@ -1,34 +1,106 @@
 {
-  "_comment": "Per-domain starter briefs for tools/make-context.js (output: context/<domain>.md). 'read' = the ONLY files the agent opens at the start; changes/<domain>.md and todo/<domain>.md are added automatically. Keep each list short (limit in tests/js/context.test.js).",
-  "common": ["AGENTS.md", "INTERFACES.md"],
+  "_comment": "Per-domain starter briefs for tools/make-context.js (output: context/<domain>.md). 'interfaces' = the interface files (interfaces/I-N-*.md) the domain provides or uses; 'read' = the code and documents to open when the task needs them. Read first (automatic): the common documents, the domain's interface files, graph/<domain>.md, changes/<domain>.md, todo/<domain>.md. Keep the 'read' list short (limit in tests/js/context.test.js).",
+  "common": [
+    "AGENTS.md",
+    "INTERFACES.md"
+  ],
   "domains": {
     "sidebar": {
       "brief": "The left panel: place list and details, search and period, layers, categories, languages, place editing. Talks to the map only through AHM.map.* and events (INTERFACES.md I-2).",
-      "read": ["app/js/sidebar/ui.js", "app/js/sidebar/layers.js", "app/index.html", "DESIGN.md"]
+      "read": [
+        "app/js/sidebar/ui.js",
+        "app/js/sidebar/layers.js",
+        "app/index.html",
+        "DESIGN.md"
+      ],
+      "interfaces": [
+        "I-1",
+        "I-2",
+        "I-3",
+        "I-4",
+        "I-6",
+        "I-7",
+        "I-8",
+        "I-9"
+      ]
     },
     "map": {
       "brief": "The MapLibre map: base maps, place symbols, overlays, route, pins. Provides the AHM.map commands and map events (I-2) and typeIcon (I-4).",
-      "read": ["app/js/map/map.js", "app/js/map/overlays.js", "app/js/map/typeicons.js", "DESIGN.md"]
+      "read": [
+        "app/js/map/map.js",
+        "app/js/map/overlays.js",
+        "app/js/map/typeicons.js",
+        "DESIGN.md"
+      ],
+      "interfaces": [
+        "I-2",
+        "I-4",
+        "I-6",
+        "I-7",
+        "I-8",
+        "I-9"
+      ]
     },
     "core": {
       "brief": "Pure logic without DOM: data loading, dates, search/sort/filter, layer rules, providers. Provides the core functions of I-3.",
-      "read": ["app/js/core/layer-rules.js", "app/js/core/search.js", "app/js/core/data.js"]
+      "read": [
+        "app/js/core/layer-rules.js",
+        "app/js/core/search.js",
+        "app/js/core/data.js"
+      ],
+      "interfaces": [
+        "I-1",
+        "I-3",
+        "I-6",
+        "I-8",
+        "I-9"
+      ]
     },
     "state": {
       "brief": "The state manager: the one module that holds state shared between domains, as AHM.state (I-6, proposal 003). Built test-first.",
-      "read": ["proposals/003-state-manager.md", "app/js/state/state.js", "tests/js/state.test.js"]
+      "read": [
+        "proposals/003-state-manager.md",
+        "app/js/state/state.js",
+        "tests/js/state.test.js"
+      ],
+      "interfaces": [
+        "I-6"
+      ]
     },
     "campaigns": {
       "brief": "The military-campaigns feature: an isolated add-on in app/features/campaigns/, loaded only when switched on (I-5). Touches nothing outside its folder.",
-      "read": ["app/features/campaigns/README.md", "app/features/campaigns/main.js", "proposals/002-map-extension-points.md"]
+      "read": [
+        "app/features/campaigns/README.md",
+        "app/features/campaigns/main.js",
+        "proposals/002-map-extension-points.md"
+      ],
+      "interfaces": [
+        "I-2",
+        "I-5",
+        "I-6"
+      ]
     },
     "data": {
       "brief": "The back end: page controller, file store, endpoints and formats (I-1), the Node dev mirror. Keeps PHP and dev/save-handler.js in step.",
-      "read": ["service/store.php", "controller/main.php", "dev/save-handler.js"]
+      "read": [
+        "service/store.php",
+        "controller/main.php",
+        "dev/save-handler.js"
+      ],
+      "interfaces": [
+        "I-1",
+        "I-8",
+        "I-9"
+      ]
     },
     "shared": {
-      "brief": "Owner-only integration: domain table, interfaces, config, index.html, shared tests and tools, reviewing and merging the agents' merge requests.",
-      "read": ["DOMAINS.md", "tools/domains.json", "tools/context.json"]
+      "brief": "Owner-only integration: domain table, interfaces, config, index.html, shared tests and tools, reviewing and merging the agents' pull requests.",
+      "read": [
+        "DOMAINS.md",
+        "tools/domains.json",
+        "tools/context.json"
+      ],
+      "interfaces": []
     }
   }
 }

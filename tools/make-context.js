@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Starter context for agents, to save tokens (AGENTS.md, "Token rules"). Usage:
+//   node tools/make-context.js --cost          bytes of the files a starter makes an agent read (read first, and all), per domain
 //   node tools/make-context.js                 write context/<domain>.md for every domain (from tools/context.json and tools/domains.json)
 //   node tools/make-context.js --check         exit 1 if a file in context/ is out of date (run by tests/js/context.test.js)
 //   node tools/make-context.js --architect [out.tar.gz]
@@ -12,15 +13,23 @@ const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'domains.json'), 'ut
 const ctx = JSON.parse(fs.readFileSync(path.join(__dirname, 'context.json'), 'utf8'));
 
 const RULES = [
-  'Read ONLY the files listed above. Do not browse, list or search the rest of the project; if you need something else, say what and why (a request or proposal), or ask the owner.',
-  'Open a file once. Read only the part you need (offset and limit); do not re-read a file you have just written or edited.',
+  'Read the "Read first" files, then only the code the task needs. `graph/<domain>.md` has one line per file (what it defines, what it calls): use it to pick the file and the part, and open that part with offset and limit instead of the whole file.',
+  'Do not browse, list or search the rest of the project; if you need something else, say what and why (a request or proposal), or ask the owner.',
+  'Open a file once. Do not re-read a file you have just written or edited.',
   'Change files with small edits, not by rewriting a whole file or document.',
   'Run the tests with the output cut (`node tests/js/run.js 2>&1 | tail -15`); look at more only for a failure.',
   'Do not paste file contents or test output into the answer. Say what changed and the result in a few lines.',
-  'One task per session. When the task is done, stop; the next task starts a new session from the latest archive.',
+  'One task per session. When the task is done, stop; the next task starts a new session.',
 ];
 
-const list = (d) => [...ctx.common, ...ctx.domains[d].read, `changes/${d}.md`, `todo/${d}.md`];
+const ifaceFiles = (d) => {
+  const dir = path.join(ROOT, 'interfaces');
+  const all = fs.existsSync(dir) ? fs.readdirSync(dir).sort() : [];
+  return (ctx.domains[d].interfaces || []).map((n) => all.find((f) => f.startsWith(n + '-')) || `interfaces/${n}-MISSING.md`).map((f) => (f.startsWith('interfaces/') ? f : 'interfaces/' + f));
+};
+/** What to read first (always the same short set), then the code and documents of the domain. */
+const first = (d) => [...ctx.common, ...ifaceFiles(d), `graph/${d}.md`, `changes/${d}.md`, `todo/${d}.md`];
+const list = (d) => [...first(d), ...ctx.domains[d].read];
 
 function render(d) {
   const own = cfg.domains[d] ? cfg.domains[d].map((e) => '`' + e + '`').join(', ') : '(owner only; see tools/domains.json)';
@@ -32,9 +41,13 @@ function render(d) {
     '',
     ctx.domains[d].brief,
     '',
-    '## Read these files first (and only these)',
+    '## Read first',
     '',
-    ...list(d).map((f) => `- \`${f}\``),
+    ...first(d).map((f) => `- \`${f}\``),
+    '',
+    '## Code and documents of the domain (open the part the task needs, with offset and limit)',
+    '',
+    ...ctx.domains[d].read.map((f) => `- \`${f}\``),
     '',
     '## Your files (the only ones you may change)',
     '',
@@ -62,9 +75,15 @@ function problems() {
 }
 
 function main(argv) {
+  if (argv[0] === '--cost') {
+    const size = (f) => (fs.existsSync(path.join(ROOT, f)) ? fs.statSync(path.join(ROOT, f)).size : 0);
+    const sum = (l) => l.reduce((n, f) => n + size(f), 0);
+    for (const d of domains) console.log(`${d.padEnd(10)} read first ${String(sum(first(d))).padStart(6)} B   with all listed code ${String(sum(list(d))).padStart(6)} B`);
+    return 0;
+  }
   if (argv[0] === '--architect') {
     const out = path.resolve(argv[1] || 'ahm-map-architect.tar.gz');
-    const keep = ['AGENTS.md', 'DOMAINS.md', 'INTERFACES.md', 'README.md', 'proposals', 'requests', 'changes', 'todo', 'tools', 'context', 'tests/README.md'].filter((f) => fs.existsSync(path.join(ROOT, f)));
+    const keep = ['CLAUDE.md', 'AGENTS.md', 'DOMAINS.md', 'INTERFACES.md', 'interfaces', 'README.md', 'docs', 'proposals', 'requests', 'changes', 'todo', 'tools', 'context', 'tests/README.md'].filter((f) => fs.existsSync(path.join(ROOT, f)));
     execFileSync('tar', ['--exclude=node_modules', '-czf', out, '-C', ROOT, ...keep]);
     console.log('wrote ' + out + ' (' + keep.join(', ') + ')');
     return 0;
@@ -82,4 +101,4 @@ function main(argv) {
   return 0;
 }
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { render, list, problems, domains, ctx };
+module.exports = { render, list, first, problems, domains, ctx };

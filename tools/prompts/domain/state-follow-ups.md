@@ -8,4 +8,4 @@ Each agent: its own domain only, its own change log; `Status: approved` must be 
 
 **Map agent** (`app/js/map/*`, `app/css/map.css`): `AHM.on('state:selected', ({ value }) => ...)` draws a highlight (ring or halo) around the place with that id and removes it when `value` is null; the highlight survives `setFeatures` re-draws and base-map switches. Do not call the sidebar, do not read `AHM.state` for anything else.
 
-**Git delivery:** see `tools/prompts/_common.md` (merge request on GitLab, rules 3 and 8-10).
+**Git delivery:** see `tools/prompts/_common.md` (pull request on GitHub, rules 3 and 8-10).

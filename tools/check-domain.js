@@ -3,6 +3,7 @@
 //   node tools/check-domain.js <domain>[,<domain>…] <diff-file>   reject a diff that touches files outside the declared domain(s)
 //   node tools/check-domain.js --owner <path>                     print the domain that owns a path (path from the repository root)
 //   node tools/check-domain.js --codeowners                       print the CODEOWNERS text made from tools/domains.json
+//   node tools/check-domain.js --codeowners-github                print the CODEOWNERS text for GitHub (.github/CODEOWNERS)
 // A diff may also (a) add records of its own domain (changes/<domain>.md, todo/<domain>.md, diffs/<domain>/…),
 // (b) add a NEW file requests/<domain>-to-<other>-….md, (c) add a NEW file proposals/….md. Nothing else outside the domain.
 const fs = require('fs');
@@ -60,13 +61,16 @@ function check(domains, text) {
   }
   return bad;
 }
-/** CODEOWNERS text from domains.json (handles: "owners" there). */
-function codeowners() {
+/** CODEOWNERS text from domains.json (handles: "owners" there). platform 'gitlab' (default) or 'github': the github handles are the "github" key, the gitlab ones the domain key or "default". */
+function codeowners(platform = 'gitlab') {
   const own = cfg.owners || {};
-  const h = (d) => own[d] || own.default || '@ahm-' + (d === 'shared' ? 'owner' : d);
+  const gh = platform === 'github';
+  const h = (d) => own[d] || (gh && own.github) || own.default || '@ahm-' + (d === 'shared' ? 'owner' : d);
   const out = [
-    '# Made by `node tools/check-domain.js --codeowners` from tools/domains.json. Do not edit by hand; change domains.json (shared domain).',
-    '# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .gitlab/CODEOWNERS (GitLab reads it there).',
+    `# Made by \`node tools/check-domain.js ${gh ? '--codeowners-github' : '--codeowners'}\` from tools/domains.json. Do not edit by hand; change domains.json (shared domain).`,
+    gh
+      ? '# The handles come from "owners" in tools/domains.json (key github). Written to .github/CODEOWNERS (GitHub reads it there).'
+      : '# The handles come from "owners" in tools/domains.json (default = the human owner). Written to .gitlab/CODEOWNERS (GitLab reads it there).',
     '',
   ];
   for (const d of DOMAINS) {
@@ -83,6 +87,7 @@ if (require.main === module) {
   const [a, b] = process.argv.slice(2);
   if (a === '--owner') console.log(ownerOfPath(b) || 'nobody');
   else if (a === '--codeowners') process.stdout.write(codeowners());
+  else if (a === '--codeowners-github') process.stdout.write(codeowners('github'));
   else if (a && b) {
     const domains = a.split(',');
     const unknown = domains.filter((d) => !DOMAINS.includes(d));

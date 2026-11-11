@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# The whole CI in ONE job (DOMAINS.md, "Git workflow"); .gitlab-ci.yml runs only this file.
-#  1. merge request: branch/domain check (tools/ci-check-pr.js). A change of documents only stops here (no graph, no tests).
-#  2. graph/: in a merge request the job rebuilds it (tools/make-graph.js) and, when it changed, commits it to the merge request branch
-#     and stops; the pipeline of that new commit runs the tests. It needs the variable GRAPH_PUSH_TOKEN (DOMAINS.md, owner setup 5).
+# The whole CI in ONE job (DOMAINS.md, "Git workflow"); .github/workflows/ci.yml and .gitlab-ci.yml run only this file.
+#  1. pull request: branch/domain check (tools/ci-check-pr.js). A change of documents only stops here (no graph, no tests).
+#  2. graph/: in a pull request the job rebuilds it (tools/make-graph.js) and, when it changed, commits it to the pull request branch
+#     and stops; the run of that new commit runs the tests. It needs the variable GRAPH_PUSH_TOKEN (DOMAINS.md, owner setup 4).
 #     On master the job only checks (make-graph.js --check) and fails when graph/ is stale.
 #  3. tests: PHP, data and all JS tests (browser and lint included). Every failing part is reported, not only the first.
 set -euo pipefail
 
 # Paths whose change needs tests. Documents (*.md, changes/, todo/, proposals/, requests/, tasks/, tools/prompts/, .claude/) do not.
 # A new top-level folder with code or config must be added here.
-CODE='^(app|controller|service|config|event|language|styles|data|dev|tests|context|graph)/|^tools/[^/]+$|^\.gitlab/CODEOWNERS$|^\.gitlab-ci\.yml$|^\.github/workflows/|^[^/]+\.(php|json)$'
+CODE='^(app|controller|service|config|event|language|styles|data|dev|tests|context|graph)/|^tools/[^/]+$|^\.gitlab/CODEOWNERS$|^\.gitlab-ci\.yml$|^\.github/(workflows/|CODEOWNERS$)|^[^/]+\.(php|json)$'
 
 mr="${CI_MERGE_REQUEST_IID:-}"
 if [ -n "$mr" ]; then
@@ -32,7 +32,7 @@ if [ -n "$mr" ]; then
   node tools/make-graph.js
   if [ -n "$(git status --porcelain -- graph)" ]; then
     if [ -z "${GRAPH_PUSH_TOKEN:-}" ]; then
-      echo "graph/ is stale and GRAPH_PUSH_TOKEN is not set. Run 'node tools/make-graph.js' and commit graph/, or set the variable (DOMAINS.md, owner setup 5)." >&2
+      echo "graph/ is stale and GRAPH_PUSH_TOKEN is not set. Run 'node tools/make-graph.js' and commit graph/, or set the variable (DOMAINS.md, owner setup 4)." >&2
       exit 1
     fi
     git config user.name 'ahm-ci'

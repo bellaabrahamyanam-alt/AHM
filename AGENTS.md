@@ -1,76 +1,51 @@
 # Instructions for any AI agent working on this extension (`ahm/map`)
 
-These are the owner's standing requirements. They apply to **every** answer and **every** change, by any agent.
-Read this file first, then `DOMAINS.md` and `INTERFACES.md`, then `README.md`, then the log of your own domain `changes/<domain>.md` (the old single log `AGENT_CHANGES.md` is read-only history: read only its last 100 lines, `tail -n 100 AGENT_CHANGES.md`, never the whole file).
+The owner's standing requirements. They apply to **every** answer and **every** change, by any agent. Roles and the pull-request workflow: `tools/prompts/_common.md` and `DOMAINS.md`.
 
-## Owner's working requirements (always follow)
+## 1. Start here (read nothing else first)
 
-1. **One diff file per answer** (when the work is NOT delivered by a GitLab merge request: see `DOMAINS.md`, "Git workflow", where the merge request is the diff). Every time you answer with changes, produce exactly one unified-diff file containing all the
-   changes of that answer (`diff -ruN` style, paths `a/…` and `b/…` relative to the repository root, i.e. `app/...`, `tests/...`).
-   **Send that diff to the owner as its own separate file in every answer** (`SendUserFile`, next to the archive), so it is visible
-   without opening the archive. The same file is also stored in `diffs/` inside the archive (requirement 3).
-2. **Record every change for other agents.** Every time you change something, append an entry to the change log of your domain,
-   `changes/<domain>.md` (date, what, why, files, how to verify, open follow-ups). The entry is part of the same diff.
-   Another agent must be able to continue from that file alone. (`AGENT_CHANGES.md` is the read-only history of entries #1-#26;
-   when one agent works across several domains for the owner, it writes one entry in each domain log it touched.)
-3. **Always deliver the FULL ARCHIVE** (when the work is NOT delivered by a merge request; with a merge request the repository is the archive) (supersedes the earlier "only changed files" rule). In every answer give the owner the
-   whole project as ONE `.tar.gz` file. "Everything" means everything in the project: the code, **the diffs**, the tests, the
-   documentation, the data, **dotfiles** and every other file. The ONLY thing left out is `node_modules` (any folder with that
-   name). Nothing else is skipped, ever, and "the archive" always means this full archive.
-   - The diffs of all answers are kept in the archive in `diffs/` (there is no `diffs/` folder since the repository root became the extension folder). New diffs go to
-     `diffs/<domain>/NNN-<short-name>.diff` (numbering per domain, starting at 001; a diff that spans domains goes to the domain
-     of the main change); the older ones stay as `diffs/ahm-map-NNN-<short-name>.diff`. The diff of the current answer is added there. The archive holds ALL diffs
-     (001, 002, …); the separate file sent with an answer is only that answer's diff.
-   - Check the archive before sending: list it, confirm `diffs/`, `tests/`, `data/`, `TODO.md` and the docs are inside and that no
-     `node_modules` is.
-4. **Keep these requirements.** This file is where the requirements are stored. Follow it every time. If the owner adds, changes
-   or removes a requirement, update this file in the same answer (and the same diff). A copy is also kept in the Claude Project
-   "PHPBB extension for map".
-5. **Language: English only.** Talk to the owner in English, and write all code, comments, commit/diff labels, documentation,
-   test names and messages in English, even if the owner writes in another language. Do not switch language.
-6. **Sidebar to-do list:** the owner's open sidebar requirements are in `TODO.md`. Do only the items the owner
-   asks for in an answer, do not change anything outside what the item needs, and do not change the tests unless the owner says
-   so. When an item is finished, mark it done there (date and change-log entry number). All 15 items are done; new to-do items
-   of a domain go to `todo/<domain>.md`.
+1. Name your domain in the first line of every answer: `Domain: <sidebar|map|data|core|state|campaigns|shared>`. The owner gives it (`map-dev: task 004` = domain map); if he does not, take it from the files he names, or ask ONE question.
+2. Open `context/<domain>.md`. It lists what to read first and the code of the domain. Do not browse the rest of the project.
+3. Find where to work in `graph/<domain>.md` (one line per file) and open that part of the file only (offset and limit).
+4. Work. Before delivering run the checks of section 5.
 
-7. **Domains and interfaces (several agents).** The project is split into the domains **sidebar, map, data, core, state, campaigns** and
-   **shared** (owner only); see `DOMAINS.md`. When more than one agent works, each agent: declares its domain in the first line of
-   its answer, changes only that domain's files, talks to other domains only through the interfaces in `INTERFACES.md`, and writes
-   a request or a proposal instead of touching anything else. **Interfaces and the shared files change only with the owner's
-   explicit approval.** The roll-out is in steps (documents → refactor → enforcement → parallel work); the current step is stated in
-   `DOMAINS.md`. Steps 1-4 are done (parallel work: `DOMAINS.md`, "Parallel work" and "Features"; new feature domain: **campaigns**): the sidebar and the map talk only through `window.AHM`, and the rules are enforced by tests.
-   **Before delivering, run `node tools/check-domain.js <your-domain> <your-diff>` and `node tests/js/run.js`** (the tests include
-   file ownership, the cross-domain boundaries and the interface contracts). When several agents work in parallel each stays in its
-   own domain (a feature agent only in its feature folder). A single agent working alone for the owner may touch several domains if his request needs it
-   (`check-domain.js sidebar,map <diff>`), but must keep the boundaries and must not add new cross-domain calls beyond those listed under "Known violations" in `INTERFACES.md`.
+Other documents, only when the task needs them: `DOMAINS.md` (domains, git workflow), `INTERFACES.md` and `interfaces/` (contracts), `docs/` (the project description, one file per section, index in `README.md`), `changes/archive/` (history: never read it whole).
 
-## Token rules (added 2026-11-06; they save the owner's tokens)
+## 2. Owner's working requirements (always follow)
 
-Every agent starts by reading `context/<domain>.md` (generated by `node tools/make-context.js`, listed in `tools/context.json`) and ONLY the files it lists.
-Do not browse the rest; open a file once and read only the part you need; change files with small edits; cut test output (`| tail -15`, and `| cut -c1-300` when a line can be long: the test runner already cuts failure messages at 600 characters);
-do not paste files or test output into answers; one task per session, the next task starts a new session from the latest archive.
-The whole tree stays on disk because the tests need it; the rule limits what is read, not what is delivered (rule 3 is unchanged).
-The architect (integrator) works from the docs-only package `node tools/make-context.js --architect` (documents, records, proposals, tools; no application code).
-When a domain's files change a lot, update `tools/context.json` and run the generator (`tests/js/context.test.js` fails if `context/` is stale).
+1. **English only.** Talk to the owner in English, and write all code, comments, commit labels, documentation, test names and messages in English, even if the owner writes in another language.
+2. **Record every change for other agents.** Append an entry to the change log of your domain, `changes/<domain>.md` (date, what, why, files, how to verify, open follow-ups), in the same pull request. Another agent must be able to continue from that file alone. An agent that works across several domains writes one entry in each log it touched. Keep the log short: when it grows past about 10 entries, move the oldest to `changes/archive/<domain>-NNN-NNN.md`.
+3. **Deliver by pull request** (`DOMAINS.md`, "Git workflow"): the pull request is the diff and the repository is the archive. A diff file or a full archive is needed only when the work is NOT delivered by a pull request, or when the owner asks: the old rules are in `docs/legacy-chat-workflow.md`.
+4. **Keep these requirements.** This file is where they are stored. If the owner adds, changes or removes one, update this file in the same pull request.
+5. **To-do lists.** Do only the items the owner asks for, do not change anything outside what the item needs, and do not change the tests unless the owner says so. New to-do items of a domain go to `todo/<domain>.md`; when an item is finished, mark it done there (date and change-log entry number). `TODO.md` (the 15 sidebar items) is done and is history.
+6. **Domains and interfaces.** The project is split into the domains **sidebar, map, data, core, state, campaigns** and **shared** (owner only); see `DOMAINS.md`. Each agent changes only its domain's files (`tools/domains.json`), talks to other domains only through the interfaces (`INTERFACES.md`), and writes a request or a proposal instead of touching anything else. **Interfaces and the shared files change only with the owner's explicit approval.** The sidebar and the map talk only through `window.AHM`; the rules are enforced by tests. A single agent working alone for the owner may touch several domains if his request needs it, but must keep the boundaries and must not add new cross-domain calls beyond "Known violations" in `INTERFACES.md`.
 
-## Project rules (from `README.md`, section 9; abbreviated)
+## 3. Token rules (they save the owner's tokens)
+
+- Read `context/<domain>.md` and only what it lists; open a file once, and only the part you need.
+- Change files with small edits, never by rewriting a whole file. Do not re-read a file you just wrote.
+- Cut test and tool output: `| tail -15`, and `| cut -c1-300` when a line can be long.
+- Do not paste files or test output into answers. Say what changed and the result in a few lines.
+- One task per session; the next task starts a new session.
+- Never open `changes/archive/`, `app/bun.lock`, `tests/fixtures/dates-vectors.json` or `node_modules` (denied in `.claude/settings.json`).
+- When a domain's files change a lot, update `tools/context.json` and run `node tools/make-context.js` (`tests/js/context.test.js` fails if `context/` is stale). `node tools/make-context.js --cost` shows the bytes a starter makes an agent read.
+- The architect works from the docs-only package `node tools/make-context.js --architect` (documents, records, proposals, tools; no application code).
+
+## 4. Project rules (details: `docs/09-code-style.md`)
 
 - No build step; classic scripts in the order listed in `app/index.html`. Escape output through `esc()`.
-- All data rules live in `service/store.php` (no phpBB classes) and are mirrored in `dev/save-handler.js`.
-  A rule changed in one must be changed in the other.
-- The place-type list is kept in three places: `PLACE_TYPES` (`sidebar/placeform.js`), `TYPE_STYLE` (`map/typeicons.js`),
-  `TYPES` (`store.php`, `save-handler.js`).
+- All data rules live in `service/store.php` (no phpBB classes) and are mirrored in `dev/save-handler.js`. A rule changed in one must be changed in the other.
+- The place-type list is kept in three places: `PLACE_TYPES` (`sidebar/placeform.js`), `TYPE_STYLE` (`map/typeicons.js`), `TYPES` (`store.php`, `save-handler.js`).
 - Every write: lock, archive the old file, atomic write. Never delete data without an archived copy.
 - Prettier settings: 120 columns, 2 spaces, single quotes. `app/css/*.css` are hand-formatted.
-- Update `README.md` when behaviour, structure, routes or data format change.
+- Update the matching `docs/` section (index: `README.md`) when behaviour, structure, routes or data format change.
 
-## How the diff and the change log are produced (procedure)
+## 5. Checks before you deliver
 
-1. Work on the tree. Keep an untouched baseline copy of the previous state.
-2. Diff: `diff -ruN --exclude=node_modules <baseline> <current>` with paths normalised to `a/…` and `b/…`, saved as
-   `<short-name>.diff`.
-3. Check that the diff applies to the baseline (`patch -p1 --dry-run`).
-4. Put the diff into `diffs/` and send the full archive (requirement 3).
+- Branch `<domain>/<task>` (several domains `a+b/<task>`); never push to `master`.
+- With git: `node tools/ci-check-pr.js <branch> origin/master`, then `node tests/js/run.js 2>&1 | tail -15`; add `php tests/php/run.php` and `php tests/data/run.php` for `service/`, `controller/` or the data format. Without git: `node tools/check-domain.js <domain> <diff>`.
+- Add a test for every new rule. A validation rule lives in three places (PHP store, Node dev server, and the table `tests/fixtures/rules.json` that checks both): change all. When a PHP rule changes, change `dev/save-handler.js` too.
+- Plans and status of the tests: `tests/README.md`.
 
 ## Facts about this project that must not be "fixed" again
 
@@ -94,13 +69,3 @@ When a domain's files change a lot, update `tools/context.json` and run the gene
   moves the map); tables without lines for languages and categories; every search field is the shared field with a ✕; primary
   action = `button.primary`, destructive = `.danger`. Keep new screens in this pattern.
 
-## Tests (owner wants them built in four separate parts)
-
-Order: **PHP (done) → data (done) → JavaScript (done) → CSS/HTML**. Plans and status are in `tests/README.md`. Run PHP tests with
-`php tests/php/run.php` before delivering any change to `service/` or `controller/`, and `php tests/data/run.php` after any change to the data format or sample data; `node tests/js/run.js` after any change to `app/js/` or `dev/`; add a test for every new rule. A validation rule lives in three places (PHP store, Node dev server, and the table `tests/fixtures/rules.json` that checks both): change all.
-When a PHP rule changes, change `dev/save-handler.js` too (the same tests will later be run against it).
- (first session, 2026-11-03)
-
-- The archive has the dot-files without the dot (`app/editorconfig`, `app/prettierrc.json`, `app/prettierignore`).
-- `app/node_modules` (161 MB) is in the archive and is excluded from diffs.
-- The repository root is the extension (it is installed in a forum as `ext/ahm/map/`). The forum style `paper-and-pencil` and the `diffs/` folder were removed from the repository on 2026-11-07; `styles/` now holds only the extension's own phpBB styles (`styles/all`).

@@ -37,6 +37,12 @@ test('domains: CODEOWNERS is exactly what tools/check-domain.js --codeowners mak
   eq(cd.codeowners(), fs.readFileSync(file, 'utf8'));
 });
 
+test('domains: the GitHub CODEOWNERS is exactly what tools/check-domain.js --codeowners-github makes', () => {
+  const file = path.join(ROOT, '.github', 'CODEOWNERS'); // GitHub reads it here
+  if (!fs.existsSync(file)) return console.log('    (no repository root here: skipped)');
+  eq(cd.codeowners('github'), fs.readFileSync(file, 'utf8'));
+});
+
 test('domains: a diff is accepted inside its domain and rejected outside it', () => {
   const R = '';
   const diff = (...files) => files.map(([p, isNew]) => `--- ${isNew ? '/dev/null' : 'a/' + p}\n+++ b/${p}\n@@ -1 +1 @@\n-x\n+y\n`).join('');

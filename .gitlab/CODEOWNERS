@@ -68,7 +68,10 @@
 /DOMAINS.md @bellaabrahamyan.am
 /INTERFACES.md @bellaabrahamyan.am
 /DESIGN.md @bellaabrahamyan.am
-/AGENT_CHANGES.md @bellaabrahamyan.am
+/CLAUDE.md @bellaabrahamyan.am
+/docs/ @bellaabrahamyan.am
+/interfaces/ @bellaabrahamyan.am
+/changes/archive/ @bellaabrahamyan.am
 /TODO.md @bellaabrahamyan.am
 /tools/ @bellaabrahamyan.am
 /requests/ @bellaabrahamyan.am

@@ -19,3 +19,9 @@
 - **Follow-ups:** `todo/map.md` not ticked in this change; the sidebar half of double click is task 012.
 
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the map domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.
+
+## 3. 2026-11-12: drawing a line marks start (A), end (B)
+- **What:** in `drawShape` with `kind: 'line'` the first point is drawn as A (blue), the last as B (red), with tooltips; the ones between stay small dots. No new command or event.
+- **Files:** `app/js/map/shapes.js`, `app/css/shapes.css` (sidebar-owned, the marker styles).
+- **Verify:** by hand (real MapLibre is not in the tests): add a route and click three points.
+- **Follow-ups:** none.

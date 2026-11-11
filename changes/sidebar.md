@@ -36,3 +36,9 @@ Task 003 / I-6: the map (and others) read shared selection and layer filter stat
 
 ### Open follow-ups
 None for this task. Known violation 1 in INTERFACES.md closes when task 002 is also merged.
+
+## 3. 2026-11-12: Routes: "+ Add route" starts on the map; wiring of the routes commit
+- **What:** "+ Add route" now goes straight to the map: the first click is the start, each next click a chain point (a place if it is clicked, otherwise a free geographic point), the last one the final point. "Next" opens the details form (names, type, direction, dates, line "As clicked" or "Modern roads"); "Back to the map" returns to the same points. The old place-name form stays as "or start from place names…". The card and the list show the chain from the line (start point, places, end point, free points allowed at the ends). Also fixed what commit 571630d left red: `tests/js/routes.test.js` owner, test script lists, five tabs, `showFound` in I-2, CODEOWNERS, context, graph.
+- **Files:** `app/js/sidebar/routes.js`, `app/css/shapes.css`, `tests/js/browser.test.js`, `tests/js/layers.test.js`.
+- **Verify:** `node tests/js/run.js`. By hand: Routes tab, "+ Add route", click three places of the map that are not places, Next, name it, Save.
+- **Follow-ups:** the path finder joins routes only at places (free points do not join); PHP tests were not run here (no PHP).

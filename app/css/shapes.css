@@ -82,6 +82,25 @@
   border-color: #1b5e20;
   background: #c8e6c9;
 }
+.ahm-vtx.start,
+.ahm-vtx.end {
+  width: 22px;
+  height: 22px;
+  border-color: #fff;
+  color: #fff;
+  font: 700 11px/16px system-ui, sans-serif;
+  text-align: center;
+}
+.ahm-vtx.start {
+  background: #1565c0;
+}
+.ahm-vtx.end {
+  background: #bc2a4d;
+}
+.ahm-vtx.start.place,
+.ahm-vtx.end.place {
+  border-color: #1b5e20;
+}
 .ahm-vtx.mid {
   width: 10px;
   height: 10px;

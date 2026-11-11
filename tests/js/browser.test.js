@@ -224,3 +224,28 @@ scenario('browser: tabs, sheets, filters, layers (only / hide / search / create 
     await pg.evaluate(()=>{lyState.only.clear();lyState.hide.clear();});
     
 });
+
+scenario('browser: Add route starts on the map; the details come after the line; Back returns to the same points', null, async (pg, S) => {
+  await pg.goto(S.base + '/'); await pg.waitForTimeout(1200);
+  // the page's map is a stand-in: replace the drawing tool by one that holds the points a click would add
+  await pg.evaluate(() => {
+    window.__pts = []; window.__start = null; window.__onChange = null;
+    AHM.map.drawShape = (o, onChange) => {
+      window.__start = o; window.__pts = (o.coords || []).map((c) => c.slice()); window.__onChange = onChange;
+      return { count: () => __pts.length, points: () => __pts.map((c) => c.slice()), ids: () => __pts.map(() => null), undo() { __pts.pop(); onChange(null); }, remove() {} };
+    };
+    tab('routes');
+  });
+  await pg.click('[data-rtadd=new]');
+  ok(/starting point/.test(await pg.locator('#rtHint').innerText()), 'the first hint asks for the starting point');
+  ok(await pg.locator('#rtFinish').isDisabled(), 'Next is off with no points');
+  await pg.evaluate(() => { __pts.push([44.5, 40.8]); __onChange(null); });
+  ok(/next point/.test(await pg.locator('#rtHint').innerText()) && await pg.locator('#rtFinish').isDisabled(), 'one point: asks for the next one, Next still off');
+  await pg.evaluate(() => { __pts.push([44.6, 40.9], [44.8, 41.0]); __onChange(null); });
+  ok(/3 points/.test(await pg.locator('#rtHint').innerText()) && await pg.locator('#rtFinish').isEnabled(), 'three points: Next is on');
+  await pg.click('#rtFinish');
+  ok(await pg.locator('#rtForm').count() === 1 && /3 points/.test(await pg.locator('#rtDetail').innerText()), 'the details form opens after the line');
+  ok(await pg.locator('.rt-stopin').count() === 0, 'no place-name inputs are needed');
+  await pg.click('[data-rtact=backdraw]');
+  ok(await pg.evaluate(() => __start.coords.length === 3 && __pts.length === 3), 'Back to the map restores the 3 points');
+});

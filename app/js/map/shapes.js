@@ -219,8 +219,22 @@ function drawShape(opts, onChange) {
         hit = layers.length && map.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]], { layers }).find((f) => f.properties.id && !f.properties.point_count && f.geometry.type === 'Point');
       return hit ? { id: hit.properties.id, ll: hit.geometry.coordinates.slice(0, 2) } : null;
     },
+    // a line shows its first point as the start (A) and its last as the end (B), the ones between as chain points
+    restyle = () => {
+      if (kind !== 'line') return;
+      marks.forEach((m, i) => {
+        const el = m.getElement(),
+          start = i === 0,
+          end = i > 0 && i === marks.length - 1;
+        el.classList.toggle('start', start);
+        el.classList.toggle('end', end);
+        el.textContent = start ? 'A' : end ? 'B' : '';
+        el.title = start ? 'Start' : end ? 'End (final point)' : 'Chain point ' + (i + 1);
+      });
+    },
     changed = () => {
       paint();
+      restyle();
       rebuildMids();
       if (onChange) onChange(geom());
     },
@@ -316,6 +330,7 @@ function drawShape(opts, onChange) {
       }
     };
   pts.forEach((p, i) => vertex(p, ids[i]));
+  restyle();
   map.on('click', onClick);
   map.on('dblclick', onDbl);
   document.addEventListener('keydown', onKey);

@@ -109,5 +109,6 @@
 # repository root
 /.gitlab/ @bellaabrahamyan.am
 /.gitlab-ci.yml @bellaabrahamyan.am
+/.github/ @bellaabrahamyan.am
 /.claude/ @bellaabrahamyan.am
 /.gitignore @bellaabrahamyan.am

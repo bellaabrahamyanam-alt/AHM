@@ -96,6 +96,7 @@
     "shared": [
       ".gitlab/",
       ".gitlab-ci.yml",
+      ".github/",
       ".claude/",
       ".gitignore"
     ]

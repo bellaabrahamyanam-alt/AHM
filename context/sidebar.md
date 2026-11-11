@@ -17,7 +17,7 @@ The left panel: place list and details, search and period, layers, categories, l
 
 ## Your files (the only ones you may change)
 
-`app/js/sidebar/`, `app/css/sidebar.css`, `tests/js/layers.test.js`, `tests/js/sidebar.test.js`, and your records `changes/sidebar.md`, `todo/sidebar.md`.
+`app/js/sidebar/`, `app/css/sidebar.css`, `app/css/shapes.css`, `tests/js/layers.test.js`, `tests/js/sidebar.test.js`, and your records `changes/sidebar.md`, `todo/sidebar.md`.
 
 ## Token rules
 

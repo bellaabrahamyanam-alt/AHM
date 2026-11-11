@@ -16,6 +16,9 @@ function scriptPath(name) {
   throw new Error('script not found: ' + name);
 }
 
+// A 2D canvas context that accepts every call and every assignment (icons are drawn on canvases: typeicons.js, sidebar/shapes.js).
+const ctx2d = new Proxy({}, { get: () => () => {}, set: () => true });
+
 function fakeEl(sel) {
   const e = {
     sel,
@@ -38,6 +41,9 @@ function fakeEl(sel) {
     showModal() {},
     insertAdjacentHTML() {},
     scrollIntoView() {},
+    prepend() {},
+    getContext: () => ctx2d,
+    toDataURL: () => 'data:image/png;base64,',
     closest: () => null,
     matches: () => false,
     querySelector: (s) => fakeEl(sel + ' ' + s),
@@ -70,6 +76,11 @@ function load(scripts, pre = '') {
     clearTimeout,
     performance: globalThis.performance,
     alert() {},
+    ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
+    requestAnimationFrame: () => 0, // frames never run here: revealRow / fitNotes of ui.js need a real layout
+    cancelAnimationFrame() {},
+    innerWidth: 1280,
+    innerHeight: 800,
     confirm: () => true,
     __calls: calls,
     __els: els,
@@ -99,6 +110,7 @@ const UI_STANDINS = `
   function show(id) { __calls.push('show:' + id); }
   function closeDetail() { __calls.push('closeDetail'); }
   function dockSync() {}
+  function revealRow() {}
   const typeIcon = () => '', typeLabel = (t) => String(t).replace(/_/g, ' ');
 `;
 const SAMPLE = {

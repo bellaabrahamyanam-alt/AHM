@@ -10,7 +10,7 @@ const STUB = `(function(){
  const p=new Proxy(function(){},{get:(t,k)=>{ if(k==='then')return undefined;
   if(k==='on'||k==='once')return (ev,a,b)=>{const f=typeof a==='function'?a:b; if(ev==='load'||ev==='style.load'||ev==='idle')setTimeout(()=>f&&f({}),0); return p;};
   if(k==='getZoom')return()=>6; if(k==='getLayer'||k==='getSource')return()=>undefined; if(k==='queryRenderedFeatures')return()=>[];
-  if(k==='getBounds')return()=>({getWest:()=>40,getEast:()=>48,getNorth:()=>42,getSouth:()=>36}); if(k==='getCanvas')return()=>({style:{}});
+  if(k==='getBounds')return()=>({getWest:()=>40,getEast:()=>48,getNorth:()=>42,getSouth:()=>36}); if(k==='getCanvas')return()=>({style:{},addEventListener(){},removeEventListener(){}});
   if(k==='getStyle')return()=>({layers:[],sources:{}}); if(k==='isStyleLoaded')return()=>true; if(k==='getLngLat')return()=>({lat:40,lng:44});
   return ()=>p; }, apply:()=>p, construct:()=>p});
  window.maplibregl={Map:function(){return p;},Marker:function(){return p;},Popup:function(){return p;},NavigationControl:function(){return {};},LngLatBounds:function(){return {extend(){return this;},isEmpty(){return true;}};}};
@@ -148,12 +148,12 @@ scenario('browser: tabs, sheets, filters, layers (only / hide / search / create 
     ok(await pg.locator('#fActive .chip').count()===0, 'no chip for a selected type');
     ok(/1/.test(await pg.locator('#fcount').innerText()), 'the filter count shows the selected type');
     await pg.evaluate(()=>{state.types.clear();fillTypes();update();});
-    // a place opens inside the list, under itself; the map does not move; no Back button
+    // a place opens in the details dock under the list; its row stays in the list and is marked; the map does not move; no Back button
     const rows=await pg.locator('#list li[data-id]').count();
     await pg.click('#list li[data-id] >> nth=1'); await pg.waitForTimeout(300);
-    ok(await pg.locator('#list #detail').count()===1 && await pg.locator('#detail').isVisible() && await pg.locator('#detail .inline-actions').isVisible(), 'place opens in the list with its action bar');
+    ok(await pg.locator('#dock #detail').count()===1 && await pg.locator('#detail').isVisible() && await pg.locator('#detail .dock-btns').isVisible(), 'place opens in the details dock with its buttons');
     ok(await pg.locator('#list li[data-id]').count()===rows, 'the other places stay in the list');
-    ok(await pg.locator('#list li.on + #detail').count()===1, 'the details sit right under the open place');
+    ok(await pg.locator('#list li.on').count()===1, 'the open place is marked in its row');
     ok(await pg.locator('[data-act=back]').count()===0, 'no Back button');
     await pg.click('#list li.on'); ok(await pg.locator('#detail').isHidden(), 'a second click folds the details');
     await pg.click('#list li[data-id] >> nth=0'); await pg.fill('#q','tu'); ok(await pg.locator('#detail').isHidden(), 'typing in search closes the details');
@@ -184,7 +184,7 @@ scenario('browser: tabs, sheets, filters, layers (only / hide / search / create 
     await pg.click('#catCancel'); ok(await pg.locator('#catAdd').count()===1, 'Cancel closes the fields');
     await pg.click('#catAdd'); await pg.fill('#catForm .nn','Pilgrimage'); await pg.click('#catSave'); await pg.waitForTimeout(500);
     ok(await pg.locator('#catList li.tr').count()===6, 'category added');
-    await pg.click('#catList li.tr:has-text("Pilgrimage") [data-lyact=editcat]'); ok(await pg.locator('#catList li.tr:has-text("Pilgrimage") + li.cat-edit #catForm').count()===1, 'the pencil opens the fields under the row');
+    await pg.click('#catList li.tr:has-text("Pilgrimage") [data-lyact=editcat]'); ok(await pg.locator('#catAdmin #catForm').count()===1 && await pg.locator('#catList li.tr.on:has-text("Pilgrimage")').count()===1, 'the pencil opens the fields under the list and marks the row');
     await pg.fill('#catForm .nn','Pilgrimages'); await pg.click('#catSave'); await pg.waitForTimeout(500);
     ok(await pg.locator('#catList li.tr:has-text("Pilgrimages")').count()===1, 'category renamed');
     // new layer (its own Add layer fold in the Layers tab)

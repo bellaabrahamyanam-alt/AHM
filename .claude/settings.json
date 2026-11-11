@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./changes/archive/**)",
+      "Read(./app/bun.lock)",
+      "Read(./app/node_modules/**)",
+      "Read(./tests/fixtures/dates-vectors.json)"
+    ]
+  }
+}

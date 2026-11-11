@@ -60,6 +60,9 @@ test('ci: ONE job (tools/ci.sh) does the domain check, the graph and every test;
   const sh = fs.readFileSync(path.join(root, 'tools', 'ci.sh'), 'utf8');
   ok(/^ci:/m.test(yml) && !/^stages:/m.test(yml) && !/^(tests|graph|domain)[:\w]*:/m.test(yml), '.gitlab-ci.yml must have the one job `ci` and no other job');
   ok(yml.includes('tools/ci.sh'), 'the job ci does not run tools/ci.sh');
+  const gh = fs.readFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
+  ok(gh.includes('tools/ci.sh') && /^  ci:/m.test(gh) && !/^  (tests|graph|domain):/m.test(gh), '.github/workflows/ci.yml must have the one job `ci` and run tools/ci.sh');
+  for (const v of ['CI_MERGE_REQUEST_IID', 'CI_MERGE_REQUEST_TARGET_BRANCH_NAME', 'CI_MERGE_REQUEST_SOURCE_BRANCH_NAME', 'CI_SERVER_HOST', 'CI_PROJECT_PATH', 'GRAPH_PUSH_TOKEN']) ok(gh.includes(v), `the GitHub workflow does not set ${v}, which tools/ci.sh reads`);
   for (const part of ['tools/ci-check-pr.js', 'tools/make-graph.js', 'make-graph.js --check', 'git push', 'php tests/php/run.php', 'php tests/data/run.php', 'node tests/js/run.js']) ok(sh.includes(part), `tools/ci.sh does not run: ${part}`);
   for (const f of fs.readdirSync(__dirname).filter((x) => x.endsWith('.test.js'))) {
     ok(cd.DOMAINS.includes(cd.ownerOf('tests/js/' + f)), `tests/js/${f} has no domain, so no CI job would run it`);

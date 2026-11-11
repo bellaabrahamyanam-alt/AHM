@@ -1,0 +1,15 @@
+<!-- Section 14 of the project description; index: README.md -->
+
+## 14. Verification status
+
+What has been checked, so you know how far to trust this document:
+
+- **Checked by running it (last check: 2026-11-04):**
+  - the date model: 48 000 random round trips of all eight formats in `app/js/dates.js`; 30 000 random ISO time stamps (years −99000 to +99000) read back identically by JavaScript's own `Date.parse`; 25 600 test vectors and 2 020 time stamp strings (accepted and refused spellings) giving the same answers in JavaScript and in `service/dates.php` (alignment, end of period, old-data conversion, upgrade of seconds to ISO text, error cases);
+  - `service/store.php` on a copy of the sample data: migration of the old format (50 conversions, 0 on a second run), conversion of data in the previous release's format (seconds to ISO text, in places and in notes), unknown languages refused for names and notes, adding a language (and its error cases), mountain height (valid, empty, too high, not whole), optional dates, a time stamp that does not match its format, notes with and without a date, and the rebuilt search index;
+  - the interface in a headless browser against the development server (language tab and its add form, language selects in the place and note forms, date field with several formats and ranges, "31 February" refused, mountain with and without height, server refusing an unknown language). In that browser test the map library was replaced by a stand-in, so map drawing was not exercised.
+- **Layers (2026-11-04):** `store.php` 81 checks; the controller with stand-ins for phpBB 29 checks (permissions, not a live phpBB); the Node dev server 75 checks; the interface in a headless browser (map library stubbed) 22 checks: Maps tab rename, Only / Hide, layer search, categories add and rename, create layer, choose places, layer note, new place joins the open layer with a tagged note, leave a layer, delete a layer. Ring colours and clicking markers on the real map were **not** exercised (stub).
+- **Not re-checked in the last round:** the Node dev server's answers compared one by one with PHP's for the older features. Overlays and the guest view were not changed.
+- **Not verified by me:** behaviour inside a live phpBB installation (the login gate, the administrator check, the Quick links entry and route generation). The extension owner has run earlier versions on a forum; each update should be tried there first.
+- **Not verified:** the outside services (base map, satellite, search, directions) could not be reached from the environment used for testing, so their addresses and terms were checked against their documentation and were not exercised live from there.
+- **Tests:** PHP `tests/php/` (`php tests/php/run.php`: 93 tests), data `tests/data/` (`php tests/data/run.php`: 38 tests; `php tests/data/run.php <store>` checks a live store, read only) and JavaScript `tests/js/` (`node tests/js/run.js`: 53 tests, incl. real-browser scenarios), all passing on 2026-11-05. The CSS/HTML part is planned in `tests/README.md`. The browser and Node scripts mentioned above are still **not** in the repository.

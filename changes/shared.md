@@ -6,258 +6,7 @@ One entry per change, newest last: date, what, why, files, how to verify, open f
 
 ---
 
-## 2026-11-06 — #1 Domains, step 3 of 4: enforcement tooling and per-domain records
-
-Requested by the owner ("I admit and approve everything which you asked for"): approved step 3 and the [1.1] interface additions.
-
-### What
-- `tools/domains.json` (the one ownership table), `tools/check-domain.js` (rejects a diff outside the declared domain(s); `--owner`, `--codeowners`), `CODEOWNERS` (made from the table; the `@ahm-*` names are placeholders for real people or teams).
-- Tests (shared domain, run by `node tests/js/run.js`): `domains.test.js` (every file has an owner, CODEOWNERS in sync, the checker's accept/reject rules), `boundaries.test.js` (ESLint scope analysis: a script may not use a top-level name declared by another domain; the two allowed exceptions are written in the test), `contract.test.js` (I-1 endpoint names in `config.js`, controller and dev server; I-2 `AHM.map` commands and the event lists; I-3 core function names; I-4 `typeIcon`).
-- Per-domain records: `changes/<domain>.md`, `todo/<domain>.md`, `diffs/<domain>/`, `requests/`, `proposals/` (with README). The legacy `AGENT_CHANGES.md` and `TODO.md` are read-only history (banner added). `AGENTS.md` (requirements 1-3, 6, 7), `DOMAINS.md` (status, test ownership, how to run the checks) and `INTERFACES.md` (v1.1 confirmed by the owner) updated.
-- `proposals/001-search-run-options.md`: a pending proposal to remove Known violation 1 (needs the owner's "approved").
-
-### Verify
-`node tests/js/run.js`; `node tools/check-domain.js sidebar <diff>`; `node tools/check-domain.js --owner <path>`.
-
----
-
-## 2026-11-06 — #2 Browser test updated to the new sidebar; boundaries test tightened
-
-Requested by the owner ("yes to the test update, yes to proposal 001").
-
-### What
-- `tests/js/browser.test.js`, scenario "tabs, sheets, filters, layers…": now expects the sidebar as it is after items 5-15: no chip for a selected type, places and layers open inside their list under themselves with no Back button (a second click folds them), the search ✕, categories in the More tab (one "Add" button, then the fields with Save and Cancel; the pencil opens them under the row), "Add layer" in its own fold, and `run(searchOptions())`. The scenario is the only test that exercises the whole flow, and it had not run past its first steps since item 5; running it fully found the layer-list click bug logged in `changes/sidebar.md` #1.
-- `tests/js/boundaries.test.js`: the `periodBounds` exception is gone and core may not use `$`.
-- `INTERFACES.md` version 1.2, `proposals/001-search-run-options.md` marked approved and implemented, `todo/shared.md` and `todo/core.md` updated.
-
-### Result
-PHP 93, data 38, JS 65 passed, 0 failed.
-
----
-
-## 2026-11-06 — #3 Domains, step 4 of 4: parallel work, the switchable-feature mechanism, the campaigns domain
-
-Requested by the owner ("let's go to step 4 ... one agent works on the map, a second adds military campaigns on the map; his work must touch nothing else and be easy to enable and disable: visible in development, hidden in production").
-
-### What
-- **Parallel-work process** written into `DOMAINS.md` ("Parallel work"): start from the latest archive, one domain per agent, diff per domain, integrator merges with `patch`, conflicts impossible by construction (per-domain records), cross-domain needs by request/proposal. `AGENTS.md`, status and roll-out updated. One reading made explicit: a domain agent also sends the full archive of its own tree (owner's rule 3); the integrator's merged archive counts.
-- **Interface I-5 (version 1.3), added at the owner's request, he reviews it:** `AHM.features.register / onMapReady / enabled` and the flag `AHM_CONFIG.features`. New shared files `app/js/features.js` (the loader, last script in `index.html`) and a `features` line in `config.js`. Development: `["campaigns"]` in the file, `?features=` hides, `?features=a,b` picks. Forum: only `AHM_BACKEND.features`, which the controller does not send, so the feature is hidden in production without any other change. A feature that fails to load or throws is logged and ignored.
-- **New domain `campaigns`** (`tools/domains.json`, `CODEOWNERS`): `app/features/campaigns/` (scaffold: `main.js` with a development badge, `style.css`, `README.md`), `tests/js/campaigns.test.js`, `changes/campaigns.md`, `todo/campaigns.md`, `diffs/campaigns/`.
-- **Isolation enforced by `tests/js/features.test.js`** (shared, 9 tests): the flag in every environment, the loader (nothing loaded when off, bad names, URLs next to the loader, failures contained, `onMapReady`), and for every feature folder: it has a domain and `main.js`; no file of another domain mentions its name; no top-level names; only `AHM.features/on/emit/map` and the listed map commands; events named `<name>:*`; CSS selectors only `.<name>-`/`#<name>-`. Checked by temporarily breaking each rule.
-- `proposals/002-map-extension-points.md` (pending): `AHM.map.addLayer/updateLayer/removeLayer/setLayerVisible` and `layer:click`, so a feature can draw on the map without touching MapLibre.
-- Starter prompts for the two agents: `tools/prompts/map-agent.md`, `tools/prompts/campaigns-agent.md`. `README.md` (settings, structure) and `tests/README.md` updated.
-
-### Verify
-`node tests/js/run.js` (features: 9, campaigns: 1); `node tools/check-domain.js shared <diff>`; open the page: the badge "Campaigns (development)" shows bottom left; with `?features=` it does not and no request for `app/features/` is made.
-
-### Follow-ups
-- Production switch-on for a test forum needs the controller to send `features` (data domain: a request when the owner wants it).
-- Real map drawing needs proposal 002 (owner's approval), saving needs I-1 endpoints (proposal by the campaigns agent).
-- Not exercised in a live phpBB (the loader derives the feature URL from its own script address to survive the forum's asset paths).
-
----
-
-## 2026-11-06 — #4 State domain scaffold and proposal 003 (state manager)
-
-Requested by the owner: shared state needs one module that only manages state; domain **state**; first scope = selected place + layer state (his answers 2026-11-06).
-
-### What
-- Domain `state` in `tools/domains.json` / `CODEOWNERS`: `app/js/state/state.js` (scaffold, `AHM.state = {}`; loaded right after `ahm.js` in `index.html`), `tests/js/state.test.js`, `changes/state.md`, `todo/state.md`, `diffs/state/`. Boundaries test: the state domain may not use DOM, window, fetch or MapLibre names. `tests/js/lib/ctx.js` finds scripts in `app/js/state/`.
-- `proposals/003-state-manager.md` (pending): the API (`get/set/patch`, `state:<key>` events, keys `selected` and `layers`) and the six migration steps. It replaces the map agent's own proposal 003, which never reached `proposals/` (the checker does accept a new proposal file from the map domain; tested).
-- Prompts: `tools/prompts/state-agent.md`, `tools/prompts/state-follow-ups.md` (core, sidebar, map steps).
-
-### Verify
-`node tests/js/run.js`: 76 passed.
-
-### Follow-ups
-The owner's `Status: approved` on proposal 003, and his OK to add `'state.js'` to the test load lists of `layers.test.js`, `search.test.js`, `browser.test.js` (no assertion change) before core step 3.
-
----
-
-## 2026-11-06 — #5 Proposal 003 approved; state tests written first (TDD)
-
-Owner: "I approve it and let you write tests in order to state agent follow TDD" (also approved adding `state.js` to the test load lists).
-
-### What
-- `proposals/003-state-manager.md`: `Status: approved`; a clarifications section fixes the details the tests need (exactly `get/set/patch`; `patch` always emits; error messages contain "unknown key" / "object").
-- `tests/js/state.test.js`: 8 tests that specify the module (surface, defaults, unknown keys, `set` events and identical-value silence, live `layers` object, `patch` announcing, non-object errors, handler errors contained). They are skipped while `AHM.state` is only the scaffold (so other domains keep a green suite) and run with `AHM_TDD=1`. Checked both ways: 8 red on the scaffold, 8 green against a throwaway reference implementation (not kept).
-- `'state.js'` added first to the load lists of `layers.test.js` (sidebar's), `search.test.js` (core's) and `contract.test.js` (shared). `browser.test.js` loads `index.html` and needed no change. No assertion changed.
-- `tools/prompts/state-agent.md`: TDD workflow.
-
-### Verify
-`node tests/js/run.js`: 83 passed; `AHM_TDD=1 node tests/js/run.js --no-browser state`: 8 failed until the state agent delivers.
-
----
-
-## 2026-11-06 — #6 Starter contexts and token rules
-
-Requested by the owner ("Yes build it") to cut the tokens agents spend: read lists per domain, a docs-only package for the architect, token rules for all agents.
-
-### What
-- `tools/context.json` (brief + 3 domain files per domain; common AGENTS.md, INTERFACES.md; own records added automatically) and `tools/make-context.js`: writes `context/<domain>.md` for all 7 domains (brief, "read these files and only these", own files, six token rules); `--check` for staleness; `--architect [out]` writes a docs-only tar.gz (documents, records, proposals, requests, tools, context; no app, data, PHP or tests code).
-- `tests/js/context.test.js` (4 tests): every domain has an entry and existing files; lists of at most 9 files; `context/` up to date; architect package has no application code.
-- `AGENTS.md`: new section "Token rules"; the three agent prompts (`tools/prompts/`) now start with "read `context/<domain>.md`". Rule 3 (full archive) is unchanged: the whole tree stays on disk because the tests need it.
-- `context/` and the new test belong to shared (`tools/domains.json`, `CODEOWNERS`).
-
-### Verify
-`node tools/make-context.js --check`; `node tests/js/run.js`.
-
-### Follow-ups
-Read lists are a first guess; after the first agent sessions, adjust `tools/context.json` where an agent needed another file.
-
----
-
-## 2026-11-07 — #7 Git workflow (step 5): repository, CI, pull requests, roles
-
-Requested by the owner (pulling tar archives and replacing files by hand is the weak part; he wants commits, hashes, real merges). Repository: https://github.com/bellaabrahamyanam-alt/AHM.
-
-### What
-- Git repository at the project root with two commits: the import of the project as it was, then this change (history starts here).
-- `.gitignore` (`node_modules/`, `*.tar.gz`, `*.bundle`); `.github/workflows/ci.yml` (job `domain`: `tools/ci-check-pr.js`; job `tests`: PHP, data, JS with eslint and playwright installed); `.github/pull_request_template.md`.
-- `tools/ci-check-pr.js`: branch `<domain>[+<domain>]/<task>`; fails the pull request if it changes a file outside the named domain(s). `tests/js/ci.test.js` (2 tests, a real git repository).
-- CODEOWNERS moved to `.github/CODEOWNERS` (where GitHub reads it), handles from `"owners"` in `tools/domains.json` (all = `@bellaabrahamyanam-alt`); `domains.test.js` follows it.
-- `DOMAINS.md`: section "Git workflow" (branches, roles architect / TDD writer / implementer / merger, commits, merge, owner setup); AGENTS.md rules 1 and 3 apply only when work is not delivered by pull request; the three agent prompts got a "Git delivery" paragraph.
-
-### Verify
-`node tests/js/run.js`; `git log`. The workflow file was NOT run on GitHub yet (no push access from here): the first pull request is its test.
-
-### Follow-ups
-Owner: push the bundle, protect `main`, link GitHub to Claude, revoke the token pasted in the chat. Then: create the first real branch for the state agent (`state/manager`).
-
----
-
-## 2026-11-07 — #8 Task specs for the state roll-out (architect)
-
-Architect session. Added `tasks/` (owner line in `tools/domains.json`, CODEOWNERS regenerated) (README + 5 specs: state manager, core, sidebar, map, contract I-6) with goals, dependencies, interface touched and acceptance criteria. No code, no interface change.
-
-### Verify
-`node tests/js/run.js --no-browser 2>&1 | tail -15`.
-
-### Follow-ups
-Owner: merge this PR, then start the state agent (`tools/prompts/state-agent.md`, branch `state/manager`). Decide proposal 002 and the sample-data conversion.
-
----
-
-## 2026-11-07 — #9 Fewer wasted tokens; agents open their own pull requests
-
-Owner's requests: stop a long test failure from flooding the context; read only the last 100 lines of the legacy log; agents open pull requests themselves; auto-merge.
-
-### What
-- `tests/js/lib/harness.js`: a failure message is cut at 600 characters (the CODEOWNERS mismatch printed ~10k tokens on one line, which `head`/`tail` cannot cut).
-- `AGENTS.md`: token rule `| cut -c1-300`; `AGENT_CHANGES.md` is read as `tail -n 100` only.
-- `tools/prompts/*.md` and `DOMAINS.md` (Git workflow): agents open the pull request with `gh api` (REST; GraphQL is blocked) and enable auto-merge.
-
-### Verify
-`node tests/js/run.js --no-browser 2>&1 | tail -3`.
-
-### Follow-ups
-Owner: "Allow auto-merge" in the repository settings; branch protection on `main` is not available for private repositories on the free plan, so auto-merge may merge before CI finishes (see todo).
-
----
-
-## 2026-11-07 — #10 Agents merge their own green pull requests
-
-Owner: "yeh, I want it". "Allow auto-merge" cannot be set through the proxy, so the rule is in the prompts instead.
-
-### What
-- `tools/prompts/*.md`: after pushing, the agent opens the pull request with `gh api`, polls the check runs, merges (squash, `gh api`) only when all are `success`; red = fix and push again, never merge red.
-- `DOMAINS.md` (Git workflow): same rule; the owner's merge button is no longer needed.
-
-### Verify
-`node tests/js/run.js --no-browser 2>&1 | tail -3`. First real use: the state agent.
-
-### Follow-ups
-Without branch protection nothing technical stops a red merge; the rule relies on the agent. If an agent breaks it, tell the owner.
-
----
-
-## 2026-11-07 — #11 The repository root is the extension (flattened `ext/ahm/map/`)
-
-Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/map/` to the repository root, because the nested layout confused the agents.
-
-### What
-- Removed the forum style `styles/` (paper-and-pencil) and the `diffs/` folder (history stays in git). Moved all of `ext/ahm/map/*` to the root with `git mv` (history kept); the extension's own phpBB styles are now `styles/all` (owned by data).
-- `tools/domains.json`: `root` is `""`; `outside.shared` is only `.github/` and `.gitignore`; `.git/` is ignored by the owner test. `.github/CODEOWNERS` regenerated; `ci.yml` runs `tools/ci-check-pr.js` and the tests from the root.
-- Tests changed only for the new location (owner asked for this move): `domains.test.js`, `ci.test.js`, `features.test.js`, `boundaries.test.js` (path prefix and repository root).
-- Docs: `README.md`, `AGENTS.md`, `DOMAINS.md` (layout note; archive/diff method marked legacy), `tools/prompts/*.md` (deliver by pull request), `tools/make-context.js`, `tools/context.json`, `context/*.md` regenerated, `dev/bs-config.js`, pull-request template.
-- `tools/check-domain.js`: deleting a path that no domain owns (any more) is allowed (the one-time removal of `diffs/` and the old `ext/` paths); changing one, or deleting an owned file from the wrong domain, is still rejected (new test in `ci.test.js`). This PR touches every domain, so its branch is named `shared+sidebar+map+core+state+campaigns+data/flatten-root`.
-- Unchanged on purpose: the forum install path `<forum>/ext/ahm/map/` in `controller/main.php`, `ext.php`, README install text and the fake forum URLs in `features.test.js`. The repository is installed into a forum under that folder name.
-
-### Verify
-`php tests/php/run.php` 93, `php tests/data/run.php` 38, `node tests/js/run.js` 89, all green. In the repository root: no `ext/` and no `diffs/`.
-
-### Follow-ups
-- Open pull requests of other agents on the old paths must be rebased (their files moved).
-- `AGENT_CHANGES.md` and old `changes/*.md` entries keep the old paths as history. `check-domain.js` still tolerates `diffs/<domain>/` records.
-- To install in a forum: copy the repository (without `.git`, `node_modules`) to `<forum>/ext/ahm/map/`.
-
-## 2026-11-07 — #12 Named agent roles and a gatekeeper (owner approved: "go")
-**What:** 14 fixed agent names, callable without a long prompt: `architect`, `gatekeeper` (the only merger), and per domain (sidebar, map, data, core, state, campaigns) `<domain>-tdd` (failing tests first) and `<domain>-dev` (code, pull request, no merge).
-**Why:** the owner wants to call an agent by name plus a task, and wants one senior agent that accepts changes for all domains (before, every agent merged its own pull request).
-**Files:** `.claude/agents/*.md` (14 role files, new); `tools/prompts/_common.md` (new, rules for all agents); old prompts moved with `git mv` to `tools/prompts/domain/` (`map.md`, `campaigns.md`, `state.md`, `state-follow-ups.md`; content unchanged, their "Git delivery" part is replaced by `_common.md`); `DOMAINS.md` ("Roles per task", "Pull request, CI and acceptance", "Merge"); `tools/domains.json` (`.claude/` owned by shared); `.github/CODEOWNERS` and `context/shared.md` regenerated; `README.md`, `tasks/README.md`, `tasks/001-state-manager.md`, `todo/shared.md` (paths and wording only).
-**Verify:** `node tests/js/run.js --no-browser` 90 passed. Call example: `map-dev: do tasks/006-x.md`.
-**Follow-ups:** the `gatekeeper` merges only after CI is green; if a pull request is already open from an old agent, the owner tells `gatekeeper` to take it. Domain notes for sidebar, core and data do not exist yet (their `context/<domain>.md` is enough).
-
-## 2026-11-07 — #13 Proposal 004 for the agent roles (gatekeeper asked for it)
-**What:** `proposals/004-agent-roles.md`, `Status: approved` (the owner wrote "I approve it" in the chat on 2026-11-07). Entry #12 is the change it covers.
-**Why:** `gatekeeper` correctly refused PR #5: shared files (`DOMAINS.md`, `tools/domains.json`, ...) changed without an approved proposal.
-**Files:** `proposals/004-agent-roles.md` (new), `changes/shared.md`.
-**Verify:** call `gatekeeper: PR #5` again; the checks are unchanged and CI is green.
-
-## 2026-11-07 — #14 Docs: the repository is public; auto-merge and branch auto-delete are on
-**What:** `DOMAINS.md` (Git workflow): the old "protect main; private repositories cannot enforce this" note is replaced by four bullets: repository settings (public, auto-merge on, merged branches deleted automatically, only `gatekeeper` merges), a public-repository warning (no secrets, no private data), branch protection as an optional owner-only step, and the one remaining owner setup step. `todo/shared.md`: the auto-merge follow-up is closed. `proposals/005-public-repo-notes.md` (approved by the owner).
-**Why:** the owner made the repository public and enabled the two settings; the documents must say so. This replaces the old branch `shared/docs-public-automerge`; its outdated line ("agents merge their own pull requests") is dropped.
-**Verify:** read "Git workflow" in `DOMAINS.md`; CI green. No code and no test changed.
-**Follow-ups:** the owner decides on branch protection. Check that nothing private is in the git history now that the repository is public.
-
-## 2026-11-07 — #15 Contract I-6 (INTERFACES.md v1.4) after the state manager was built (task 005, first part)
-**What:** `INTERFACES.md` version 1.4 with the new section I-6 (`AHM.state`: `get`/`set`/`patch`, keys `selected` and `layers`, events `state:<key>`, errors, rules); the "Known violations" item 1 now says when it closes (tasks 002 and 003 merged; it is NOT removed yet). `DOMAINS.md`: the state row says the module is built and approved. `tests/js/contract.test.js`: two I-6 tests (exact API and exact key list read from `state.js`; nobody else assigns `AHM.state`) and the I-2 test now allows `AHM.state` next to `AHM.map`, `AHM.on` and `AHM.emit` (tasks 003 and 004 would fail CI otherwise).
-**Why:** proposal 003 step 6 (approved by the owner 2026-11-06); task 001 is merged (`changes/state.md` #1). Tasks 002-004 are not merged yet, so only the first part of task 005 is done.
-**Files:** `INTERFACES.md`, `DOMAINS.md`, `tests/js/contract.test.js`, `todo/shared.md`, `changes/shared.md`.
-**Verify:** `node tests/js/run.js` all green; adding a key to `state.js` makes the I-6 contract test fail (checked by hand).
-**Follow-ups:** after tasks 002 and 003 are merged: delete Known violation 1 and the "Closes when" text; after task 004: nothing more in this file. The existing assertion change in an existing test needs the owner's OK (tests of shared; no weakening of the key and API checks).
-
-## 2026-11-07 — #16 Move to GitLab: specs, CI, merge requests (proposal 006)
-**What:** The project lives in the GitLab project `bellaabrahamyan.am/ahm` (trunk `master`); GitHub is not used any more. Already on the branch before this entry: `.gitlab-ci.yml` (jobs `domain` for merge requests and `tests`), `.gitlab/CODEOWNERS` (generated, handle `@bellaabrahamyan.am`), `.gitlab/merge_request_templates/Default.md`, `tools/ci-check-pr.js` and `tools/check-domain.js` (`master`, `.gitlab/`), `tools/domains.json` (`.gitlab/` and `.gitlab-ci.yml` owned by shared), `tests/js/domains.test.js` (CODEOWNERS path only), `tools/prompts/_common.md`, `gatekeeper` and the `-dev` role files (merge requests, GitLab tools). This entry adds: `DOMAINS.md` ("Git workflow" rewritten for GitLab, owner setup list), `AGENTS.md` (rules 1 and 3 say merge request), `tools/context.json` and `context/shared.md` (regenerated), a comment in `.gitlab-ci.yml`, `proposals/006-gitlab-move.md` (approved by the owner), `todo/shared.md`.
-**Why:** the owner moved the project to GitLab and asked to prepare it fully and to make the specs clear.
-**Verify:** CI ran on GitLab and passed: after the owner verified the account identity, pipeline 3039964592 on head 85b566c9 of MR !1 finished with jobs `domain` and `tests` both `success`. (Before that, GitLab refused every CI job: "Identity verification is required in order to run CI jobs".) MR !1 was merged into `master`.
-**Follow-ups (owner only):** protect `master` and set the merge request options (`DOMAINS.md`, "Git workflow"; today every developer may push to `master`); connect GitLab to Claude for the cloud sessions; archive the GitHub repository and revoke every GitHub token that was pasted in a chat.
-
-## 2026-11-07 — #17 Owner setup done: `master` protected, merge request options set, GitHub archived and tokens revoked
-**What:** `todo/shared.md`: all owner setup items are done. Checked through the GitLab API: branch `master` is protected, `developers_can_push` is false, `developers_can_merge` is true (before MR !1 it was true for push). By the owner's word (not checkable with the GitLab tools): the merge request options are set (pipelines must succeed, threads resolved, squash, delete source branch), the GitHub repository is archived and its tokens are revoked. Docs only; no code, test or interface change (proposal 006).
-**Why:** keep the to-do list true.
-**Verify:** read `todo/shared.md`; GitLab > Settings > Repository > Protected branches.
-
-## 2026-11-07 — #18 A clear start for every agent (proposal 007, owner approved)
-**What:** After `sidebar-tdd task 003` in a Claude Project chat the agent tried to clone, searched work items, listed the missing `ext/ahm/map`, and opened no merge request. Fixes: `tools/prompts/_common.md` now starts with "Start here" (command format, `task 003` = `tasks/003-*.md`, repository map, old documents are old, cloud chat uses the GitLab tools only and CI is the test run, tool cheat sheet, finish with the next command); the `-tdd` role opens a Draft merge request and the `-dev` role removes the Draft mark when CI is green; `gatekeeper` refuses a Draft; new `tools/prompts/project-instructions.md` (text for the Claude Project); `architect.md` rewritten from the owner's original brief; `DOMAINS.md` and `tasks/README.md` updated; `proposals/007-agent-start.md`. The 12 `<domain>-tdd` and `<domain>-dev` role files are rewritten.
-**Why:** one command must be enough, and the owner must see a merge request per task from the start.
-**Verify:** CI of the merge request. Then: `sidebar-tdd: task 003` opens the Draft merge request on the branch `sidebar/publish-state` without exploring.
-**Follow-ups (owner only):** paste `tools/prompts/project-instructions.md` into the Claude Project and delete the old documents and the old architect brief there; the old text still describes `ext/ahm/map/`, GitHub and cloning and was the likely cause of the confusion (inferred, not seen).
-
-## 2026-11-07 — #19 Lean delivery (proposal 008, owner approved)
-**What:** the `-tdd` agent opens no merge request (the Draft flow of #18 is dropped); only `-dev` opens it. `.gitlab-ci.yml`: job `tests` runs only when code, tests, config, `context/`, `tools/*`, `*.php` or `*.json` change; documents (every `.md` file) skip it. `tools/prompts/_common.md`: agents test git once and clone when it works (local tests, small outputs), rule 11 (small tool output), the two role flows now live there; the 12 domain role files are short; `gatekeeper` has no Draft check; `project-instructions.md` updated; `DOMAINS.md`; proposals 007 (note) and 008.
-**Why:** CI minutes and tokens. Red tests on a merge request waste a pipeline; a documents-only change ran the full PHP and JS tests with browser.
-**Verify:** CI of this merge request (it changes `.gitlab-ci.yml`, so the tests still run once). Then a documents-only merge request must show only the job `domain`. `sidebar-dev: task 003` opens the merge request on `sidebar/publish-state`.
-**Follow-ups:** the path list in `.gitlab-ci.yml` must grow with a new top-level code folder. Optional next step: split `tests` into PHP and JS jobs with their own path lists, and cache the npm and Playwright installs. Owner decides where `-tdd` and `-dev` run: Claude Code on his computer (git works) or a Project chat (GitLab tools; this plan has no option to allow gitlab.com).
-
-## 2026-11-07 — #20 Tokens: no git probe in the chat, one commit per step, one chat per task
-**What:** `tools/prompts/_common.md` (Start here, point 4; rule 11) and `tools/prompts/project-instructions.md`: in a Claude chat the agent no longer tests git (gitlab.com is blocked and cannot be allowed on this plan, checked on the settings screen); Claude Code on the owner's computer keeps git. New token rules: all file changes of a step in one `add_commit`; one chat per task. Checked: `.gitlab-ci.yml` of this branch already lists neither `README.md` nor `INTERFACES.md` for the job `tests`; no change needed. Documents only; no code, test or interface change.
-**Why:** the failed `git ls-remote` was a wasted call in every chat session; long chats re-send every old tool result.
-**Verify:** CI of this merge request shows only the job `domain` (documents only). The owner pastes the new text of `project-instructions.md` into the Project.
-**Follow-ups (owner only):** run the `-tdd` and `-dev` agents in Claude Code with a local clone (the biggest token saving); in the GitLab connector switch off the tools the agents do not use.
-
-## 2026-11-08 — #21 The map domain gets a test file (proposal 009)
-**What:** `map-tdd: task 004` stopped because the map domain owned no test file. `tools/domains.json`: `tests/js/map.test.js` added to the map domain; `tasks/004-map-highlight.md` names it; `context/map.md` "Your files" line updated by hand (the generator could not be run in the chat); `proposals/009-map-test-file.md`. No application code or interface change. Merge only after the owner writes `Status: approved` in the proposal (gatekeeper refused !8 without it).
-**Why:** the file-ownership tests forbid map-tdd from writing into another domain's test file.
-**Verify:** CI of this merge request (`domains.test.js`, `context.test.js`). If `context.test.js` fails, run `node tools/make-context.js` and commit the result.
-**Fix after CI of !8 (2026-11-08):** `tests/js/domains.test.js` failed twice: `tests/js/map.test.js` was registered but did not exist, and `.gitlab/CODEOWNERS` was stale. Fixed in !9 (branch `shared+map/map-test-file`, replaces !8): comments-only placeholder `tests/js/map.test.js` (a map file, so the branch names `map`) and the new CODEOWNERS line (same text as `node tools/check-domain.js --codeowners`, added by hand). The existence test is NOT relaxed.
-**Follow-ups:** `map-tdd: task 004`.
-
-## 2026-11-08 — #22 I-2 event list: the map handles `state:selected` (I-6)
-**What:** `INTERFACES.md` I-2: the table of events handled by the map has a new row `state:selected` (`{ value, old }`, emitted by `AHM.state`; the map highlights the selected place and never writes `selected`). `tests/js/contract.test.js`: the check "events handled by the map" accepts `state:selected` besides `sidebar:resized`; the test stays green before and after the map implements it. No code change.
-**Why:** the roll-out of I-6 (`tasks/004-map-highlight.md`) makes the map listen to `state:selected`; the contract must name it first.
-**Verify:** CI of this merge request (`contract.test.js`).
-**Follow-ups:** `map-tdd: task 004`. Once the map handles the event, the test may be tightened to require it (owner decides).
+> Older entries (#1 to #22) are in `changes/archive/shared-001-022.md`; the history before the domain logs is `changes/archive/AGENT_CHANGES.md`. Open them only when you need them.
 
 ## 2026-11-08 — #23 UI roadmap: proposal 010 and tasks 006-014
 **What:** the owner's 21 requests (screenshots, 2026-11-08) are grouped into 9 tasks in 5 waves: `tasks/006` to `tasks/014`. `proposals/010-ui-contract.md` (Status: pending) holds the interface changes: icons (I-7), one types dictionary for points, lines and areas (I-8), shapes with layer membership (I-9), map commands and events for shapes and a point menu (I-2), the UI rules. `tasks/README.md` lists them. Documents only; nothing is built.
@@ -295,5 +44,21 @@ Owner's request: remove `styles/` and `diffs/`, move everything from `ext/ahm/ma
 **Verify:** CI of this merge request: all seven `tests:*` jobs and `domain`, `graph`. Not run locally: the chat has no git. Locally: `node tests/js/run.js --domain=core` and `node tests/js/run.js` (all files, unchanged).
 **Follow-ups:** (1) Each job pays its own start-up time, so compute minutes per pipeline rise a little; the installs are small except Chromium (only `tests:shared`). (2) Every job still runs on any code change, because one domain can break another's tests (core is used by sidebar and map); running a domain's job only when its own paths change is possible, at the price of finding cross-domain breaks only on `master`. Owner decides. (3) If the stale-graph test fails here, take `graph/` from the job `graph` and commit it. (4) The setting "Pipelines must succeed" covers every job; the old job name `tests` no longer exists.
 
+## 2026-11-11 — #29 Master is green again: the tests follow the code of 2026-11-09
+**What:** the last green test run was a1940f3b (2026-11-08). The commits of 2026-11-09 (details dock, borders, map markers) mostly skipped CI and the tests did not follow, so every job except `tests:state` and `tests:campaigns` was red. Only tests, owner lines and the contract text changed, no application code. `tests/js/lib/ctx.js`: stand-in `dockSync` (ui.js), `icons.js` loaded after `ahm.js` in every page, `performance` in the sandbox. `tests/js/map.test.js` (map's file, changed here on the owner's order): stand-ins `shapesInit`, `shapeLineAt`, `shapesAt`, `shapeDrawing` for shapes.js, and `performance.now()` that follows the fake clock (it starts at 100000, because map.js treats `lastDblAt = 0` as long ago). `tests/js/contract.test.js` and `INTERFACES.md`: the endpoint `shapeDelete`, the commands `previewShape`, `showPreview`, `isDrawing` and the events `draw:finish`, `draw:cancel`, `map:menu-close` exist in the code and are now accepted like the other [1.5] names; Known violation 4 lists three signatures that differ from the code (`drawShape`, `showMenu`, the payload of `map:menu`). `tests/js/lint.test.js`: `performance`, `ResizeObserver`, `cancelAnimationFrame` are browser globals. `tools/domains.json`, `.gitlab/CODEOWNERS`: `app/css/shapes.css` belongs to sidebar. `tests/js/browser.test.js`: four tabs, and the language form opens with `+ Add language`.
+**Why:** the owner ordered: make `master` green so the work can continue.
+**Verify:** CI of this merge request: all seven `tests:*` jobs, `domain`, `graph`. Not run locally: no access to the repository from the chat.
+**Follow-ups:** (1) **Owner:** `INTERFACES.md` is yours; this entry changes it (new names, Known violation 4). Decide for each row of violation 4 whether the code or the contract changes. (2) Do not use the skip-CI marker on code commits: it is how the tests went stale.
 
+## 2026-11-11 — #30 CI: one job in one stage; CI commits `graph/`
+**What:** `.gitlab-ci.yml`: the stages `check` and `test` and the jobs `domain`, `graph`, `tests:sidebar`, `tests:map`, `tests:core`, `tests:state`, `tests:campaigns`, `tests:data`, `tests:shared` are replaced by ONE job `ci` that runs `tools/ci.sh` (new, shared). The script: (1) merge request: `tools/ci-check-pr.js`; a change of documents only stops here (same path list as the old `.test-rules`, now in the script; on `master` the diff of the last commit is used). (2) `graph/`: in a merge request it runs `node tools/make-graph.js`, and when `graph/` changed it commits it to the source branch (`chore: update graph/ (generated by CI)`), pushes with the project access token `GRAPH_PUSH_TOKEN` and stops, because the pipeline of the new commit runs the tests; on `master` it runs `make-graph.js --check`. Without the token and with a stale `graph/` it fails with a message. (3) PHP, data and all JS tests in one run (`node tests/js/run.js`, no `--domain`), every failing part reported. `tools/check-domain.js`: `graph/<name>.md` files pass the domain check on any branch (CI writes them). `tests/js/ci.test.js`: the per-domain job test is replaced by a test of the one job and a test of the graph exemption. `DOMAINS.md` (Git workflow, owner setup 5), `tests/README.md`, `tools/prompts/_common.md`: text.
+**Why:** the owner: the many small jobs cost too much CI (each one starts a container, clones and installs), and `graph/` was never committed. It exists only as a job artifact: `graph/` is not in `master`, and the old job `graph` could not change that.
+**Verify:** CI of this merge request. Not run: the chat cannot run git or the tests. Not checked: that `GRAPH_PUSH_TOKEN` exists (owner setup 5), that a push by the token starts the pipeline of the new commit, `tools/ci.sh` itself (never run), and that `context/` stays current after the `DOMAINS.md` change.
+**Follow-ups:** (1) **Owner:** create `GRAPH_PUSH_TOKEN`, otherwise the first run fails on purpose. (2) Two merge requests merged one after the other can leave `graph/` stale on `master` (each graph was built without the other's files); `master` then fails on `--check` and the next merge request rebuilds it. A merge method with fast-forward or a required rebase avoids it. (3) The job name no longer says which domain is red; the log lists every failing test file. (4) Optional: cache the npm and Playwright installs.
 
+## 2026-11-11 — #31 Leaner agent starter: AGENTS.md slimmed, CLAUDE.md, split documents, GitHub workflow
+**What:** (1) New `CLAUDE.md` (3 lines) that sends Claude Code to `AGENTS.md`. (2) `AGENTS.md` cut from 11 KB to 8 KB: a "Start here" first, the old chat rules (diff file, full archive) moved unchanged to `docs/legacy-chat-workflow.md`; the facts that must not be "fixed" are kept word for word. (3) `README.md` (61 KB) is now an index; its 14 sections are `docs/NN-*.md`, text unchanged. (4) `INTERFACES.md` is an index plus "Known violations"; each interface is a file `interfaces/I-N-*.md`, text unchanged. `tools/context.json` lists the interface files each domain provides or uses. (5) `tools/make-context.js`: starters have "Read first" (common documents, interface files, `graph/<domain>.md`, records) and the code to open when the task needs it (with offset and limit); new `--cost` prints the bytes. (6) `changes/shared.md` keeps the last 8 entries; older ones are in `changes/archive/shared-001-022.md`; `AGENT_CHANGES.md` moved to `changes/archive/`. `.claude/settings.json` denies reading the archive, `app/bun.lock`, `tests/fixtures/dates-vectors.json` and `node_modules`. (7) The agent rules follow the move to GitHub: `tools/prompts/_common.md`, `project-instructions.md`, `gatekeeper.md`, `architect.md`, the domain notes and `DOMAINS.md` "Git workflow" now use pull requests, `gh` and the REST API instead of the GitLab tools; `.github/pull_request_template.md` added; `.github/CODEOWNERS` made by `check-domain.js --codeowners-github` (handle: `owners.github` in `tools/domains.json`).
+**Why:** an agent had to read about 81 KB (about 20k tokens) of documents and code before it started the map task; the rules also told it to use tools of a repository that is no longer used.
+**Files:** the files above, `tools/domains.json` (owners for `CLAUDE.md`, `docs/`, `interfaces/`, `changes/archive/`), `tests/js/context.test.js`, `domains.test.js`, `ci.test.js`.
+**Verify:** `node tests/js/run.js`, `node tools/make-context.js --cost` (map: 28 KB read first, before: 81 KB with all listed files).
+**Follow-ups:** owner setup on GitHub (branch protection, check `ci`, secret `GRAPH_PUSH_TOKEN`: `DOMAINS.md`, "Git workflow"). Delete the old remote branches `ci-github` and `fix-github-ci-owner`.

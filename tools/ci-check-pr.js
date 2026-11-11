@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Merge-request check (DOMAINS.md, "Git workflow"; run by the `domain` job of .gitlab-ci.yml). Usage: node tools/ci-check-pr.js <branch> <base-ref>
+// pull-request check (DOMAINS.md, "Git workflow"; run by the `domain` job of .gitlab-ci.yml). Usage: node tools/ci-check-pr.js <branch> <base-ref>
 // The branch is named <domain>[+<domain>]/<task>, for example map/highlight or shared+state/scaffold. Every file the branch changed
 // (git diff <base-ref>...HEAD) must belong to one of the named domains or be a record/request/proposal allowed by check-domain.js.
 // `master` itself and branches named like release/... are not checked here.

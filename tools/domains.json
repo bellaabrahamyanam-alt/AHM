@@ -1,14 +1,16 @@
 {
   "_comment": "Who owns which path (DOMAINS.md). Paths are relative to the repository root. An entry ending in / is a folder (everything below it); any other entry is one file. A path matches the FIRST domain whose list contains it. Every file must have an owner (tests/js/domains.test.js). Each domain also owns changes/<domain>.md, todo/<domain>.md and diffs/<domain>/ (added by tools/check-domain.js, not listed here).",
   "owners": {
-    "_comment": "GitLab handles for .gitlab/CODEOWNERS. default = the human owner; add a domain name as key to give that domain its own person or team.",
-    "default": "@bellaabrahamyan.am"
+    "_comment": "Handles for .gitlab/CODEOWNERS (default) and .github/CODEOWNERS (github). default = the human owner; add a domain name as key to give that domain its own person or team.",
+    "default": "@bellaabrahamyan.am",
+    "github": "@bellaabrahamyanam-alt"
   },
   "root": "",
   "domains": {
     "sidebar": [
       "app/js/sidebar/",
       "app/css/sidebar.css",
+      "app/css/shapes.css",
       "tests/js/layers.test.js",
       "tests/js/sidebar.test.js"
     ],
@@ -54,7 +56,10 @@
       "DOMAINS.md",
       "INTERFACES.md",
       "DESIGN.md",
-      "AGENT_CHANGES.md",
+      "CLAUDE.md",
+      "docs/",
+      "interfaces/",
+      "changes/archive/",
       "TODO.md",
       "tools/",
       "requests/",
@@ -95,6 +100,7 @@
     "shared": [
       ".gitlab/",
       ".gitlab-ci.yml",
+      ".github/",
       ".claude/",
       ".gitignore"
     ]

@@ -54,9 +54,10 @@ class DataCheck
         $codes = $langs ? array_column($langs['languages'] ?? [], 'code') : [];
         $this->languages($langs);
         $placeIds = $places ? $this->places($places, $codes) : [];
+        $shapeIds = $this->shapeIds();
         $notes = $this->notes($placeIds, $codes);
         $catIds = $cats ? $this->categories($cats, $codes) : [];
-        $layerIds = $layers ? $this->layers($layers, $codes, $catIds, $placeIds) : [];
+        $layerIds = $layers ? $this->layers($layers, $codes, $catIds, $placeIds, $shapeIds) : [];
         $this->tags($notes, $layerIds, $layers);
         $this->layerNotes($layerIds, $codes);
         if ($over) {
@@ -273,7 +274,21 @@ class DataCheck
         return $ids;
     }
 
-    private function layers($d, $codes, $catIds, $placeIds)
+    /** ids of the borders; shapes.geojson is optional (no file, no borders) */
+    private function shapeIds()
+    {
+        $fc = $this->json('shapes.geojson', true);
+        $ids = [];
+        foreach ($fc['features'] ?? [] as $f) {
+            $id = $f['properties']['id'] ?? null;
+            if ($this->uuid($id)) {
+                $ids[$id] = true;
+            }
+        }
+        return $ids;
+    }
+
+    private function layers($d, $codes, $catIds, $placeIds, $shapeIds = [])
     {
         $ids = [];
         foreach ($d['layers'] ?? [] as $i => $l) {
@@ -308,14 +323,21 @@ class DataCheck
             $this->date($l['date_to'] ?? null, "$w to");
             $seen = [];
             foreach ($l['members'] ?? [] as $m) {
-                $p = $m['place'] ?? null;
-                if (!isset($placeIds[$p])) {
-                    $this->bad('layer-member-missing', "$w: member $p is not a place");
+                if (isset($m['shape'])) {
+                    $k = 'shape ' . $m['shape'];
+                    if (!isset($shapeIds[$m['shape']])) {
+                        $this->bad('layer-member-missing', "$w: member {$m['shape']} is not a border");
+                    }
+                } else {
+                    $k = $m['place'] ?? null;
+                    if (!isset($placeIds[$k])) {
+                        $this->bad('layer-member-missing', "$w: member $k is not a place");
+                    }
                 }
-                if (isset($seen[$p])) {
-                    $this->bad('layer-member-duplicate', "$w: member $p twice");
+                if (isset($seen[$k])) {
+                    $this->bad('layer-member-duplicate', "$w: member $k twice");
                 }
-                $seen[$p] = true;
+                $seen[$k] = true;
             }
             foreach (['created', 'updated'] as $k) {
                 if (!preg_match('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', (string) ($l[$k] ?? ''))) {

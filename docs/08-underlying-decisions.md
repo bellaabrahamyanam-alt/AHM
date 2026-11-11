@@ -1,0 +1,36 @@
+<!-- Section 8 of the project description; index: README.md -->
+
+## 8. Underlying decisions
+
+| Decision                                                   | Why                                                                                                                        | What was set aside                         |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| **Plain files, no database**                               | Runs on shared hosting, easy to back up and inspect, no schema migrations, and the data stays readable by other tools.     | MySQL tables; PostGIS.                     |
+| **Places as GeoJSON**                                      | The standard exchange format: QGIS and every web map read it. Edits are small.                                             | A custom format; a GeoPackage.             |
+| **Notes as one Markdown file each, linked by UUID**        | Text is separate from geometry, scales to thousands, can be edited and versioned on its own, and many notes per place fit. | Notes inside the GeoJSON.                  |
+| **A generated search index** (`notes/index.json`)          | Full-text search with no server and no database. It is rebuilt from the files, so it can never disagree with them.         | Server-side search; one request per note.  |
+| **Stable UUIDs everywhere**                                | Links, history and future synchronisation depend on IDs that never change.                                                 | Names or counters as keys.                 |
+| **Names are a list, not a column**                         | Real places have many names, in many languages, even several in one language.                                              | One name per language.                     |
+| **Dates are an ISO 8601 UTC time stamp plus the chosen format** | One standard, readable value that other tools understand, reliable for sorting and filtering, and the format lets every viewer see exactly what the researcher entered. | Free text; year numbers with typed wording; seconds as a bare number. |
+| **A date can be unknown, approximate or a range**          | Researchers often know a date only roughly; "unknown" is a normal answer and every date is optional.                      | A single exact year.                       |
+| **A mountain has a height, not dates**                     | A mountain has no founding or end; its height is the useful fact.                                                          | Dates on every type.                       |
+| **Languages come from a dictionary managed by admins**     | Free text produced typos and unknown codes; a fixed list keeps names, notes and filters consistent.                       | Free-text language codes.                  |
+| **Layers are subsets listing place ids; General is implicit** | One copy of each place; a place can be in many layers and always stays in General; removing it from a layer loses nothing. | Copying places into layers. |
+| **Layer filters are separate from the period filter**      | Owner's decision: a period filter does not look at layers for now.                                                         | Finding layers by date overlap.            |
+| **Layer members are an ordered list**                      | Campaigns have a sequence; kept for future route lines.                                                                    | An unordered set.                          |
+| **Plain JavaScript, classic scripts, no build step**       | Upload and it works. Works unchanged under phpBB and under a static server. Nothing to install or compile.                 | A framework and bundler.                   |
+| **MapLibre GL JS**                                         | Open source, no per-load fees, vector tiles, rich styling, native support for pinning images by four corners.              | Google Maps; Mapbox; Leaflet.              |
+| **Everything outside is behind `config.js`**               | Base map, satellite, search and directions can be swapped one at a time, for example for our own tiles.                    | Calling providers from many places.        |
+| **The data rules live in `store.php`, free of phpBB**      | They can be tested alone and reused if the forum is ever replaced.                                                         | Rules inside the controller.               |
+| **The same page for the forum and for development**        | One code base. Only `config.js` knows the difference.                                                                      | A separate development copy.               |
+| **Live data in `store/`, outside the extension**           | Updating or removing the extension never touches the data.                                                                 | Data inside `ext/`.                        |
+| **Copy before every change; never delete without a copy**  | A mistake can always be undone by hand.                                                                                    | In-place edits.                            |
+| **Server checks every write; buttons are only a courtesy** | Hidden buttons are not security.                                                                                           | Client-side checks only.                   |
+| **Overlays are pinned by four corners**                    | The old pictures are imprecise, so they need stretching to fit; four corners allow any stretch.                            | One anchor point, scale and rotation only. |
+| **Overlay opacity is a property of the image**             | The real map must show through. Visitors can also change it for themselves without saving.                                 | Changing the base map's opacity.           |
+| **Labels use their own data source**                       | If a font fails to load, only the labels disappear. The symbols stay.                                                      | One source for symbols and labels.         |
+| **Symbols drawn in code** (canvas)                         | No image files to maintain; the list and the map always use the same symbol.                                               | Image sprites.                             |
+| **Place search only on Enter**                             | The free Nominatim server forbids search-as-you-type and allows 1 request per second.                                      | Autocomplete.                              |
+| **Relative asset addresses through `path_helper`**         | Works whatever the forum's "Server URL settings" are.                                                                      | Absolute addresses.                        |
+| **Colours copied from the forum style**                    | The map page looks like the rest of the forum, and the names match so it can later follow the style automatically.         | A separate palette.                        |
+
+---

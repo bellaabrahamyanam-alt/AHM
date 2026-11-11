@@ -17,6 +17,6 @@ The feature is **under development and must be removable at any moment**: shown 
 - The switch is not yours: development shows the feature by default, `?features=` in the URL hides it. If the feature breaks the
   page when it is on, that is a bug in your code. With the switch off, your files must not be loaded at all.
 - Before delivering: `node tools/check-domain.js campaigns <diff>` and `node tests/js/run.js` must pass (`features.test.js` checks your isolation).
-- Log every change in `changes/campaigns.md`. Deliver: one merge request from branch `<domain>/<task>` (DOMAINS.md, "Git workflow"), a short summary. English only.
+- Log every change in `changes/campaigns.md`. Deliver: one pull request from branch `<domain>/<task>` (DOMAINS.md, "Git workflow"), a short summary. English only.
 
-**Git delivery:** see `tools/prompts/_common.md` (merge request on GitLab, rules 3 and 8-10).
+**Git delivery:** see `tools/prompts/_common.md` (pull request on GitHub, rules 3 and 8-10).

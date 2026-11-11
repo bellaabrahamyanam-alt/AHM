@@ -3,7 +3,8 @@
 // context of lib/ctx.js and `maplibregl` is a recording stand-in (makeMapLibre below).
 //
 // What these tests fix (the spec leaves the drawing to the implementer; this is what a test can observe):
-//   - the highlight is a `circle` layer `ahm-highlight` over its own GeoJSON source `ahm-highlight`;
+//   - the highlight is the symbol layer `ahm-highlight-symbol` (the marker of the place with a white border, since 2026-11-09;
+//     it was a `circle` ring before) over its own GeoJSON source `ahm-highlight`;
 //   - that source holds one Point feature (properties.id = the selected id) at the place's coordinates, and no feature
 //     when nothing is selected or the id is not among the features last given to AHM.map.setFeatures;
 //   - the selection is remembered: the ring follows the place when setFeatures moves it, appears when the place (or the
@@ -124,7 +125,7 @@ function makeMapLibre() {
 /** map.js in a page of its own. `ready: false` leaves the map before its load event; `before(p)` runs before initMap().
  *  Handler errors of AHM.emit are only logged, so they are collected in `errors`. */
 function boot({ ready = true, before } = {}) {
-  const p = load(['map.js']);
+  const p = load(['typeicons.js', 'map.js']);
   const ml = makeMapLibre();
   const errors = [];
   Object.assign(p.ctx, {
@@ -134,6 +135,10 @@ function boot({ ready = true, before } = {}) {
     registerTypeIcons() {},
     overlaysInit() {},
     syncOverlays() {},
+    shapesInit() {}, // shapes.js is not loaded here: no borders to draw
+    shapeLineAt: () => null,
+    shapesAt: () => [],
+    shapeDrawing: null,
     console: { log() {}, warn() {}, error: (...a) => errors.push(a.map(String).join(' ')) },
   });
   let onBasemap = null;
@@ -150,7 +155,7 @@ const setFeatures = (p, collection) => p.X('AHM.map.setFeatures(__0)', collectio
 const select = (p, value, old = null) => p.X("AHM.emit('state:selected', { value: __0, old: __1 })", value, old);
 /** The Point features the highlight layer draws now (none when the layer or its source is missing or hidden). */
 const ring = (ml) => {
-  const layer = ml.rec.layers.find((l) => l.id === HL);
+  const layer = ml.rec.layers.find((l) => l.source === HL);
   const src = layer && ml.rec.sources[layer.source];
   if (!src || (layer.layout && layer.layout.visibility === 'none')) return [];
   const d = src.data || {};
@@ -158,13 +163,13 @@ const ring = (ml) => {
 };
 const drawn = (ml) => ring(ml).map((f) => f.geometry.coordinates);
 
-test('map: highlight: state:selected draws one ring (circle layer ahm-highlight) at the place and moves with the selection', () => {
+test('map: highlight: state:selected draws the selected symbol (layer ahm-highlight-symbol) at the place and moves with the selection', () => {
   const { p, ml, errors } = boot();
   setFeatures(p, fc(P1, P2, P3));
   select(p, 'p2');
-  const layer = ml.rec.layers.find((l) => l.id === HL);
-  ok(layer && layer.type === 'circle', 'a circle layer ahm-highlight exists');
-  eq(HL, layer.source, 'it has its own source of the same name');
+  const layer = ml.rec.layers.find((l) => l.id === 'ahm-highlight-symbol');
+  ok(layer && layer.type === 'symbol', 'a symbol layer ahm-highlight-symbol exists');
+  eq(HL, layer.source, 'it has its own source ahm-highlight');
   eq([[44.5, 40.1]], drawn(ml), 'one ring at p2');
   eq(['p2'], ring(ml).map((f) => f.properties.id));
   select(p, 'p1', 'p2');
@@ -269,7 +274,7 @@ test('map: highlight: reads AHM.state only for the selection, calls no sidebar c
 test('map: highlight: adds no AHM.map command (INTERFACES.md I-2 stays as it is)', () => {
   const { p } = boot();
   eq(
-    ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getZoom', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers'],
+    ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getZoom', 'hideMenu', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers', 'showMenu'],
     p.X('Object.keys(AHM.map).sort()'),
   );
 });
@@ -279,12 +284,13 @@ test('map: highlight: adds no AHM.map command (INTERFACES.md I-2 stays as it is)
 // tasks/008-map-marker-ux.md. Red until `map-dev: task 008` is done. Real MapLibre is not available here, so the
 // tests use a richer recording stand-in (makeUx, built on makeMapLibre) and a fake clock. Where the spec leaves the
 // drawing to the implementer, this is what a test can observe (the dev may pick any look inside these limits):
-//   Selected look (point 5): every layer whose source is `ahm-highlight` belongs to it: circle layers (shadow with
-//     circle-blur, white outline = circle-stroke-color white >= 1.5 px, thin dark ring = stroke 0.5-2.5 px at 40-60%
-//     opacity) and one symbol layer that draws the place's own type symbol (icon-image from properties.type_code) with
-//     icon-size 1.3, icon-allow-overlap and icon-ignore-placement. The source's Point feature carries id and type_code.
-//     Only neutral colours (no accent, no #ff9f1c); one paint `*-transition` of 100-200 ms; the layers are added after
-//     every layer of the sources `ahm-places` and `ahm-label-src`, and their ids start with `ahm-`.
+//   Selected look (point 5; as built on 2026-11-09): every layer whose source is `ahm-highlight` belongs to it. It is one
+//     symbol layer that draws the place's own type symbol in its `-hl` variant (the white border and the hair-line dark
+//     edge are part of the icon, see typeicons.js; icon-image from properties.type_code), about 25% larger (icon-size
+//     SEL_SCALE, with the zoom steps of the other symbols), icon-allow-overlap and icon-ignore-placement. The source's
+//     Point feature carries the properties of the place. Only neutral colours (no accent, no #ff9f1c); one paint
+//     `*-transition` of 100-200 ms; the layer is added after every layer of the sources `ahm-places` and `ahm-label-src`;
+//     its id starts with `ahm-`.
 //   Clusters (point 21): the source `ahm-places` has cluster true, clusterRadius 50, clusterMaxZoom 11; both numbers are
 //     constants in the first 40 lines of map.js (names contain CLUSTER and RADIUS / ZOOM). The selected place is NOT in
 //     that source's data (so it is never inside a bubble; it is drawn from `ahm-highlight`); `ahm-label-src` keeps all
@@ -292,12 +298,14 @@ test('map: highlight: adds no AHM.map command (INTERFACES.md I-2 stays as it is)
 //     circle-color) and `ahm-cluster-count` (symbol, text-field from point_count, white text). `ahm-places` and
 //     `ahm-halo` get a filter that excludes clusters (point_count); hidePlace keeps its filter on top of that.
 //   Hover (point 6): events are the layer events `mouseenter` / `mouseleave` of `ahm-places`, `ahm-clusters` and of the
-//     selected symbol layer. A hovered place gets paint `icon-opacity` 0.85 (an expression that names its id) on layer
-//     `ahm-places` (set with setPaintProperty), a hovered bubble a lighter `circle-color` expression that names its
-//     cluster_id; both are restored on leave; the cursor is 'pointer' on the canvas. The selected place is never lifted.
-//   Tooltip (point 7): a Popup with `anchor` 'bottom' (above the bullet, arrow down) or 'top' (no room above:
-//     the bullet's screen y is too small), `offset` = TYPE_STYLE[type_code or settlement].r + 6 px, at the place's
-//     coordinates (not at the mouse); one active popup at a time; removed on leave and on the map event `movestart`.
+//     selected symbol layer. A hovered place is redrawn by the layer `ahm-hover-symbol` (source `ahm-hover`, one Point;
+//     the `-hl` symbol: a larger marker with a white border), a hovered bubble gets a lighter `circle-color` expression
+//     that names its cluster_id; both are restored on leave; the cursor is 'pointer' on the canvas. The selected place
+//     is never lifted.
+//   Tooltip (point 7): a Popup at the place's coordinates (not at the mouse) with no fixed `anchor` (the library picks
+//     the side that keeps it inside the map) and `offset` = symbol radius of TYPE_STYLE[type_code or settlement] x the
+//     zoom scale of the symbols (x SEL_SCALE for the selected place) + TIP_GAP + 4 px; one active popup at a time;
+//     removed on leave and on the map event `movestart`.
 //   Clicks: the map's generic `click` and `dblclick` events. A click on a place emits place:click only after the
 //     double-click window (setTimeout), a double click cancels it. A bubble click zooms to getClusterExpansionZoom of
 //     the source `ahm-places` (easeTo / flyTo with center and that zoom) and emits neither place:* nor map:click.
@@ -347,7 +355,8 @@ function offsetOf(pop) {
   if (Array.isArray(o)) return { x: o[0], y: Math.abs(o[1]) };
   return { x: 0, y: Math.abs(o) };
 }
-const lift = (rec) => json((layer(rec, PLACES).paint || {})['icon-opacity']);
+/** The ids of the places the hover look draws now (source ahm-hover). */
+const lifted = (rec) => ((rec.sources['ahm-hover'].data || {}).features || []).map((f) => f.properties.id);
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 function makeClock() {
@@ -355,6 +364,7 @@ function makeClock() {
   let seq = 0;
   const q = [];
   return {
+    now: () => now,
     setTimeout(fn, ms = 0) {
       const id = ++seq;
       q.push({ id, at: now + ms, fn });
@@ -461,6 +471,11 @@ function bootUx({ ready = true, glyphs = true } = {}) {
     registerTypeIcons() {},
     overlaysInit() {},
     syncOverlays() {},
+    shapesInit() {}, // shapes.js is not loaded here: no borders to draw
+    shapeLineAt: () => null,
+    shapesAt: () => [],
+    shapeDrawing: null,
+    performance: { now: () => 100000 + clock.now() }, // map.js times double clicks with it; a large start: lastDblAt = 0 means long ago
     setTimeout: clock.setTimeout,
     clearTimeout: clock.clearTimeout,
     console: { log() {}, warn() {}, error: (...a) => errors.push(a.map(String).join(' ')) },
@@ -525,21 +540,19 @@ const leave = (u, layerId) => u.ml.fire('mouseleave:' + layerId);
 
 // ---- selected look (point 5) ------------------------------------------------------------------------------------
 
-test('map: selected look: no orange ring and no accent colour; the look is made of several layers on ahm-highlight', () => {
+test('map: selected look: no orange ring and no accent colour; one symbol layer on ahm-highlight (the border is part of its icon)', () => {
   const { p, rec, errors } = bootUx();
   setFeatures(p, fc(P1, P2));
   select(p, 'p1');
   const mine = selLayers(rec);
-  ok(mine.length >= 3, 'shadow, outline/ring and symbol: ' + mine.map((l) => l.id));
+  eq(['ahm-highlight-symbol'], mine.map((l) => l.id), 'the marker with its white border is the only layer of the selected look');
   ok(mine.every((l) => l.id.startsWith('ahm-')), 'ids start with ahm- (applyVis leaves them alone)');
   ok(!/ff9f1c/i.test(json(mine)), 'the orange stroke #ff9f1c is gone');
-  const cols = colorsIn(mine);
-  ok(cols.length >= 3, 'colours found: ' + cols.length);
-  ok(cols.every(neutral), 'only neutral colours (white, grey, black), no accent colour: ' + json(cols));
+  ok(colorsIn(mine).every(neutral), 'no accent colour: ' + json(colorsIn(mine)));
   eq([], errors);
 });
 
-test('map: selected look: the place symbol is drawn about 30% larger, in a layer that never drops it', () => {
+test('map: selected look: the place symbol is drawn about 25% larger, in a layer that never drops it', () => {
   const { p, rec, ml } = bootUx();
   const c = fc(P1, P3);
   c.features[1].properties.type_code = 'mountain';
@@ -548,9 +561,11 @@ test('map: selected look: the place symbol is drawn about 30% larger, in a layer
   const sym = selSymbol(rec);
   ok(sym, 'a symbol layer on the ahm-highlight source');
   const size = sym.layout && sym.layout['icon-size'];
-  ok(typeof size === 'number' && size >= 1.25 && size <= 1.35, 'icon-size about 1.3, got ' + json(size));
+  const full = Array.isArray(size) ? size[size.length - 1] : size; // the size at the last zoom step = full size
+  ok(typeof full === 'number' && full >= 1.2 && full <= 1.35, 'icon-size about 1.25 at full size, got ' + json(size));
   const img = json(sym.layout['icon-image']);
   ok(img.includes('ahm-type-') && img.includes('type_code'), 'the place type symbol: ' + img);
+  ok(img.includes('-hl'), 'the variant with the white border: ' + img);
   eq(true, sym.layout['icon-allow-overlap'], 'no gaps from collisions');
   eq(true, sym.layout['icon-ignore-placement'], 'no gaps from collisions');
   const f = ring(ml)[0];
@@ -571,30 +586,13 @@ test('map: selected look: drawn above labels and all other symbols, at every zoo
   );
 });
 
-test('map: selected look: white outline, thin dark outer ring at about 50% opacity, soft shadow', () => {
+test('map: selected look: the white border and the dark edge come with the icon (-hl variant of the type symbol), no extra circle layers', () => {
   const { p, rec } = bootUx();
   setFeatures(p, fc(P1, P2));
   select(p, 'p1');
-  const circles = selLayers(rec).filter((l) => l.type === 'circle');
-  const pt = (l, k) => (l.paint || {})[k];
-  const white = circles.filter((l) => {
-    const c = rgba(pt(l, 'circle-stroke-color'));
-    return c && c[0] === 255 && c[1] === 255 && c[2] === 255 && pt(l, 'circle-stroke-width') >= 1.5;
-  });
-  ok(white.length, 'a circle layer with a white stroke of at least 1.5 px (the white outline)');
-  const thin = circles.filter((l) => {
-    const c = rgba(pt(l, 'circle-stroke-color'));
-    const w = pt(l, 'circle-stroke-width');
-    const a = c ? c[3] * (pt(l, 'circle-stroke-opacity') === undefined ? 1 : pt(l, 'circle-stroke-opacity')) : 0;
-    return c && lum(c) < 0.35 && w >= 0.5 && w <= 2.5 && a >= 0.4 && a <= 0.6;
-  });
-  ok(thin.length, 'a circle layer with a dark stroke of 0.5-2.5 px at 40-60% opacity (the thin outer ring)');
-  const shadow = circles.filter((l) => {
-    const c = rgba(pt(l, 'circle-color'));
-    const a = c ? c[3] * (pt(l, 'circle-opacity') === undefined ? 1 : pt(l, 'circle-opacity')) : 0;
-    return c && lum(c) < 0.35 && pt(l, 'circle-blur') >= 0.5 && a > 0.05 && a <= 0.6;
-  });
-  ok(shadow.length, 'a dark, blurred (circle-blur >= 0.5), translucent circle layer (the soft shadow)');
+  const mine = selLayers(rec);
+  ok(mine.every((l) => l.type === 'symbol'), 'symbol layers only: ' + mine.map((l) => l.id + ':' + l.type));
+  ok(json(selSymbol(rec).layout['icon-image']).includes('-hl'), 'icon-image is the -hl variant');
 });
 
 test('map: selected look: changes with a short transition of about 150 ms', () => {
@@ -700,7 +698,7 @@ test('map: clusters: hidePlace, focusPlace and fitTo keep working', () => {
   const fly = rec.moves.filter((m) => m.how === 'flyTo');
   eq(1, fly.length, 'focusPlace of the selected place (it is not in the cluster data)');
   eq([44.5, 40.1], lngLatOf(fly[0].center));
-  eq(8, fly[0].zoom);
+  eq(7, fly[0].zoom, 'a double click only moves the map: the zoom stays');
   p.X('AHM.map.fitTo(__0)', [[44.1, 39.5], [44.9, 40.5]]);
   eq(1, rec.moves.filter((m) => m.how === 'fitBounds').length);
 });
@@ -758,21 +756,21 @@ test('map: clusters: double click on a bubble zooms too and cancels the map zoom
 
 // ---- hover (point 6) --------------------------------------------------------------------------------------------
 
-test('map: hover: a hovered place symbol is about 15% lighter, the cursor a pointer; restored on leave', () => {
+test('map: hover: a hovered place is redrawn larger with its white border (layer ahm-hover-symbol), the cursor a pointer; restored on leave', () => {
   const u = bootUx();
   const { rec } = u;
   setFeatures(u.p, fc(P1, P2));
-  const rest = lift(rec);
-  ok(!rest.includes('p1') && !rest.includes('p2'), 'nothing lifted at rest: ' + rest);
+  const sym = layer(rec, 'ahm-hover-symbol');
+  ok(sym && sym.type === 'symbol' && sym.source === 'ahm-hover', 'a symbol layer ahm-hover-symbol on its own source');
+  ok(json(sym.layout['icon-image']).includes('-hl'), 'the variant with the white border');
+  eq([], lifted(rec), 'nothing lifted at rest');
   enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
   eq('pointer', rec.canvas.style.cursor);
-  ok(lift(rec).includes('"p1"') && !lift(rec).includes('"p2"'), 'p1 lifted: ' + lift(rec));
-  const nums = (lift(rec).match(/\d*\.\d+|\d+/g) || []).map(Number);
-  ok(nums.some((n) => n >= 0.8 && n <= 0.9), 'icon-opacity about 0.85: ' + lift(rec));
+  eq(['p1'], lifted(rec), 'p1 lifted');
   enter(u, PLACES, hitPlace('p2', 44.5, 40.1));
-  ok(lift(rec).includes('"p2"') && !lift(rec).includes('"p1"'), 'only the place under the mouse is lifted: ' + lift(rec));
+  eq(['p2'], lifted(rec), 'only the place under the mouse is lifted');
   leave(u, PLACES);
-  eq(rest, lift(rec), 'restored');
+  eq([], lifted(rec), 'restored');
   eq('', rec.canvas.style.cursor);
 });
 
@@ -785,13 +783,13 @@ test('map: hover: not applied on top of the selected look (hover the selected pl
   ok(sym, 'the selected symbol layer');
   enter(u, sym.id, hitPlace('p1', 44.5, 39.9, {}, sym.id));
   eq('pointer', rec.canvas.style.cursor, 'the selected place still shows the pointer');
-  ok(!lift(rec).includes('p1'), 'but it is not lifted: ' + lift(rec));
+  eq([], lifted(rec), 'but it is not lifted');
   leave(u, sym.id);
   eq('', rec.canvas.style.cursor);
   enter(u, PLACES, hitPlace('p2', 44.5, 40.1));
-  ok(lift(rec).includes('"p2"'), 'p2 hovered and lifted');
+  eq(['p2'], lifted(rec), 'p2 hovered and lifted');
   select(p, 'p2', 'p1');
-  ok(!lift(rec).includes('p2'), 'p2 got selected under the mouse: no lift on top of the selected look: ' + lift(rec));
+  eq([], lifted(rec), 'p2 got selected under the mouse: no lift on top of the selected look');
 });
 
 test('map: hover: still right after setFeatures', () => {
@@ -800,15 +798,15 @@ test('map: hover: still right after setFeatures', () => {
   setFeatures(p, fc(P1, P2));
   enter(u, PLACES, hitPlace('p1', 44.5, 39.9));
   setFeatures(p, fc(['p1', 44.6, 39.95], P3));
-  ok(lift(rec).includes('"p1"'), 'p1 is still the lifted place after the re-draw: ' + lift(rec));
+  eq(['p1'], lifted(rec), 'p1 is still the lifted place after the re-draw');
   leave(u, PLACES);
-  ok(!lift(rec).includes('p1'), 'restored');
+  eq([], lifted(rec), 'restored');
   eq('', rec.canvas.style.cursor);
 });
 
 // ---- tooltip (point 7) ------------------------------------------------------------------------------------------
 
-test('map: tooltip: name and type at the top centre of the bullet, arrow down, at the place and not at the mouse', () => {
+test('map: tooltip: name and type of the place, at the place and not at the mouse, no fixed side', () => {
   const u = bootUx();
   const { rec } = u;
   setFeatures(u.p, fc(P1, P2));
@@ -817,39 +815,36 @@ test('map: tooltip: name and type at the top centre of the bullet, arrow down, a
   eq(1, pop.length, 'one popup');
   ok(pop[0].html.includes('p1') && pop[0].html.includes('City'), 'name and type: ' + pop[0].html);
   eq([44.5, 39.9], lngLatOf(pop[0].lngLat), 'anchored at the place, not at the mouse');
-  eq('bottom', pop[0].options.anchor, 'above the bullet, the arrow points down at it');
+  eq(undefined, pop[0].options.anchor, 'no fixed anchor: the library picks the side that keeps the tooltip inside the map');
   eq(0, offsetOf(pop[0]).x, 'centred');
 });
 
-test('map: tooltip: offset is the marker radius of the place type plus 6 px (it never covers the bullet)', () => {
+test('map: tooltip: offset is the marker radius of the place type, scaled like the symbol, plus the gap (it never covers the bullet)', () => {
   const u = bootUx();
   const { p, rec } = u;
   setFeatures(p, fc(P1));
   const seen = new Set();
   for (const code of ['city', 'village', 'mountain', 'zzz']) {
-    const r = p.X("(TYPE_STYLE['" + code + "'] || TYPE_STYLE.settlement).r");
+    const want = p.X("(TYPE_STYLE['" + code + "'] || TYPE_STYLE.settlement).r * zoomScale(map.getZoom()) + TIP_GAP + 4");
     enter(u, PLACES, hitPlace('p1', 44.5, 39.9, { type_code: code }));
     const pop = active(rec);
     eq(1, pop.length, code);
-    eq(r + 6, offsetOf(pop[0]).y, 'offset for type ' + code + ' (radius ' + r + ')');
-    seen.add(r);
+    eq(want, offsetOf(pop[0]).y, 'offset for type ' + code);
+    seen.add(want);
     leave(u, PLACES);
   }
-  ok(seen.size >= 3, 'the radii differ between types, so the offset cannot be one constant');
+  ok(seen.size >= 3, 'the offsets differ between types, so the offset cannot be one constant');
 });
 
-test('map: tooltip: moves below the bullet when there is no room above', () => {
+test('map: tooltip: no fixed anchor, so the library keeps it inside the map (above, below or beside the bullet)', () => {
   const u = bootUx();
   const { rec } = u;
   setFeatures(u.p, fc(P1));
-  rec.projectY = 4;
   enter(u, PLACES, hitPlace('p1', 44.5, 39.9), 4);
-  eq('top', active(rec)[0].options.anchor, 'bullet at the top edge: the popup goes below it, the arrow points up');
-  eq(16, offsetOf(active(rec)[0]).y, 'same distance');
+  eq(undefined, active(rec)[0].options.anchor, 'bullet at the top edge');
   leave(u, PLACES);
-  rec.projectY = 500;
   enter(u, PLACES, hitPlace('p1', 44.5, 39.9), 500);
-  eq('bottom', active(rec)[0].options.anchor, 'room above again');
+  eq(undefined, active(rec)[0].options.anchor, 'room above');
 });
 
 test('map: tooltip: one popup at a time; it closes on leave and when the map starts moving', () => {
@@ -941,6 +936,5 @@ test('map: selected place: its own layer answers click, double click and hover (
   enter(u, sym.id, f);
   eq('pointer', rec.canvas.style.cursor);
   eq(1, active(rec).length, 'tooltip on the selected place');
-  eq('bottom', active(rec)[0].options.anchor);
-  ok(offsetOf(active(rec)[0]).y >= 16, 'clear of the (larger) selected symbol: ' + offsetOf(active(rec)[0]).y);
+  eq(p.X('(TYPE_STYLE.city || TYPE_STYLE.settlement).r * SEL_SCALE * zoomScale(map.getZoom()) + TIP_GAP + 4'), offsetOf(active(rec)[0]).y, 'clear of the (larger) selected symbol');
 });

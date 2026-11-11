@@ -10,7 +10,7 @@ const STUB = `(function(){
  const p=new Proxy(function(){},{get:(t,k)=>{ if(k==='then')return undefined;
   if(k==='on'||k==='once')return (ev,a,b)=>{const f=typeof a==='function'?a:b; if(ev==='load'||ev==='style.load'||ev==='idle')setTimeout(()=>f&&f({}),0); return p;};
   if(k==='getZoom')return()=>6; if(k==='getLayer'||k==='getSource')return()=>undefined; if(k==='queryRenderedFeatures')return()=>[];
-  if(k==='getBounds')return()=>({getWest:()=>40,getEast:()=>48,getNorth:()=>42,getSouth:()=>36}); if(k==='getCanvas')return()=>({style:{}});
+  if(k==='getBounds')return()=>({getWest:()=>40,getEast:()=>48,getNorth:()=>42,getSouth:()=>36}); if(k==='getCanvas')return()=>({style:{},addEventListener(){},removeEventListener(){}});
   if(k==='getStyle')return()=>({layers:[],sources:{}}); if(k==='isStyleLoaded')return()=>true; if(k==='getLngLat')return()=>({lat:40,lng:44});
   return ()=>p; }, apply:()=>p, construct:()=>p});
  window.maplibregl={Map:function(){return p;},Marker:function(){return p;},Popup:function(){return p;},NavigationControl:function(){return {};},LngLatBounds:function(){return {extend(){return this;},isEmpty(){return true;}};}};
@@ -76,11 +76,12 @@ scenario('browser: languages, optional dates in many formats, mountain height, n
     ok(await pg.evaluate(()=>languages.length)===6, 'language dictionary loaded (6)');
     await pg.click('[data-tab=more]'); await pg.click('#more-lang > summary'); // Languages is a fold in More
     ok((await pg.locator('#langList li').count())===6, 'Languages tab lists 6');
-    ok(await pg.locator('#lgAdd').count()===1, 'admin sees the add-language form (dev has no login)');
+    ok(await pg.locator('#lgNew').count()===1 && await pg.locator('#lgAdd').count()===0, 'admin sees the + Add language button, no form yet (dev has no login)');
+    await pg.click('#lgNew'); ok(await pg.locator('#lgAdd').count()===1, '+ Add language opens the form');
     // add language
     await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','Classical Armenian'); await pg.fill('#lgNative','Գրաբար'); await pg.click('#lgAdd'); await pg.waitForTimeout(500);
     ok((await pg.locator('#langList li').count())===7, 'language added -> 7');
-    await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','dup'); await pg.click('#lgAdd'); await pg.waitForTimeout(400);
+    await pg.click('#lgNew'); await pg.fill('#lgCode','xcl'); await pg.fill('#lgName','dup'); await pg.click('#lgAdd'); await pg.waitForTimeout(400);
     ok(/already/.test(await pg.locator('#lgErr').innerText()), 'duplicate language refused: '+await pg.locator('#lgErr').innerText());
     // new place dialog
     await pg.evaluate(()=>openDlg('place',{lon:44.5,lat:40.1,name:'Testville'}));
@@ -139,7 +140,7 @@ scenario('browser: languages, optional dates in many formats, mountain height, n
 
 scenario('browser: tabs, sheets, filters, layers (only / hide / search / create / choose places / notes / delete), categories', null, async (pg, S) => {
   await pg.goto(S.base + '/'); await pg.waitForTimeout(1200);
-    ok(await pg.locator('.tabs button').count()===3 && await pg.locator('#more-maps #basemap').count()===1, 'three tabs; Maps is a fold in More');
+    ok(await pg.locator('.tabs button').count()===4 && await pg.locator('#more-maps #basemap').count()===1, 'four tabs (Explore, Borders, Layers, More); Maps is a fold in More');
     await pg.evaluate(()=>tab('route')); ok(await pg.locator('#more-route').evaluate(e=>e.open) && !(await pg.locator('#more-maps').evaluate(e=>e.open)) && await pg.locator('#tab-more').isVisible(), 'tab(route) opens the Directions fold in More');
     await pg.evaluate(()=>tab('explore'));
     // selected types are shown inside Filters only: no chips under the Filters block
@@ -147,12 +148,12 @@ scenario('browser: tabs, sheets, filters, layers (only / hide / search / create 
     ok(await pg.locator('#fActive .chip').count()===0, 'no chip for a selected type');
     ok(/1/.test(await pg.locator('#fcount').innerText()), 'the filter count shows the selected type');
     await pg.evaluate(()=>{state.types.clear();fillTypes();update();});
-    // a place opens inside the list, under itself; the map does not move; no Back button
+    // a place opens in the details dock under the list; its row stays in the list and is marked; the map does not move; no Back button
     const rows=await pg.locator('#list li[data-id]').count();
     await pg.click('#list li[data-id] >> nth=1'); await pg.waitForTimeout(300);
-    ok(await pg.locator('#list #detail').count()===1 && await pg.locator('#detail').isVisible() && await pg.locator('#detail .inline-actions').isVisible(), 'place opens in the list with its action bar');
+    ok(await pg.locator('#dock #detail').count()===1 && await pg.locator('#detail').isVisible() && await pg.locator('#detail .dock-btns').isVisible(), 'place opens in the details dock with its buttons');
     ok(await pg.locator('#list li[data-id]').count()===rows, 'the other places stay in the list');
-    ok(await pg.locator('#list li.on + #detail').count()===1, 'the details sit right under the open place');
+    ok(await pg.locator('#list li.on').count()===1, 'the open place is marked in its row');
     ok(await pg.locator('[data-act=back]').count()===0, 'no Back button');
     await pg.click('#list li.on'); ok(await pg.locator('#detail').isHidden(), 'a second click folds the details');
     await pg.click('#list li[data-id] >> nth=0'); await pg.fill('#q','tu'); ok(await pg.locator('#detail').isHidden(), 'typing in search closes the details');
@@ -183,7 +184,7 @@ scenario('browser: tabs, sheets, filters, layers (only / hide / search / create 
     await pg.click('#catCancel'); ok(await pg.locator('#catAdd').count()===1, 'Cancel closes the fields');
     await pg.click('#catAdd'); await pg.fill('#catForm .nn','Pilgrimage'); await pg.click('#catSave'); await pg.waitForTimeout(500);
     ok(await pg.locator('#catList li.tr').count()===6, 'category added');
-    await pg.click('#catList li.tr:has-text("Pilgrimage") [data-lyact=editcat]'); ok(await pg.locator('#catList li.tr:has-text("Pilgrimage") + li.cat-edit #catForm').count()===1, 'the pencil opens the fields under the row');
+    await pg.click('#catList li.tr:has-text("Pilgrimage") [data-lyact=editcat]'); ok(await pg.locator('#catAdmin #catForm').count()===1 && await pg.locator('#catList li.tr.on:has-text("Pilgrimage")').count()===1, 'the pencil opens the fields under the list and marks the row');
     await pg.fill('#catForm .nn','Pilgrimages'); await pg.click('#catSave'); await pg.waitForTimeout(500);
     ok(await pg.locator('#catList li.tr:has-text("Pilgrimages")').count()===1, 'category renamed');
     // new layer (its own Add layer fold in the Layers tab)

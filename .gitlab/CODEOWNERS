@@ -4,6 +4,7 @@
 # sidebar
 /app/js/sidebar/ @bellaabrahamyan.am
 /app/css/sidebar.css @bellaabrahamyan.am
+/app/css/shapes.css @bellaabrahamyan.am
 /tests/js/layers.test.js @bellaabrahamyan.am
 /tests/js/sidebar.test.js @bellaabrahamyan.am
 /changes/sidebar.md @bellaabrahamyan.am
@@ -67,7 +68,10 @@
 /DOMAINS.md @bellaabrahamyan.am
 /INTERFACES.md @bellaabrahamyan.am
 /DESIGN.md @bellaabrahamyan.am
-/AGENT_CHANGES.md @bellaabrahamyan.am
+/CLAUDE.md @bellaabrahamyan.am
+/docs/ @bellaabrahamyan.am
+/interfaces/ @bellaabrahamyan.am
+/changes/archive/ @bellaabrahamyan.am
 /TODO.md @bellaabrahamyan.am
 /tools/ @bellaabrahamyan.am
 /requests/ @bellaabrahamyan.am
@@ -108,5 +112,6 @@
 # repository root
 /.gitlab/ @bellaabrahamyan.am
 /.gitlab-ci.yml @bellaabrahamyan.am
+/.github/ @bellaabrahamyan.am
 /.claude/ @bellaabrahamyan.am
 /.gitignore @bellaabrahamyan.am

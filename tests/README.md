@@ -55,7 +55,7 @@ would let the shipped data pass strictly; until then the test only allows the li
 
 ## Part 3 — JavaScript (done)
 
-`node tests/js/run.js [filter] [--no-browser] [--domain=<name>]` (`--domain` runs only the test files the domain owns in `tools/domains.json`; CI runs one job per domain, `tests:<domain>`, and `tests:data` also runs the PHP and data tests; Node 22; Playwright + Chromium and ESLint are used when installed, otherwise those
+`node tests/js/run.js [filter] [--no-browser] [--domain=<name>]` (`--domain` runs only the test files the domain owns in `tools/domains.json`; CI runs everything in ONE job, `tools/ci.sh`; Node 22; Playwright + Chromium and ESLint are used when installed, otherwise those
 tests print "skipped"). No dependencies in the repository. `lib/ctx.js` loads the classic scripts into a `vm` context in `index.html` order
 with a small DOM stand-in (so a name declared twice in two scripts fails here just like in a page); `lib/devserver.js` starts the Node dev
 back-end plus static files on a free port, on a throw-away copy of the extension.

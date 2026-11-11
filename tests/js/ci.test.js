@@ -46,13 +46,21 @@ test('ci: deleting a path that no domain owns is allowed, changing one is not', 
   eq(1, cd.check(['shared'], del('app/js/map/map.js')).length, 'owned file deleted by the wrong domain');
 });
 
-test('ci: every domain has its own test job, and every JS test file belongs to a domain (so some job runs it)', () => {
+test('ci: graph/*.md files, which CI generates, pass on any branch; deeper files of graph/ do not', () => {
   const cd = require('../../tools/check-domain');
-  const yml = fs.readFileSync(path.join(__dirname, '..', '..', '.gitlab-ci.yml'), 'utf8');
-  for (const d of cd.DOMAINS) {
-    ok(new RegExp(`^tests:${d}:`, 'm').test(yml), `.gitlab-ci.yml has no job tests:${d}`);
-    ok(yml.includes(`--domain=${d}`), `the job tests:${d} does not run tests/js/run.js --domain=${d}`);
-  }
+  const mod = (p) => `--- a/${p}\n+++ b/${p}\n@@ -1 +1 @@\n-x\n+y\n`;
+  eq([], cd.check(['map'], mod('graph/core.md')), 'graph/core.md');
+  eq(1, cd.check(['map'], mod('graph/sub/deep.md')).length, 'graph/sub/deep.md');
+});
+
+test('ci: ONE job (tools/ci.sh) does the domain check, the graph and every test; every JS test file belongs to a domain (so the job runs it)', () => {
+  const cd = require('../../tools/check-domain');
+  const root = path.join(__dirname, '..', '..');
+  const yml = fs.readFileSync(path.join(root, '.gitlab-ci.yml'), 'utf8');
+  const sh = fs.readFileSync(path.join(root, 'tools', 'ci.sh'), 'utf8');
+  ok(/^ci:/m.test(yml) && !/^stages:/m.test(yml) && !/^(tests|graph|domain)[:\w]*:/m.test(yml), '.gitlab-ci.yml must have the one job `ci` and no other job');
+  ok(yml.includes('tools/ci.sh'), 'the job ci does not run tools/ci.sh');
+  for (const part of ['tools/ci-check-pr.js', 'tools/make-graph.js', 'make-graph.js --check', 'git push', 'php tests/php/run.php', 'php tests/data/run.php', 'node tests/js/run.js']) ok(sh.includes(part), `tools/ci.sh does not run: ${part}`);
   for (const f of fs.readdirSync(__dirname).filter((x) => x.endsWith('.test.js'))) {
     ok(cd.DOMAINS.includes(cd.ownerOf('tests/js/' + f)), `tests/js/${f} has no domain, so no CI job would run it`);
   }

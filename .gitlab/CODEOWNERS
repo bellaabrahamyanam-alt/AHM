@@ -24,6 +24,7 @@
 /tests/js/dates.test.js @bellaabrahamyan.am
 /tests/js/data.test.js @bellaabrahamyan.am
 /tests/js/search.test.js @bellaabrahamyan.am
+/tests/js/routes.test.js @bellaabrahamyan.am
 /tests/fixtures/dates-vectors.json @bellaabrahamyan.am
 /changes/core.md @bellaabrahamyan.am
 /todo/core.md @bellaabrahamyan.am

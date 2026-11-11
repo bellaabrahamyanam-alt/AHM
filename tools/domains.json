@@ -24,6 +24,7 @@
       "tests/js/dates.test.js",
       "tests/js/data.test.js",
       "tests/js/search.test.js",
+      "tests/js/routes.test.js",
       "tests/fixtures/dates-vectors.json"
     ],
     "state": [

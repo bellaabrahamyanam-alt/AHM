@@ -140,7 +140,7 @@ scenario('browser: languages, optional dates in many formats, mountain height, n
 
 scenario('browser: tabs, sheets, filters, layers (only / hide / search / create / choose places / notes / delete), categories', null, async (pg, S) => {
   await pg.goto(S.base + '/'); await pg.waitForTimeout(1200);
-    ok(await pg.locator('.tabs button').count()===4 && await pg.locator('#more-maps #basemap').count()===1, 'four tabs (Explore, Borders, Layers, More); Maps is a fold in More');
+    ok(await pg.locator('.tabs button').count()===5 && await pg.locator('#more-maps #basemap').count()===1, 'five tabs (Explore, Borders, Routes, Layers, More); Maps is a fold in More');
     await pg.evaluate(()=>tab('route')); ok(await pg.locator('#more-route').evaluate(e=>e.open) && !(await pg.locator('#more-maps').evaluate(e=>e.open)) && await pg.locator('#tab-more').isVisible(), 'tab(route) opens the Directions fold in More');
     await pg.evaluate(()=>tab('explore'));
     // selected types are shown inside Filters only: no chips under the Filters block

@@ -179,7 +179,7 @@ const gated = (isBuilt, name, fn) =>
   });
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-const UI_SCRIPTS = ['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'shapes.js', 'search.js', 'searchfield.js', 'period.js', 'placeform.js', 'layers.js', 'sidebar/shapes.js'];
+const UI_SCRIPTS = ['state.js', 'config.js', 'dates.js', 'data.js', 'datefield.js', 'layer-rules.js', 'shapes.js', 'search.js', 'searchfield.js', 'period.js', 'placeform.js', 'layers.js', 'sidebar/shapes.js', 'routes.js', 'sidebar/routes.js'];
 /** The page with ui.js itself running (it declares cur, tab, show, update ...), a map stand-in, and recorded event handlers. */
 function uiPage() {
   const p = load(UI_SCRIPTS);

@@ -55,7 +55,7 @@ const MAP_COMMANDS = ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint'
 const MAP_EVENTS = ['map:click', 'map:ready', 'map:show-controls', 'place:click', 'place:dblclick'];
 const SIDEBAR_EVENTS = ['sidebar:resized'];
 // Added by proposal 010 (1.5): accepted, not required yet.
-const NEW_MAP_COMMANDS = ['drawShape', 'getSymbols', 'hideMenu', 'hideShape', 'highlightShape', 'isDrawing', 'previewShape', 'setShapes', 'setTypes', 'showMenu', 'showPreview'];
+const NEW_MAP_COMMANDS = ['drawShape', 'getSymbols', 'hideMenu', 'hideShape', 'highlightShape', 'isDrawing', 'previewShape', 'setShapes', 'setTypes', 'showFound', 'showMenu', 'showPreview'];
 const NEW_MAP_EVENTS = ['draw:cancel', 'draw:finish', 'map:menu', 'map:menu-close', 'shape:click'];
 
 test('contract I-2: AHM.map has exactly the commands of INTERFACES.md', () => {

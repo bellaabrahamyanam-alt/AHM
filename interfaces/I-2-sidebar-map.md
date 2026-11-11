@@ -29,6 +29,7 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `hideMenu()` **[1.5]** | close the menu |
 | `previewShape(id, { color?, opacity? } \| null)` **[1.5]** | show a colour or an opacity of a shape before it is saved; `null` puts the saved look back |
 | `showPreview(geometry \| null)` **[1.5]** | a blue draft outline of a search result, shown before it is added |
+| `showFound(geometry \| null)` | the path found between two places (a MultiLineString) in its own layer above the routes; `null` clears it |
 | `isDrawing()` **[1.5]** | `true` while the drawing tool is active; read only |
 
 ### Events, emitted by the map (`AHM.on(name, handler)`), handled by the sidebar

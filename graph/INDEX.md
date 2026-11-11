@@ -6,40 +6,41 @@ Open `graph/<domain>.md` for one line per file (what it defines, which `AHM.*` c
 
 | domain | files | lines | largest file |
 |---|---|---|---|
-| sidebar | 7 | 2454 | `app/js/sidebar/ui.js` (978) |
-| map | 4 | 1473 | `app/js/map/map.js` (669) |
-| core | 6 | 727 | `app/js/core/dates.js` (296) |
+| sidebar | 8 | 3090 | `app/js/sidebar/ui.js` (981) |
+| map | 4 | 1573 | `app/js/map/map.js` (669) |
+| core | 7 | 904 | `app/js/core/dates.js` (296) |
 | state | 1 | 43 | `app/js/state/state.js` (43) |
 | campaigns | 1 | 14 | `app/features/campaigns/main.js` (14) |
-| data | 8 | 3173 | `service/store.php` (1500) |
+| data | 8 | 3227 | `service/store.php` (1534) |
 | shared | 5 | 194 | `app/js/config.js` (88) |
 
 ## Flags
 
 - `app/js/map/map.js` has 669 lines (limit 600); owner: map
 - `app/js/sidebar/layers.js` has 671 lines (limit 600); owner: sidebar
-- `app/js/sidebar/ui.js` has 978 lines (limit 600); owner: sidebar
-- `dev/save-handler.js` has 918 lines (limit 600); owner: data
-- `service/store.php` has 1500 lines (limit 600); owner: data
+- `app/js/sidebar/routes.js` has 617 lines (limit 600); owner: sidebar
+- `app/js/sidebar/ui.js` has 981 lines (limit 600); owner: sidebar
+- `dev/save-handler.js` has 938 lines (limit 600); owner: data
+- `service/store.php` has 1534 lines (limit 600); owner: data
 
 ## Cross-domain uses of top-level names (not through `AHM.*`; compare with the contract)
 
-- core -> data: 1 name (save)
+- core -> data: 2 names (path, save)
 - core -> sidebar: 2 names (edit, show)
-- data -> core: 7 names (dateClean, dateOrderCheck, dateUpgrade +4)
+- data -> core: 8 names (dateClean, dateOrderCheck, dateUpgrade +5)
 - data -> map: 1 name (poly)
 - data -> sidebar: 1 name (edit)
 - map -> core: 5 names (label, places, route +2)
 - map -> data: 3 names (ovDelete, ovSave, path)
 - map -> sidebar: 7 names (btns, edit, focusPlace +4)
-- sidebar -> core: 56 names (DATE_FORMATS, MONTHS, bboxArea +53)
+- sidebar -> core: 66 names (BORDER_TYPES, DATE_FORMATS, MONTHS +63)
 - sidebar -> data: 3 names (layerSave, path, save)
 - sidebar -> map: 5 names (drawShape, hideMenu, showMenu +2)
 - state -> core: 1 name (state)
 
 ## Where to look (by file name)
 
-- sidebar: app/js/sidebar/datefield.js, app/js/sidebar/layers.js, app/js/sidebar/period.js +4
+- sidebar: app/js/sidebar/datefield.js, app/js/sidebar/layers.js, app/js/sidebar/period.js +5
 - map: app/js/map/map.js, app/js/map/overlays.js, app/js/map/shapes.js +1
 - layer: app/js/core/layer-rules.js, app/js/sidebar/layers.js
 - search: app/js/core/search.js, app/js/sidebar/searchfield.js
@@ -48,6 +49,7 @@ Open `graph/<domain>.md` for one line per file (what it defines, which `AHM.*` c
 - campaign: app/features/campaigns/main.js
 - type: app/js/map/typeicons.js
 - shape: app/js/core/shapes.js, app/js/map/shapes.js, app/js/sidebar/shapes.js
+- route: app/js/core/routes.js, app/js/sidebar/routes.js
 - place: app/js/sidebar/placeform.js
 - overlay: app/js/map/overlays.js
 - language: language/en/common.php

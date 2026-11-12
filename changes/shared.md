@@ -69,3 +69,10 @@ One entry per change, newest last: date, what, why, files, how to verify, open f
 **Files:** the files above; tests `ci`, `context`, `domains` adapted.
 **Verify:** `node tests/js/run.js`, `php tests/php/run.php`, `php tests/data/run.php`, `node tools/make-context.js --check`, `node tools/make-graph.js --check`.
 **Follow-ups:** `TODO.md` T-004 (GitHub settings), T-010 to T-013. The first pull request of this workflow carries the approval line of T-000 itself, so the critic's check "approval already on master" cannot pass for it: the owner merges it.
+
+## 2026-11-12 — #33 Red CI on master after the feature/routes merge
+**What:** `master` was red since the merge of `feature/routes` (runs 43177939304 and 43178342449). Causes: (1) `graph/` was not regenerated; (2) `tests/js/routes.test.js` had no owner (now core, `tools/domains.json`); (3) the sidebar test page did not load `core/routes.js` and `sidebar/routes.js` (`tests/js/layers.test.js`, `UI_SCRIPTS`), so 9 `sidebar publishes` tests failed with `rtRenderList is not defined`; (4) the browser test expected four tabs, the Routes tab made five (`tests/js/browser.test.js`); (5) the sidebar calls `AHM.map.showFound`, which was not in the contract: added to `interfaces/I-2-sidebar-map.md` as 1.6 and to `NEW_MAP_COMMANDS` in `tests/js/contract.test.js`. CODEOWNERS and `context/` regenerated.
+**Why:** the routes branch came in through a merge outside the pull-request flow, with nine `[skip ci]` commits, so nothing checked it.
+**Files:** the files above, `TODO.md` (T-020 done, T-021 and T-022 new).
+**Verify:** `node tests/js/run.js` (155 passed), `php tests/php/run.php` (93), `php tests/data/run.php` (39), `node tools/make-graph.js --check`, `node tools/make-context.js --check`.
+**Follow-ups:** T-021 (the routes work has no change-log entry), T-022 (`[skip ci]`), T-004 (branch protection).

@@ -34,6 +34,9 @@ test('parity table: every case gets the verdict the table says (the Node dev ser
                 case 'language':
                     $s->save_language($body);
                     break;
+                case 'type':
+                    $s->save_type($body);
+                    break;
             }
             $got = 'ok';
         } catch (\InvalidArgumentException $e) {

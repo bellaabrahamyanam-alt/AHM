@@ -197,6 +197,21 @@ namespace ahm\map\tests {
         same(400, status(call(visitor($root, 'members', 2, true), 'language_save', $lang)), 'duplicate language');
     });
 
+    test('type_save and type_delete: administrators only, 400 when a place still uses the type', function () {
+        $root = forum_root();
+        $type = ['geometry' => 'point', 'names' => [['lang' => 'en', 'name' => 'Iron mine']], 'color' => '#a0522d', 'style' => ['symbol' => 'pickaxe', 'size' => 9]];
+        same(403, status(call(visitor($root, 'members', 5, false), 'type_save', $type)));
+        same(401, status(call(visitor($root, 'members', ANONYMOUS, false), 'type_save', $type)));
+        same(400, status(call(visitor($root, 'members', 2, true), 'type_save', ['geometry' => 'point'])));
+        $r = call(visitor($root, 'members', 2, true), 'type_save', $type);
+        same(200, status($r));
+        same('iron-mine', json_decode($r->content, true)['code']);
+        same(403, status(call(visitor($root, 'members', 5, false), 'type_delete', ['code' => 'iron-mine'])));
+        same(400, status(call(visitor($root, 'members', 2, true), 'type_delete', ['code' => 'mountain'])));
+        same(200, status(call(visitor($root, 'members', 2, true), 'type_delete', ['code' => 'iron-mine'])));
+        same(400, status(call(visitor($root, 'members', 2, true), 'type_delete', ['code' => 'iron-mine'])), 'already gone');
+    });
+
     test('overlay routes: administrators only', function () {
         $root = forum_root();
         $ov = ['title' => 'x', 'coordinates' => [[40, 41], [46, 41], [46, 37], [40, 37]]];
@@ -233,11 +248,12 @@ namespace ahm\map\tests {
         $root = forum_root();
         $html = visitor($root, 'members', 2, true)->page()->content;
         foreach (['"places"', '"notesIndex"', '"save"', '"languages"', '"languageSave"', '"layers"', '"layerSave"', '"layerDelete"', '"categories"',
-            '"categorySave"', '"layerNotesIndex"', '"canLayerAdmin":true', '"canEdit":true'] as $k) {
+            '"categorySave"', '"layerNotesIndex"', '"canLayerAdmin":true', '"canEdit":true', '"types"', '"typeSave"', '"typeDelete"', '"canTypeAdmin":true'] as $k) {
             ok(strpos($html, $k) !== false, "admin page has $k");
         }
         $m = visitor($root, 'members', 5, false)->page()->content;
         ok(strpos($m, '"canLayerAdmin":false') !== false, 'member: no layer admin');
+        ok(strpos($m, '"canTypeAdmin":false') !== false, 'member: no type admin');
         ok(strpos($m, '"canEdit":true') !== false, 'member can edit when editors=members');
         $g = visitor($root, 'members', ANONYMOUS, false)->page()->content;
         ok(strpos($g, '"canEdit":false') !== false, 'guest cannot edit');

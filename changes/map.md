@@ -18,4 +18,12 @@
 - **How to verify:** `node tests/js/run.js --no-browser`. By hand: select a place (its symbol grows with a white outline, no orange ring); hover a place (it lightens, tooltip above it); double click a place (sidebar opens its focus, map does not zoom twice); zoom out on a dense area (round bubbles with counts); click a bubble (map zooms to where it splits).
 - **Follow-ups:** `todo/map.md` not ticked in this change; the sidebar half of double click is task 012.
 
+## 2026-11-12 — Place types are a dictionary (T-021, I-8)
+
+- **What:** `AHM.map.setTypes(types)` rebuilds `TYPE_STYLE` from the dictionary and redraws; `AHM.map.getSymbols()`; new symbols `pentagon`, `tree`, `sword`, `pickaxe`, `flag`; images of a changed type are replaced; `typeIcon` also accepts a draft `{ symbol, color, size }` (preview).
+- **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.
+- **Files:** `app/js/map/typeicons.js`, `app/js/map/map.js`, `tests/js/map.test.js`
+- **How to verify:** `node tests/js/run.js`. By hand: add a type in More → Place types, give it to a place: the marker changes on the map without a reload.
+- **Follow-ups:** none.
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the map domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

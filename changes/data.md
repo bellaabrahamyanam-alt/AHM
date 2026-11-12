@@ -12,4 +12,12 @@
 **Verify:** `php tests/data/run.php` (CI job `tests`).
 **Follow-ups:** none.
 
+## 2026-11-12 — Place types are a dictionary (T-021, I-8)
+
+- **What:** `data/types.json` (seed of the 13 types), `store.php`: `types()`, `save_type()`, `delete_type()` (place type checked against the dictionary; a used type and `mountain` cannot be removed; old file archived), controller `type_save`/`type_delete` (admins only) and the `types` data route, page config `types`/`typeSave`/`typeDelete`/`canTypeAdmin`, the same in `dev/save-handler.js`; `DataCheck` checks `types.json`.
+- **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.
+- **Files:** `data/types.json`, `service/store.php`, `controller/main.php`, `config/routing.yml`, `dev/save-handler.js`, `tests/php/TypeTest.php`, `tests/php/{ControllerTest,RoutingTest,ParityTest}.php`, `tests/data/DataCheck.php`, `tests/fixtures/rules.json`, `tests/js/parity.test.js`
+- **How to verify:** `php tests/php/run.php`, `php tests/data/run.php`, `node tests/js/run.js`.
+- **Follow-ups:** line and area types (`geometry` other than `point`); owner decisions in `TODO.md` T-021 (contract: `style.size`, `_` in codes, `typeIcon` with a draft).
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the data domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

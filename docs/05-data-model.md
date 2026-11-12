@@ -31,9 +31,26 @@ A date is either **`null` (unknown)** or an object:
 
 ### Place types
 
-`city`, `town`, `village`, `settlement`, `fortress`, `temple`, `tomb`, `inscription_site`, `monument`, `mountain`, `lake`, `river`, `region`.
+`types.json` is the dictionary every place type is chosen from, like languages and categories. Only administrators add, change or remove a type (More tab, "Place types"). A place points to a type by its `code`.
 
-The list is kept in three places that must stay in step: `PLACE_TYPES` (`placeform.js`), `TYPE_STYLE` (`typeicons.js`) and `TYPES` (`store.php`, `save-handler.js`).
+```json
+{
+  "version": 1,
+  "types": [
+    { "code": "iron-mine", "geometry": "point",
+      "names": [ { "lang": "en", "name": "Iron mine" } ],
+      "color": "#a0522d", "style": { "symbol": "pickaxe", "size": 9 } }
+  ]
+}
+```
+
+- `code`: 1–32 characters `a-z 0-9 _ -`, unique, made by the server from the English name of a new type (`Iron mine` → `iron-mine`, `iron-mine-2` when taken) and never changed. (`_` is allowed only because `inscription_site` existed before.)
+- `geometry`: only `point` (a marker) can be added for now; lines and areas follow.
+- `names`: one or more `{ lang, name }`, languages from the languages dictionary; a new type needs an English name.
+- `color`: `#rrggbb`. `style.symbol`: a slug (`circle`, `ring`, `square`, `diamond`, `triangle`, `hexagon`, `pentagon`, `star`, `plus`, `drop`, `bar`, `tree`, `sword`, `pickaxe`, `flag`; an unknown slug is drawn as a circle). `style.size`: 4–14 (marker radius, default 8).
+- The server refuses a place whose type is not a point type of the dictionary. A type that some place uses cannot be removed (the answer says how many places use it), and `mountain` is never removed (a mountain has a height, not dates).
+- If the file does not exist yet (an update), it is created with the 13 types that existed before: `settlement`, `city`, `town`, `village`, `fortress`, `temple`, `tomb`, `inscription_site`, `monument`, `mountain`, `lake`, `river`, `region` (seed `TYPES` in `store.php` and `save-handler.js`).
+- The browser draws every marker from the dictionary (`AHM.map.setTypes`); no list of types is kept in the code any more.
 
 ### `places.geojson`
 

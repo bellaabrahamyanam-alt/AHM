@@ -11,7 +11,7 @@
 //     map) arrives after the selection, and stays through base-map switches;
 //   - the map listens to AHM.on('state:selected', ({ value }) => ...) and reads AHM.state for nothing else
 //     (AHM.state.get('selected') at most), emits no event of its own and adds no AHM.map command.
-const { test, ok, eq } = require('./lib/harness');
+const { test, ok, eq, J } = require('./lib/harness');
 const { load } = require('./lib/ctx');
 
 const HL = 'ahm-highlight';
@@ -937,4 +937,39 @@ test('map: selected place: its own layer answers click, double click and hover (
   eq('pointer', rec.canvas.style.cursor);
   eq(1, active(rec).length, 'tooltip on the selected place');
   eq(p.X('(TYPE_STYLE.city || TYPE_STYLE.settlement).r * SEL_SCALE * zoomScale(map.getZoom()) + TIP_GAP + 4'), offsetOf(active(rec)[0]).y, 'clear of the (larger) selected symbol');
+});
+
+// ---- types dictionary (INTERFACES.md I-8) ----
+const TYPES_DICT = [
+  { code: 'city', geometry: 'point', names: [{ lang: 'en', name: 'City' }, { lang: 'ru', name: 'Город' }], color: '#b3261e', style: { symbol: 'circle', size: 10 } },
+  { code: 'iron-mine', geometry: 'point', names: [{ lang: 'ru', name: 'Рудник' }, { lang: 'hy', name: 'Հանք' }], color: '#a0522d', style: { symbol: 'pickaxe', size: 9 } },
+  { code: 'odd', geometry: 'point', names: [{ lang: 'en', name: 'Odd' }], color: 'red', style: { symbol: 'no-such-symbol', size: 99 } },
+  { code: 'border', geometry: 'line', names: [{ lang: 'en', name: 'Border' }], color: '#000000', style: {} },
+];
+
+test('types: setTypeStyles rebuilds the table from point types; bad symbol, colour and size fall back, settlement stays', () => {
+  const p = load(['typeicons.js']);
+  p.X('setTypeStyles(__0)', TYPES_DICT);
+  const st = J(p.X('TYPE_STYLE'));
+  eq(['city', 'iron-mine', 'odd', 'settlement'], Object.keys(st).sort(), 'line types are not markers');
+  eq({ shape: 'pickaxe', color: '#a0522d', r: 9 }, st['iron-mine']);
+  eq('circle', st.odd.shape, 'unknown symbol is drawn as a circle');
+  ok(/^#[0-9a-f]{6}$/i.test(st.odd.color), 'bad colour replaced');
+  ok(st.odd.r >= 4 && st.odd.r <= 14, 'bad size replaced');
+  p.X('setTypeStyles(__0)', [TYPES_DICT[1]]);
+  eq(['iron-mine', 'settlement'], Object.keys(J(p.X('TYPE_STYLE'))).sort(), 'settlement is always there as the fallback');
+});
+
+test('types: getSymbols lists the symbols the map can draw, every one has a shape', () => {
+  const p = load(['typeicons.js', 'map.js']);
+  const syms = J(p.X('AHM.map.getSymbols()'));
+  const names = syms.map((s) => s.name);
+  for (const n of ['circle', 'tree', 'sword', 'pickaxe', 'flag', 'star']) ok(names.includes(n), n);
+  ok(syms.every((s) => s.label && p.X('typeof SHAPES[__0]', s.name) === 'function'), 'label and shape for each');
+});
+
+test('types: AHM.map.setTypes before the map is ready only updates the table (icons are made on load)', () => {
+  const p = load(['typeicons.js', 'map.js']);
+  p.X('AHM.map.setTypes(__0)', TYPES_DICT);
+  ok(p.X('"iron-mine" in TYPE_STYLE'));
 });

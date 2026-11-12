@@ -73,3 +73,20 @@ test('data: the optional layer files may be missing (404) and then mean "no laye
   eq([], J(await p.X('loadLayerNotes()')));
   eq([], J(await p.X('loadCategories()')));
 });
+
+// ---- types dictionary (INTERFACES.md I-8) ----
+const TYPES = [
+  { code: 'city', geometry: 'point', names: [{ lang: 'en', name: 'City' }, { lang: 'ru', name: 'Город' }], color: '#b3261e', style: { symbol: 'circle', size: 10 } },
+  { code: 'iron-mine', geometry: 'point', names: [{ lang: 'ru', name: 'Рудник' }, { lang: 'hy', name: 'Հանք' }], color: '#a0522d', style: { symbol: 'pickaxe', size: 9 } },
+  { code: 'odd', geometry: 'point', names: [{ lang: 'en', name: 'Odd' }], color: 'red', style: { symbol: 'no-such-symbol', size: 99 } },
+  { code: 'border', geometry: 'line', names: [{ lang: 'en', name: 'Border' }], color: '#000000', style: {} },
+];
+
+test('types: typeLabel gives the name in the language, else English, else the first name, else the code', () => {
+  const p = load(['config.js', 'data.js']);
+  p.X('types = __0', TYPES);
+  eq('Город', p.X('typeLabel("city", "ru")'));
+  eq('City', p.X('typeLabel("city", "hy")'), 'no Armenian name: English');
+  eq('Рудник', p.X('typeLabel("iron-mine", "en")'), 'no English name: the first one');
+  eq('inscription site', p.X('typeLabel("inscription_site", "en")'), 'not in the dictionary: the code as words');
+});

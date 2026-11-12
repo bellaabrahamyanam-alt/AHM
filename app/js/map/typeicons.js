@@ -1,5 +1,7 @@
 // One map symbol per place type. Every type has its own shape AND colour,
 // so a mountain, a city and a fortress can be told apart at a glance.
+// The table below is only the start (and the fallback, `settlement`): once the sidebar passes the types dictionary
+// (AHM.map.setTypes, contract I-8) setTypeStyles() rebuilds it, so a type an administrator adds is drawn too.
 const TYPE_STYLE = {
   city: { shape: 'circle', color: '#B3261E', r: 10 },
   town: { shape: 'circle', color: '#E07B39', r: 8 },
@@ -73,11 +75,55 @@ const SHAPES = {
     g.bezierCurveTo(-r, r, -r * 1.1, -r * 0.1, 0, -r * 1.2);
   },
   bar: (g, r) => g.rect(-r * 1.2, -r * 0.4, r * 2.4, r * 0.8),
+  pentagon: (g, r) =>
+    poly(
+      g,
+      [0, 1, 2, 3, 4].map((i) => [r * 1.1 * Math.cos(-Math.PI / 2 + (i * 2 * Math.PI) / 5), r * 1.1 * Math.sin(-Math.PI / 2 + (i * 2 * Math.PI) / 5)])
+    ),
+  // for forests, groves
+  tree: (g, r) =>
+    poly(g, [[0, -1.2], [0.6, -0.3], [0.3, -0.3], [0.85, 0.45], [0.2, 0.45], [0.2, 1], [-0.2, 1], [-0.2, 0.45], [-0.85, 0.45], [-0.3, -0.3], [-0.6, -0.3]].map(([x, y]) => [x * r, y * r])),
+  // for weapons, artefacts, battles
+  sword: (g, r) =>
+    poly(g, [[0, -1.25], [0.18, -0.9], [0.18, 0.35], [0.6, 0.35], [0.6, 0.6], [0.15, 0.6], [0.15, 0.95], [0.3, 0.95], [0.3, 1.2], [-0.3, 1.2], [-0.3, 0.95], [-0.15, 0.95], [-0.15, 0.6], [-0.6, 0.6], [-0.6, 0.35], [-0.18, 0.35], [-0.18, -0.9]].map(([x, y]) => [x * r, y * r])),
+  // for mines, quarries
+  pickaxe: (g, r) =>
+    poly(g, [[-1.2, -0.5], [-0.7, -0.95], [0, -1.05], [0.7, -0.95], [1.2, -0.5], [0.75, -0.55], [0.15, -0.62], [0.15, 1.15], [-0.15, 1.15], [-0.15, -0.62], [-0.75, -0.55]].map(([x, y]) => [x * r, y * r])),
+  // for battles, borders, claims
+  flag: (g, r) => poly(g, [[-0.7, -1.2], [1, -0.65], [-0.4, -0.05], [-0.4, 1.2], [-0.7, 1.2]].map(([x, y]) => [x * r, y * r])),
 };
+/** The point symbols the map can draw, for the type editor of the sidebar (AHM.map.getSymbols). */
+const SYMBOL_LABELS = {
+  circle: 'Circle', ring: 'Ring', square: 'Square', diamond: 'Diamond', triangle: 'Triangle', hexagon: 'Hexagon',
+  pentagon: 'Pentagon', star: 'Star', plus: 'Cross', drop: 'Drop', bar: 'Bar', tree: 'Tree', sword: 'Sword', pickaxe: 'Pickaxe', flag: 'Flag',
+};
+const getSymbolList = () => Object.keys(SYMBOL_LABELS).map((name) => ({ name, label: SYMBOL_LABELS[name] }));
+/** Rebuilds TYPE_STYLE from the point types of the dictionary. An unknown symbol is drawn as a circle; `settlement` stays the fallback. */
+function setTypeStyles(list) {
+  const fallback = TYPE_STYLE.settlement;
+  Object.keys(TYPE_STYLE).forEach((k) => delete TYPE_STYLE[k]);
+  (list || [])
+    .filter((t) => t.geometry === 'point')
+    .forEach((t) => {
+      const st = t.style || {};
+      TYPE_STYLE[t.code] = {
+        shape: SHAPES[st.symbol] ? st.symbol : 'circle',
+        color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : fallback.color,
+        r: typeof st.size === 'number' && st.size >= 4 && st.size <= 14 ? st.size : fallback.r,
+      };
+    });
+  if (!TYPE_STYLE.settlement) TYPE_STYLE.settlement = fallback;
+  Object.keys(iconCache).forEach((k) => delete iconCache[k]);
+}
 
+/** The style of a type code, or of a draft `{ symbol, color, size }` (the preview in the type editor). Unknown codes fall back to `settlement`. */
+const styleOf = (t) =>
+  t && typeof t === 'object'
+    ? { shape: SHAPES[t.symbol] ? t.symbol : 'circle', color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#8D6E63', r: t.size >= 4 && t.size <= 14 ? t.size : 8 }
+    : TYPE_STYLE[t] || TYPE_STYLE.settlement;
 /** Draws the symbol of a type on a canvas of px × px logical pixels (ratio = device pixels per logical pixel). */
 function iconCanvas(type, px, ratio) {
-  const st = TYPE_STYLE[type] || TYPE_STYLE.settlement,
+  const st = styleOf(type),
     f = px / 28,
     c = document.createElement('canvas');
   c.width = c.height = Math.round(px * ratio);
@@ -108,7 +154,7 @@ function iconCanvas(type, px, ratio) {
 }
 /** The same symbol with a thick white border that follows its shape (hover and selected look); a hair-line dark edge keeps it visible on pale maps. */
 function iconCanvasHl(type, px, ratio) {
-  const st = TYPE_STYLE[type] || TYPE_STYLE.settlement,
+  const st = styleOf(type),
     c = document.createElement('canvas');
   c.width = c.height = Math.round(px * ratio);
   const g = c.getContext('2d');
@@ -141,14 +187,16 @@ function iconCanvasHl(type, px, ratio) {
 }
 /** Adds one image per type to the map: 'ahm-type-city', 'ahm-type-mountain', ... and 'ahm-type-city-hl', ... (with the white border) */
 function registerTypeIcons(map) {
+  const put = (name, c) => {
+    if (map.hasImage && map.hasImage(name)) map.removeImage(name); // a type that was changed is drawn again
+    map.addImage(name, c.getContext('2d').getImageData(0, 0, c.width, c.height), { pixelRatio: 2 });
+  };
   Object.keys(TYPE_STYLE).forEach((t) => {
-    const c = iconCanvas(t, 28, 2);
-    map.addImage('ahm-type-' + t, c.getContext('2d').getImageData(0, 0, c.width, c.height), { pixelRatio: 2 });
-    const h = iconCanvasHl(t, 40, 2);
-    map.addImage('ahm-type-' + t + '-hl', h.getContext('2d').getImageData(0, 0, h.width, h.height), { pixelRatio: 2 });
+    put('ahm-type-' + t, iconCanvas(t, 28, 2));
+    put('ahm-type-' + t + '-hl', iconCanvasHl(t, 40, 2));
   });
 }
 // Small <img> of a type symbol for lists, chips and badges.
 const iconCache = {};
 const typeIcon = (t) =>
-  `<img class="ti" alt="" src="${iconCache[t] || (iconCache[t] = iconCanvas(t, 16, 2).toDataURL())}">`;
+  `<img class="ti" alt="" src="${typeof t === 'object' && t ? iconCanvas(t, 16, 2).toDataURL() : iconCache[t] || (iconCache[t] = iconCanvas(t, 16, 2).toDataURL())}">`;

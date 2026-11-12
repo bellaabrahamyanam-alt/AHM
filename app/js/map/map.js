@@ -591,6 +591,16 @@ function fitCanvas() {
   map.resize();
 }
 Object.assign(AHM.map, {
+  // The types dictionary (I-8). Before the map is ready the table is only updated (the icons are made on load);
+  // afterwards the images of every type are made again and the places are redrawn.
+  setTypes(list) {
+    setTypeStyles(list);
+    if (!mapReady) return;
+    registerTypeIcons(map);
+    applyFeatures();
+    applyHighlight();
+  },
+  getSymbols: getSymbolList,
   setFeatures(fc) {
     featuresNow = fc;
     applyFeatures();

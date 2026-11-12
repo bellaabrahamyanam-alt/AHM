@@ -274,7 +274,7 @@ test('map: highlight: reads AHM.state only for the selection, calls no sidebar c
 test('map: highlight: adds no AHM.map command (INTERFACES.md I-2 stays as it is)', () => {
   const { p } = boot();
   eq(
-    ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getZoom', 'hideMenu', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers', 'showMenu'],
+    ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getSymbols', 'getZoom', 'hideMenu', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers', 'setTypes', 'showMenu'], // getSymbols and setTypes: I-8, types dictionary
     p.X('Object.keys(AHM.map).sort()'),
   );
 });

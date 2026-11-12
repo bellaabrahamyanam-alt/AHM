@@ -111,7 +111,7 @@ const UI_STANDINS = `
   function closeDetail() { __calls.push('closeDetail'); }
   function dockSync() {}
   function revealRow() {}
-  const typeIcon = () => '', typeLabel = (t) => String(t).replace(/_/g, ' ');
+  const typeIcon = () => ''; // typeLabel comes from core/data.js
 `;
 const SAMPLE = {
   places: [

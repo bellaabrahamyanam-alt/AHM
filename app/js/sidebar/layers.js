@@ -218,7 +218,7 @@ function lyPickRows(q, byId) {
       .sort((a, b) => label(a, l).localeCompare(label(b, l)))
       .map(
         (p) =>
-          `<li data-pid="${p.id}"><label><input type="checkbox"${lyState.staged.has(p.id) ? ' checked' : ''}> ${esc(label(p, l))}</label> <span class="badge">${typeLabel(p.type)}</span></li>`
+          `<li data-pid="${p.id}"><label><input type="checkbox"${lyState.staged.has(p.id) ? ' checked' : ''}> ${esc(label(p, l))}</label> <span class="badge">${typeLabel(p.type, l)}</span></li>`
       )
       .join('') +
       shapes

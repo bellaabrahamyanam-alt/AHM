@@ -1,20 +1,5 @@
 // The place form: names, type, dates (or height for a mountain) and position.
 // Used twice: in the "new place" dialog and in the sidebar when an existing place is edited.
-const PLACE_TYPES = [
-  'city',
-  'town',
-  'village',
-  'settlement',
-  'fortress',
-  'temple',
-  'tomb',
-  'inscription_site',
-  'monument',
-  'mountain',
-  'lake',
-  'river',
-  'region',
-];
 const MAX_HEIGHT_M = 9000;
 
 /** <option>s of the language dictionary (sorted by name). A code that is not in the dictionary is kept visible, not lost. */
@@ -25,6 +10,16 @@ const langOptions = (cur) => {
     list.map((l) => `<option value="${esc(l.code)}"${l.code === cur ? ' selected' : ''}>${esc(l.name)} (${esc(l.code)})</option>`).join('')
   );
 };
+/** <option>s of the point types of the dictionary (sorted by name in language l). A type that is not in the dictionary is kept visible. */
+const typeOptions = (cur, l) => {
+  const list = types.filter((t) => t.geometry === 'point').map((t) => t.code);
+  if (cur && !list.includes(cur)) list.push(cur);
+  return list
+    .sort((a, b) => typeLabel(a, l).localeCompare(typeLabel(b, l)))
+    .map((t) => `<option value="${esc(t)}"${t === cur ? ' selected' : ''}>${esc(typeLabel(t, l))}</option>`)
+    .join('');
+};
+const TYPE_HINT = 'Type missing? Ask an administrator to add it (More tab, Place types).';
 const LANG_HINT = 'Language missing? Ask an administrator to add it (Languages tab).';
 const pfRow = (n) =>
   `<div class="row pf-name"><select class="nl" aria-label="Language" title="${LANG_HINT}">${langOptions(n.lang)}</select>` +
@@ -40,9 +35,7 @@ function placeFormHTML(p) {
     `<div class="pf"><div class="label">Names</div><div class="pf-names">${names.map((n) => pfRow(n)).join('')}</div>` +
     `<button type="button" class="pf-add">+ Add another name</button>` +
     `<div class="sn">A place can have several names, even in one language (Ararat and Masis). The first name of each language is shown on the map. ${LANG_HINT}</div>` +
-    `<div class="label">Type</div><select class="pf-type">${PLACE_TYPES.map(
-      (t) => `<option value="${t}"${t === p.type ? ' selected' : ''}>${typeLabel(t)}</option>`
-    ).join('')}</select>` +
+    `<div class="label">Type</div><select class="pf-type" title="${TYPE_HINT}">${typeOptions(p.type, typeof document !== 'undefined' && document.getElementById ? (document.getElementById('lang') || {}).value : 'en')}</select>` +
     `<div class="pf-when"${mountain ? ' hidden' : ''}><div class="label">Dates (optional)</div>` +
     `<div class="sn">Leave “Unknown” when you do not know a date. Choose “Approximate” or “Range” when you only know roughly.</div>` +
     `<div class="pf-sub">Began / founded</div>${dfHTML('pf-from', p.date_from)}` +

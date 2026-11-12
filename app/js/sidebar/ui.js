@@ -8,7 +8,6 @@ let noteText = {},
   geoTimer = null,
   geoRes = [],
   dlg = { mode: "place", p: null };
-const typeLabel = (t) => t.replace(/_/g, " ");
 const mark = (t, q) => {
   const i = q ? t.toLowerCase().indexOf(q.toLowerCase()) : -1;
   if (i < 0) return esc(t.slice(0, 100)) + "…";
@@ -206,15 +205,17 @@ function fillLangs() {
   $("#lang").value = v;
 }
 function fillTypes() {
-  const c = {};
+  const c = {},
+    l = $("#lang").value;
   places.forEach((p) => (c[p.type] = (c[p.type] || 0) + 1));
   $("#typeChips").innerHTML = Object.keys(c)
-    .sort()
+    .sort((a, b) => typeLabel(a, l).localeCompare(typeLabel(b, l)))
     .map(
       (t) =>
-        `<button class="chip${state.types.has(t) ? " on" : ""}" data-t="${t}">${typeIcon(t)}${typeLabel(t)} <span>${c[t]}</span></button>`,
+        `<button class="chip${state.types.has(t) ? " on" : ""}" data-t="${esc(t)}">${typeIcon(t)}${esc(typeLabel(t, l))} <span>${c[t]}</span></button>`,
     )
     .join("");
+  renderTypes(); // the list of the Place types fold shows the same names and counts
 }
 function setData(p, n) {
   places = p;
@@ -226,7 +227,7 @@ function setData(p, n) {
 }
 function placeRowHTML(p, hits, l, q) {
   return (
-    `<li data-id="${p.id}"><div class="t"><span class="tmark" title="${esc(typeLabel(p.type))}">${typeIcon(p.type)}</span><b>${esc(label(p, l))}</b></div>` +
+    `<li data-id="${p.id}"><div class="t"><span class="tmark" title="${esc(typeLabel(p.type, l))}">${typeIcon(p.type)}</span><b>${esc(label(p, l))}</b></div>` +
     (placeWhen(p) ? `<div class="sn">${esc(placeWhen(p))}</div>` : "") +
     (hits[0] ? `<div class="sn">${mark(hits[0].text, q)}</div>` : "") +
     "</li>"
@@ -278,7 +279,7 @@ function update() {
       properties: {
         id: p.id,
         name: label(p, l),
-        type: typeLabel(p.type),
+        type: typeLabel(p.type, l),
         type_code: p.type,
         dates: placeWhen(p),
         halo: lyHalo(p.id),
@@ -405,7 +406,7 @@ const iconBtn = (act, icon, text, extra = "", cls = "") =>
   `<button type="button" class="icon-btn${cls ? " " + cls : ""}" data-act="${act}" ${extra} title="${text}" aria-label="${text}">${AHM.icons.svg(icon, 16)}</button>`;
 // The header of the place card: type marker (its title is the type), name, then edit / route from / route to / close.
 const placeHeadHTML = (p, l) =>
-  `<div class="dock-head"><span class="tmark" title="${esc(typeLabel(p.type))}">${typeIcon(p.type)}</span>` +
+  `<div class="dock-head"><span class="tmark" title="${esc(typeLabel(p.type, l))}">${typeIcon(p.type)}</span>` +
   `<h3 class="dock-title">${esc(label(p, l))}</h3><span class="dock-btns">` +
   (AHM_CONFIG.canEdit ? iconBtn("editplace", "pencil", "Edit place") : "") +
   iconBtn("from", "route-from", "Route from here") +
@@ -949,6 +950,133 @@ $("#langAdmin").addEventListener("click", async (e) => {
     err.textContent = x.message;
   }
 });
+// ---- place types: the dictionary every place type is chosen from (only administrators add, change or remove) ----
+// Same layout as languages: [buttons] [marker] [name] [code]. The form is shown only while it is open. The code of a
+// new type is made by the server from its English name and never changes; places point to a type by that code.
+let tyEditing = null; // the code being edited, or null = adding
+let tyOpen = false;
+const tyPoints = () => types.filter((t) => t.geometry === 'point');
+function renderTypes() {
+  const l = $("#lang").value,
+    n = {};
+  places.forEach((p) => (n[p.type] = (n[p.type] || 0) + 1));
+  $("#typeList").innerHTML =
+    tyPoints()
+      .sort((a, b) => typeLabel(a.code, l).localeCompare(typeLabel(b.code, l)))
+      .map(
+        (t) =>
+          `<li class="tr${t.code === tyEditing ? " on" : ""}"><span class="tc-btn">${
+            AHM_CONFIG.canTypeAdmin
+              ? `<button type="button" class="icon-btn" data-tyedit="${esc(t.code)}" title="Edit ${esc(typeLabel(t.code, l))}" aria-label="Edit ${esc(typeLabel(t.code, l))}">${ICON_PENCIL}</button>`
+              : ""
+          }</span><b class="tc-code">${typeIcon(t.code)}</b><span>${esc(typeLabel(t.code, l))}</span><span class="sn">${n[t.code] || 0}</span></li>`,
+      )
+      .join("") || '<li class="sn">No types yet.</li>';
+}
+const tyDraft = () => ({
+  symbol: $("#tySym").value,
+  color: $("#tyColor").value,
+  size: Number($("#tySize").value),
+});
+const tyNames = () =>
+  [...$("#typeAdmin").querySelectorAll(".pf-name")]
+    .map((r) => ({ lang: r.querySelector(".nl").value, name: r.querySelector(".nn").value.trim() }))
+    .filter((x) => x.name);
+// Save stays off until there is an English name (the code is made from it) when adding, or any name when editing.
+const tyValidate = () => {
+  const b = $("#tyAdd");
+  if (b) b.disabled = !(tyEditing ? tyNames().length : tyNames().some((x) => x.lang === "en"));
+  const pv = $("#tyPrev");
+  if (pv) pv.innerHTML = typeIcon(tyDraft()) + " " + esc($("#tySize").value);
+};
+function tyRenderAdmin(t) {
+  const el = $("#typeAdmin");
+  if (!AHM_CONFIG.canTypeAdmin) {
+    el.innerHTML = '<div class="sn">Only administrators can add a type. Missing one? Ask an administrator.</div>';
+    return;
+  }
+  if (!tyOpen) {
+    el.innerHTML = '<button id="tyNew" class="wide">+ Add place type</button>';
+    return;
+  }
+  const names = t && t.names.length ? t.names : [{ lang: "en", name: "" }],
+    st = (t && t.style) || { symbol: "circle", size: 8 };
+  el.innerHTML =
+    `<div class="label">Names</div><div class="pf-names">${names.map((n) => pfRow(n)).join("")}</div>` +
+    `<button type="button" class="pf-add">+ Add another name</button>` +
+    `<div class="sn">${t ? "The code <b>" + esc(t.code) + "</b> never changes." : "The code is made from the English name."}</div>` +
+    `<div class="label">Symbol</div><select id="tySym">${AHM.map
+      .getSymbols()
+      .map((y) => `<option value="${esc(y.name)}"${y.name === st.symbol ? " selected" : ""}>${esc(y.label)}</option>`)
+      .join("")}</select>` +
+    `<div class="label">Colour</div><input id="tyColor" type="color" value="${esc((t && t.color) || "#8d6e63").toLowerCase()}" aria-label="Colour">` +
+    `<div class="label">Size</div><input id="tySize" type="range" min="4" max="14" step="0.5" value="${Number(st.size) || 8}" aria-label="Size"> <span id="tyPrev"></span>` +
+    '<div class="btn-pair"><button id="tyAdd" class="primary" disabled>Save</button><button id="tyCancel">Cancel</button>' +
+    (t ? '<button id="tyDel" title="Remove this type (only when no place uses it)">Remove</button>' : "") +
+    '</div><div id="tyErr" class="sn err-line"></div>';
+  tyValidate();
+}
+function tyFill(t) {
+  tyOpen = true;
+  tyEditing = t ? t.code : null;
+  tyRenderAdmin(t);
+  renderTypes();
+}
+function tyClose() {
+  tyOpen = false;
+  tyEditing = null;
+  tyRenderAdmin();
+  renderTypes();
+}
+// The dictionary changed (or was loaded): the map draws from it, the filters, lists and the place form follow.
+function tySet(list) {
+  types = list;
+  AHM.map.setTypes(types);
+  renderTypes();
+  fillTypes();
+  if (typeof update === "function") update();
+}
+async function tyPost(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Error("Save failed: " + (j.error || r.status));
+  return j;
+}
+tyRenderAdmin();
+placeFormWire($("#typeAdmin")); // the add / move up / remove buttons of the name rows
+$("#typeAdmin").addEventListener("input", tyValidate);
+$("#typeAdmin").addEventListener("change", tyValidate);
+$("#typeAdmin").addEventListener("click", tyValidate);
+$("#typeList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-tyedit]");
+  if (b) tyFill(types.find((t) => t.code === b.dataset.tyedit));
+});
+$("#typeAdmin").addEventListener("click", async (e) => {
+  if (e.target.id === "tyNew") return tyFill(null);
+  if (e.target.id === "tyCancel") return tyClose();
+  const err = $("#tyErr");
+  try {
+    if (e.target.id === "tyDel") {
+      if (!confirm("Remove the type “" + typeLabel(tyEditing, $("#lang").value) + "”?")) return;
+      err.textContent = "Removing…";
+      await tyPost(AHM_CONFIG.url.typeDelete, { code: tyEditing });
+    } else if (e.target.id === "tyAdd") {
+      err.textContent = "Saving…";
+      const d = tyDraft();
+      await tyPost(AHM_CONFIG.url.typeSave, {
+        ...(tyEditing ? { code: tyEditing, edit: true } : {}),
+        geometry: "point",
+        names: tyNames(),
+        color: d.color,
+        style: { symbol: d.symbol, size: d.size },
+      });
+    } else return;
+    tySet(await loadTypes());
+    tyClose();
+  } catch (x) {
+    err.textContent = x.message;
+  }
+});
 // ---- events from the map (INTERFACES.md, I-2) ----
 AHM.on("place:click", ({ id }) => (lyState.editing ? lyToggleMember(id) : show(id)));
 // the map moves by itself (AHM.map.focusPlace, the move the list row uses); the sidebar only opens the place
@@ -962,10 +1090,13 @@ AHM.on("map:click", (p) => {
 });
 // ---- start ----
 renderRoute();
-Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), loadLayerNotes(), loadCategories(), loadShapes()])
-  .then(([p, n, l, ly, ln, cs, sp]) => {
+Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), loadLayerNotes(), loadCategories(), loadShapes(), loadTypes()])
+  .then(([p, n, l, ly, ln, cs, sp, ty]) => {
     languages = l;
     renderLangs();
+    types = ty;
+    AHM.map.setTypes(types);
+    renderTypes();
     setData(p, n);
     shSet(sp);
     lySet(ly, ln, cs);

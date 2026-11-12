@@ -8,7 +8,6 @@
 /tests/js/layers.test.js @bellaabrahamyan.am
 /tests/js/sidebar.test.js @bellaabrahamyan.am
 /changes/sidebar.md @bellaabrahamyan.am
-/todo/sidebar.md @bellaabrahamyan.am
 /diffs/sidebar/ @bellaabrahamyan.am
 
 # map
@@ -16,7 +15,6 @@
 /app/css/map.css @bellaabrahamyan.am
 /tests/js/map.test.js @bellaabrahamyan.am
 /changes/map.md @bellaabrahamyan.am
-/todo/map.md @bellaabrahamyan.am
 /diffs/map/ @bellaabrahamyan.am
 
 # core
@@ -26,21 +24,18 @@
 /tests/js/search.test.js @bellaabrahamyan.am
 /tests/fixtures/dates-vectors.json @bellaabrahamyan.am
 /changes/core.md @bellaabrahamyan.am
-/todo/core.md @bellaabrahamyan.am
 /diffs/core/ @bellaabrahamyan.am
 
 # state
 /app/js/state/ @bellaabrahamyan.am
 /tests/js/state.test.js @bellaabrahamyan.am
 /changes/state.md @bellaabrahamyan.am
-/todo/state.md @bellaabrahamyan.am
 /diffs/state/ @bellaabrahamyan.am
 
 # campaigns
 /app/features/campaigns/ @bellaabrahamyan.am
 /tests/js/campaigns.test.js @bellaabrahamyan.am
 /changes/campaigns.md @bellaabrahamyan.am
-/todo/campaigns.md @bellaabrahamyan.am
 /diffs/campaigns/ @bellaabrahamyan.am
 
 # data
@@ -59,7 +54,6 @@
 /tests/js/parity.test.js @bellaabrahamyan.am
 /tests/fixtures/rules.json @bellaabrahamyan.am
 /changes/data.md @bellaabrahamyan.am
-/todo/data.md @bellaabrahamyan.am
 /diffs/data/ @bellaabrahamyan.am
 
 # shared
@@ -74,9 +68,6 @@
 /changes/archive/ @bellaabrahamyan.am
 /TODO.md @bellaabrahamyan.am
 /tools/ @bellaabrahamyan.am
-/requests/ @bellaabrahamyan.am
-/proposals/ @bellaabrahamyan.am
-/tasks/ @bellaabrahamyan.am
 /app/index.html @bellaabrahamyan.am
 /app/js/config.js @bellaabrahamyan.am
 /app/js/ahm.js @bellaabrahamyan.am
@@ -106,7 +97,6 @@
 /graph/ @bellaabrahamyan.am
 /tests/js/graph.test.js @bellaabrahamyan.am
 /changes/shared.md @bellaabrahamyan.am
-/todo/shared.md @bellaabrahamyan.am
 /diffs/shared/ @bellaabrahamyan.am
 
 # repository root

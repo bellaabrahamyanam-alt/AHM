@@ -1,40 +1,44 @@
-// The pull-request check (tools/ci-check-pr.js, DOMAINS.md "Git workflow"): branch names, and a real git repository end to end.
+// The pull-request check (tools/ci-check-pr.js, DOMAINS.md "Git workflow"): branch names, protected files, and a real git repository end to end.
 const { test, ok, eq } = require('./lib/harness');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { domainsOfBranch } = require('../../tools/ci-check-pr');
+const { parseBranch, approvalOf, protectedTouched } = require('../../tools/ci-check-pr');
 const TOOL = path.join(__dirname, '..', '..', 'tools', 'ci-check-pr.js');
 
-test('ci: branch names are <domain>/<task>, several domains joined by +', () => {
-  eq({ domains: ['map'] }, domainsOfBranch('map/highlight'));
-  eq({ domains: ['shared', 'state'] }, domainsOfBranch('shared+state/scaffold'));
-  for (const bad of ['main', 'map', 'map/', 'nope/x', 'map+nope/x', 'Map/x', 'agent/map/x', '']) ok(domainsOfBranch(bad).error, `"${bad}" must be refused`);
+test('ci: branch names are <type>/<task>', () => {
+  eq({ type: 'feat' }, parseBranch('feat/point-menu'));
+  eq({ type: 'fix' }, parseBranch('fix/flicker'));
+  for (const bad of ['main', 'feat', 'feat/', 'map/highlight', 'Feat/x', 'feat/a/b', 'agent/feat/x', '']) ok(parseBranch(bad).error, `"${bad}" must be refused`);
 });
 
-test('ci: a branch that changes only its own domain passes, one that touches another domain is rejected', () => {
+test('ci: protected files (rules, CI, contracts) change only with "Owner-approved: T-NNN" in the PR description', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ahm_ci_'));
   const git = (...a) => execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { stdio: 'pipe' });
   const put = (f, t) => (fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }), fs.writeFileSync(path.join(dir, f), t));
-  const R = '';
   git('init', '-q', '-b', 'main');
-  put(R + 'app/js/map/map.js', 'a\n');
-  put(R + 'app/js/sidebar/ui.js', 'a\n');
+  put('app/js/map/map.js', 'a\n');
+  put('INTERFACES.md', 'a\n');
   git('add', '-A');
   git('commit', '-q', '-m', 'base');
-  git('checkout', '-q', '-b', 'map/x');
-  put(R + 'app/js/map/map.js', 'b\n');
-  git('commit', '-qam', 'own file');
-  const run = (branch) => spawnSync('node', [TOOL, branch, 'main'], { cwd: dir, encoding: 'utf8' });
-  eq(0, run('map/x').status, 'own domain');
-  put(R + 'app/js/sidebar/ui.js', 'b\n');
-  git('commit', '-qam', 'foreign file');
-  const r = run('map/x');
+  git('checkout', '-q', '-b', 'feat/x');
+  put('app/js/map/map.js', 'b\n');
+  put('app/js/sidebar/ui.js', 'new\n'); // another domain: fine, one builder works across domains
+  git('add', '-A');
+  git('commit', '-qam', 'code only');
+  const run = (branch, body) => spawnSync('node', [TOOL, branch, 'main'], { cwd: dir, encoding: 'utf8', env: { ...process.env, PR_BODY: body || '' } });
+  eq(0, run('feat/x').status, 'code in several domains');
+  put('INTERFACES.md', 'b\n');
+  git('commit', '-qam', 'contract');
+  const r = run('feat/x', 'no approval here');
   eq(1, r.status);
-  ok(/ui\.js: owned by sidebar, not by map/.test(r.stderr), r.stderr);
-  eq(0, run('map+sidebar/x').status, 'both domains named');
-  eq(1, run('feature-x').status, 'bad branch name');
+  ok(/INTERFACES\.md/.test(r.stderr), r.stderr);
+  eq(0, run('feat/x', 'Summary\n\nOwner-approved: T-012\n').status, 'with the approval line');
+  eq(1, run('feat/x', 'Owner-approved: 12').status, 'the id must look like T-012');
+  eq(1, run('map/x', '').status, 'bad branch name');
+  ok(approvalOf('x\nOwner-approved: T-7') === 'T-7' && approvalOf('') === null && approvalOf(undefined) === null, 'approvalOf');
+  eq(['INTERFACES.md', 'tools/prompts/_common.md'], protectedTouched(['app/js/a.js', 'INTERFACES.md', 'tools/prompts/_common.md', 'tools/make-graph.js']));
 });
 
 test('ci: deleting a path that no domain owns is allowed, changing one is not', () => {
@@ -62,7 +66,7 @@ test('ci: ONE job (tools/ci.sh) does the domain check, the graph and every test;
   ok(yml.includes('tools/ci.sh'), 'the job ci does not run tools/ci.sh');
   const gh = fs.readFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
   ok(gh.includes('tools/ci.sh') && /^  ci:/m.test(gh) && !/^  (tests|graph|domain):/m.test(gh), '.github/workflows/ci.yml must have the one job `ci` and run tools/ci.sh');
-  for (const v of ['CI_MERGE_REQUEST_IID', 'CI_MERGE_REQUEST_TARGET_BRANCH_NAME', 'CI_MERGE_REQUEST_SOURCE_BRANCH_NAME', 'CI_SERVER_HOST', 'CI_PROJECT_PATH', 'GRAPH_PUSH_TOKEN']) ok(gh.includes(v), `the GitHub workflow does not set ${v}, which tools/ci.sh reads`);
+  for (const v of ['CI_MERGE_REQUEST_IID', 'CI_MERGE_REQUEST_TARGET_BRANCH_NAME', 'CI_MERGE_REQUEST_SOURCE_BRANCH_NAME', 'CI_SERVER_HOST', 'CI_PROJECT_PATH', 'GRAPH_PUSH_TOKEN', 'PR_BODY']) ok(gh.includes(v), `the GitHub workflow does not set ${v}, which tools/ci.sh reads`);
   for (const part of ['tools/ci-check-pr.js', 'tools/make-graph.js', 'make-graph.js --check', 'git push', 'php tests/php/run.php', 'php tests/data/run.php', 'node tests/js/run.js']) ok(sh.includes(part), `tools/ci.sh does not run: ${part}`);
   for (const f of fs.readdirSync(__dirname).filter((x) => x.endsWith('.test.js'))) {
     ok(cd.DOMAINS.includes(cd.ownerOf('tests/js/' + f)), `tests/js/${f} has no domain, so no CI job would run it`);

@@ -1,4 +1,4 @@
-// State manager (domain "state"; INTERFACES.md I-6, proposals/003-state-manager.md). The ONE place that holds state shared between
+// State manager (domain "state"; INTERFACES.md I-6, changes/archive/proposals/003-state-manager.md). The ONE place that holds state shared between
 // domains (the selected place, the layer state). Provided to everyone as AHM.state; it knows nothing about the DOM, the map or the sidebar.
 // One function scope: no top-level names.
 (() => {

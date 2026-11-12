@@ -3,11 +3,8 @@
 //   node tools/make-context.js --cost          bytes of the files a starter makes an agent read (read first, and all), per domain
 //   node tools/make-context.js                 write context/<domain>.md for every domain (from tools/context.json and tools/domains.json)
 //   node tools/make-context.js --check         exit 1 if a file in context/ is out of date (run by tests/js/context.test.js)
-//   node tools/make-context.js --architect [out.tar.gz]
-//                                              docs-only package for the architect: documents, records, proposals, tools, no application code
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'domains.json'), 'utf8'));
 const ctx = JSON.parse(fs.readFileSync(path.join(__dirname, 'context.json'), 'utf8'));
@@ -28,7 +25,7 @@ const ifaceFiles = (d) => {
   return (ctx.domains[d].interfaces || []).map((n) => all.find((f) => f.startsWith(n + '-')) || `interfaces/${n}-MISSING.md`).map((f) => (f.startsWith('interfaces/') ? f : 'interfaces/' + f));
 };
 /** What to read first (always the same short set), then the code and documents of the domain. */
-const first = (d) => [...ctx.common, ...ifaceFiles(d), `graph/${d}.md`, `changes/${d}.md`, `todo/${d}.md`];
+const first = (d) => [...ctx.common, ...ifaceFiles(d), `graph/${d}.md`, `changes/${d}.md`, 'TODO.md'];
 const list = (d) => [...first(d), ...ctx.domains[d].read];
 
 function render(d) {
@@ -49,9 +46,9 @@ function render(d) {
     '',
     ...ctx.domains[d].read.map((f) => `- \`${f}\``),
     '',
-    '## Your files (the only ones you may change)',
+    '## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)',
     '',
-    shared + `, and your records \`changes/${d}.md\`, \`todo/${d}.md\`.`,
+    shared + `, and the log \`changes/${d}.md\`.`,
     '',
     '## Token rules',
     '',
@@ -79,13 +76,6 @@ function main(argv) {
     const size = (f) => (fs.existsSync(path.join(ROOT, f)) ? fs.statSync(path.join(ROOT, f)).size : 0);
     const sum = (l) => l.reduce((n, f) => n + size(f), 0);
     for (const d of domains) console.log(`${d.padEnd(10)} read first ${String(sum(first(d))).padStart(6)} B   with all listed code ${String(sum(list(d))).padStart(6)} B`);
-    return 0;
-  }
-  if (argv[0] === '--architect') {
-    const out = path.resolve(argv[1] || 'ahm-map-architect.tar.gz');
-    const keep = ['CLAUDE.md', 'AGENTS.md', 'DOMAINS.md', 'INTERFACES.md', 'interfaces', 'README.md', 'docs', 'proposals', 'requests', 'changes', 'todo', 'tools', 'context', 'tests/README.md'].filter((f) => fs.existsSync(path.join(ROOT, f)));
-    execFileSync('tar', ['--exclude=node_modules', '-czf', out, '-C', ROOT, ...keep]);
-    console.log('wrote ' + out + ' (' + keep.join(', ') + ')');
     return 0;
   }
   const bad = problems();

@@ -1,28 +1,44 @@
 #!/usr/bin/env node
-// pull-request check (DOMAINS.md, "Git workflow"; run by the `domain` job of .gitlab-ci.yml). Usage: node tools/ci-check-pr.js <branch> <base-ref>
-// The branch is named <domain>[+<domain>]/<task>, for example map/highlight or shared+state/scaffold. Every file the branch changed
-// (git diff <base-ref>...HEAD) must belong to one of the named domains or be a record/request/proposal allowed by check-domain.js.
-// `master` itself and branches named like release/... are not checked here.
+// Pull-request check (DOMAINS.md, "Git workflow"; first step of tools/ci.sh). Usage: node tools/ci-check-pr.js <branch> <base-ref>
+// 1. The branch is named <type>/<task>, type = feat, fix, docs, test, refactor or chore (for example feat/point-menu).
+// 2. The rules and the machinery that judge the work ("protected" in tools/domains.json: agent rules, CI, contracts, ownership) may change only
+//    with the owner's approval. The PR description must then hold a line `Owner-approved: T-NNN` naming the item of TODO.md in which the owner
+//    wrote his decision (the critic checks that the item says so). Otherwise the check fails.
+// `master` itself is not checked here.
 const { execFileSync } = require('child_process');
 const cd = require('./check-domain');
 
-/** The domains named by a branch, or { error } when the name does not follow the convention. */
-function domainsOfBranch(branch) {
-  const m = /^([a-z]+(?:\+[a-z]+)*)\/[A-Za-z0-9._-]+$/.exec(branch || '');
-  if (!m) return { error: `branch "${branch}" must be named <domain>/<task> (domains: ${cd.DOMAINS.join(', ')}; several: a+b/<task>)` };
-  const list = m[1].split('+');
-  const unknown = list.filter((d) => !cd.DOMAINS.includes(d));
-  return unknown.length ? { error: `unknown domain "${unknown.join(',')}" in branch "${branch}" (known: ${cd.DOMAINS.join(', ')})` } : { domains: list };
+const TYPES = ['feat', 'fix', 'docs', 'test', 'refactor', 'chore'];
+
+/** { type } or { error } for a branch name. */
+function parseBranch(branch) {
+  const m = /^([a-z]+)\/[A-Za-z0-9._-]+$/.exec(branch || '');
+  if (!m || !TYPES.includes(m[1])) return { error: `branch "${branch}" must be named <type>/<task> with type ${TYPES.join(', ')}, for example feat/point-menu` };
+  return { type: m[1] };
 }
 
-function main(branch, base) {
-  const b = domainsOfBranch(branch);
+/** Changed paths that are protected (a protected entry ending in / is a folder). */
+function protectedTouched(files) {
+  const prot = cd.cfg.protected || [];
+  return files.filter((f) => prot.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p)));
+}
+
+/** The approval id named by the PR description, or null. */
+function approvalOf(body) {
+  const m = /^\s*Owner-approved:\s*(T-\d+)\b/im.exec(body || '');
+  return m ? m[1] : null;
+}
+
+function main(branch, base, body) {
+  const b = parseBranch(branch);
   if (b.error) return console.error(b.error), 1;
-  const diff = execFileSync('git', ['diff', '--no-color', '--no-renames', `${base}...HEAD`], { maxBuffer: 1 << 28 }).toString();
-  const bad = cd.check(b.domains, diff);
-  if (bad.length) return console.error(`REJECTED: the branch touches files outside its domain (${b.domains.join(' + ')}):\n  ` + bad.join('\n  ')), 1;
-  console.log(`ok: every changed file is in the domain ${b.domains.join(' + ')}`);
+  const files = execFileSync('git', ['diff', '--name-only', '--no-renames', `${base}...HEAD`], { maxBuffer: 1 << 28 }).toString().split('\n').filter(Boolean);
+  const prot = protectedTouched(files.filter((f) => !/^graph\/[^/]+\.md$/.test(f)));
+  if (prot.length && !approvalOf(body)) {
+    return console.error(`REJECTED: the branch changes protected files and the PR description has no line "Owner-approved: T-NNN":\n  ` + prot.join('\n  ')), 1;
+  }
+  console.log(prot.length ? `ok: protected files changed with ${approvalOf(body)} (the critic checks the approval in TODO.md)` : 'ok: no protected file changed');
   return 0;
 }
-if (require.main === module) process.exit(main(process.argv[2], process.argv[3] || 'origin/master'));
-module.exports = { domainsOfBranch };
+if (require.main === module) process.exit(main(process.argv[2], process.argv[3] || 'origin/master', process.env.PR_BODY));
+module.exports = { parseBranch, protectedTouched, approvalOf };

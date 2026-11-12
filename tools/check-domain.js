@@ -4,8 +4,8 @@
 //   node tools/check-domain.js --owner <path>                     print the domain that owns a path (path from the repository root)
 //   node tools/check-domain.js --codeowners                       print the CODEOWNERS text made from tools/domains.json
 //   node tools/check-domain.js --codeowners-github                print the CODEOWNERS text for GitHub (.github/CODEOWNERS)
-// A diff may also (a) add records of its own domain (changes/<domain>.md, todo/<domain>.md, diffs/<domain>/…),
-// (b) add a NEW file requests/<domain>-to-<other>-….md, (c) add a NEW file proposals/….md. Nothing else outside the domain.
+// A diff may also (a) add records of its own domain (changes/<domain>.md, diffs/<domain>/…),
+// (b) add a NEW file requests/<domain>-to-<other>-….md. Nothing else outside the domain.
 const fs = require('fs');
 const path = require('path');
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'domains.json'), 'utf8'));
@@ -21,7 +21,7 @@ function ownerOf(p) {
   if (cfg.ignored.some((e) => under(r, e))) return 'ignored';
   for (const d of DOMAINS) {
     if (cfg.domains[d].some((e) => under(r, e))) return d;
-    if (r === `changes/${d}.md` || r === `todo/${d}.md`) return d;
+    if (r === `changes/${d}.md`) return d;
   }
   return null;
 }
@@ -56,7 +56,6 @@ function check(domains, text) {
     if (f.isGone && !owner) continue; // deleting a path that no domain owns (any more) is clean-up, not a cross-domain change
     if (owner && domains.includes(owner)) continue;
     if (f.isNew && domains.some((d) => new RegExp(`^requests/${d}-to-[a-z]+-[^/]+\\.md$`).test(rel))) continue;
-    if (f.isNew && /^proposals\/[^/]+\.md$/.test(rel)) continue;
     bad.push(`${f.path}: owned by ${owner || 'nobody (not in tools/domains.json)'}, not by ${domains.join(' or ')}`);
   }
   return bad;
@@ -76,7 +75,7 @@ function codeowners(platform = 'gitlab') {
   for (const d of DOMAINS) {
     out.push(`# ${d}`);
     for (const e of cfg.domains[d]) out.push(`/${cfg.root}${e} ${h(d)}`);
-    out.push(`/${cfg.root}changes/${d}.md ${h(d)}`, `/${cfg.root}todo/${d}.md ${h(d)}`, `/diffs/${d}/ ${h(d)}`, '');
+    out.push(`/${cfg.root}changes/${d}.md ${h(d)}`, `/diffs/${d}/ ${h(d)}`, '');
   }
   out.push('# repository root', ...cfg.outside.shared.map((e) => `/${e} ${h('shared')}`), '');
   return out.join('\n');

@@ -1,7 +1,6 @@
-// Starter context for agents (tools/make-context.js, AGENTS.md "Token rules"): up to date, short, complete; the architect package has no code.
+// Starter context for agents (tools/make-context.js, AGENTS.md "Token rules"): up to date, short, complete.
 const { test, ok, eq } = require('./lib/harness');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const mc = require('../../tools/make-context');
@@ -20,7 +19,7 @@ test('context: each starter is short (at most 6 code files, at most 14 files to 
     ok(l.length - first.length <= 6, `${d} lists ${l.length - first.length} code files`);
     ok(first.length <= 14, `${d} reads ${first.length} files first`);
     ok(l[0] === 'AGENTS.md' && l[1] === 'INTERFACES.md', `${d}: common documents first`);
-    ok(l.includes(`graph/${d}.md`) && l.includes(`changes/${d}.md`) && l.includes(`todo/${d}.md`), `${d}: graph and own records`);
+    ok(l.includes(`graph/${d}.md`) && l.includes(`changes/${d}.md`) && l.includes('TODO.md'), `${d}: graph and own records`);
   }
 });
 
@@ -43,11 +42,3 @@ test('context: context/<domain>.md files are up to date (run: node tools/make-co
   eq(0, rc);
 });
 
-test('context: the architect package holds documents, records and tools, and no application code', () => {
-  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ahm_arch_')), 'a.tar.gz');
-  execFileSync('node', [TOOL, '--architect', out], { stdio: 'pipe' });
-  const files = execFileSync('tar', ['-tzf', out]).toString().split('\n').filter(Boolean);
-  for (const must of ['CLAUDE.md', 'AGENTS.md', 'interfaces/I-6-state-manager.md', 'docs/09-code-style.md', 'DOMAINS.md', 'INTERFACES.md', 'tools/domains.json', 'context/map.md', 'changes/shared.md', 'proposals/003-state-manager.md']) ok(files.includes(must), 'missing ' + must);
-  const code = files.filter((f) => /^(app|data|service|controller|dev|tests\/js|tests\/php|styles)\//.test(f));
-  eq([], code, 'application code in the architect package');
-});

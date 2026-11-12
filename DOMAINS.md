@@ -1,12 +1,8 @@
-# Domains: who may change what (`ahm/map`)
+# Domains and the working method (`ahm/map`)
 
-Purpose: several agents can work at the same time without merge conflicts and without touching each other's code.
-Every file belongs to exactly one domain. An agent changes files of **its own domain only**. Everything between domains goes through
-the interfaces in `INTERFACES.md`, and **only the owner (the human) can change an interface**.
+Two things in this file: (1) **domains**, the areas of the code and who owns each file; (2) **how work gets done**: one `builder` agent does an item of `TODO.md`, one `critic` agent verifies it and merges.
 
-**Status of this structure: step 4 of 4 done** (documents, refactor to the interface, enforcement tooling, parallel work). Agents may now
-work at the same time, one per domain, as described in "Parallel work" below. The first agents: **map** and **campaigns**
-(starter prompts: `tools/prompts/`).
+Domains are areas, not walls. The one `builder` may change files of several domains in one item when the item needs it. What stays strict: **`sidebar` and `map` talk only through `window.AHM`** and nothing adds a cross-domain call beyond `INTERFACES.md` (`tests/js/boundaries.test.js` enforces it), and **protected files** change only with the owner's approval (below).
 
 ## The domains
 
@@ -16,9 +12,9 @@ work at the same time, one per domain, as described in "Parallel work" below. Th
 | **map** | the map canvas and everything drawn or done on it: base maps, symbols, labels, halos, popups, markers, routes, historical-map overlays, map clicks | `app/js/map/*` (`map.js`, `overlays.js`, `typeicons.js`), `app/css/map.css`, and the **Maps fold** of the More tab in `app/index.html` (`#more-maps`: base map, groups, historical maps) |
 | **data** | storage and the server: files in `data/`, PHP service and controller, the Node dev mirror, the file formats, validation rules | `data/**`, `service/**`, `controller/**`, `config/**`, `event/**`, `language/**`, `ext.php`, `composer.json`, `dev/**`, `tests/php/**`, `tests/data/**`, `tests/fixtures/rules.json` |
 | **core** | functions with no DOM and no map: dates, search and filtering, layer rules, loading and normalising data in the browser, the outside services (place search, directions) | `app/js/core/*` (`dates.js`, `data.js`, `search.js`, `layer-rules.js`, `providers.js`), `tests/fixtures/dates-vectors.json` |
-| **state** | the state manager: the one module that holds state shared between domains (selected place, layer state), provided as `AHM.state` (I-6, proposal 003, approved; built, `changes/state.md` #1) | `app/js/state/**`, `tests/js/state.test.js` |
+| **state** | the state manager: the one module that holds state shared between domains (selected place, layer state), provided as `AHM.state` (I-6; built, `changes/state.md` #1) | `app/js/state/**`, `tests/js/state.test.js` |
 | **campaigns** | the military-campaigns feature, a switchable add-on (see "Features") | `app/features/campaigns/**`, `tests/js/campaigns.test.js` |
-| **shared** (owner only) | the shell and the contracts: no agent edits these without an approved proposal | `app/index.html` (script and style list, page skeleton), `app/js/config.js`, `app/js/ahm.js`, `app/js/features.js`, `app/js/icons.js` (icons, I-7), `app/css/base.css`, `INTERFACES.md`, `DESIGN.md` (UI rules), `DOMAINS.md`, `AGENTS.md`, `tests/js/run.js` and `tests/js/lib/**`, `tools/**`, `CODEOWNERS` |
+| **shared** (owner only) | the shell and the contracts: changes only in a TODO.md item with an `Approved:` line when it is a protected file | `app/index.html` (script and style list, page skeleton), `app/js/config.js`, `app/js/ahm.js`, `app/js/features.js`, `app/js/icons.js` (icons, I-7), `app/css/base.css`, `INTERFACES.md`, `DESIGN.md` (UI rules), `DOMAINS.md`, `AGENTS.md`, `tests/js/run.js` and `tests/js/lib/**`, `tools/**`, `CODEOWNERS` |
 
 Notes:
 - **data** includes the PHP/Node mirror: a rule changed in `service/store.php` is changed in `dev/save-handler.js` and in
@@ -30,56 +26,39 @@ Notes:
   by **shared**; the domain that breaks one fixes its own code, never the test.
 - The sample data in `data/` is owned by **data**.
 
-## Rules for every agent
+## Rules (short)
 
-1. **Declare your domain** in the first line of your answer ("Domain: sidebar"). Work only in that domain's files.
-2. **Never edit another domain's file**, not even for a one-line fix. Write a request instead (below).
-3. **Never change an interface** (`INTERFACES.md`, or any name, signature, event, endpoint or file format it lists). If your work
-   needs a different interface, write a proposal (below) and stop that part of the work. The owner decides.
-4. **Use other domains only through their interface**: the sidebar calls `AHM.map.*` and listens to `AHM.on(...)`, never `map.*`,
-   never MapLibre objects, never map.js internals. The map never reads the sidebar's state. Anyone may call core functions.
-5. **No new globals** outside your own files. Cross-domain names exist only as listed in `INTERFACES.md`.
-6. **One diff per answer, your domain only.** The diff is checked by `node tools/check-domain.js <domain> <diff>`: a file outside the
-   declared domain (other than your own records) rejects it. The table of owners is `tools/domains.json`; `CODEOWNERS` is made from it.
-7. **Your own records**, after the roll-out: change log `changes/<domain>.md`, to-do `todo/<domain>.md`, diff numbering per domain
-   (only when the owner asks for diff files; work normally goes by pull request). Never append to another domain's records. This is what prevents merge conflicts in the
-   shared log files.
-8. **Tests:** run your domain's tests and the contract tests before delivering. Do not change the tests of another domain.
+1. **One item of `TODO.md` = one branch = one pull request.** Branch `<type>/<task>`, type = feat, fix, docs, test, refactor, chore (`feat/point-menu`). Never push to `master`.
+2. **Interfaces** (`INTERFACES.md`, `interfaces/`): a change needs an item with an `Approved:` line of the owner. Use other domains only through them: the sidebar calls `AHM.map.*` and listens to `AHM.on(...)`, never `map.*`, MapLibre objects or map.js internals; anyone may call core functions. No new globals outside your own files.
+3. **Tests first**, for every new rule; the contract and boundary tests are never edited to make a change pass.
+4. **Records:** an entry in `changes/<domain>.md` of each domain touched (several builders never share one file because logs are per domain), the `docs/` section kept current, the item moved to Done in `TODO.md`. A decision a later agent could undo by mistake goes into `docs/08-underlying-decisions.md`.
+5. **Decisions of the owner** are made in `TODO.md`: "Needs you" holds the question (2 or 3 options, a recommendation); the owner answers with a line `Approved: <date> <decision>`. There are no proposal, request or task-spec files any more (history: `changes/archive/`).
 
-## Parallel work (step 4)
+## Working method (builder and critic)
 
-> **Legacy method (archives and diff files).** Since the repository became the project root (2026-11-07) work goes by pull request, see "Git workflow" below. The steps here describe the old archive method and apply only if the owner asks for diff files.
+| Role | File | Does | Never |
+|---|---|---|---|
+| **owner** | (you) | adds items to `TODO.md`, decides "Needs you", gets the critic's reports | |
+| **builder** | `.claude/agents/builder.md` | spec (as criteria), tests first, prototype and design, code, docs, pull request | merges; edits protected files without an `Approved:` item; edits a test only to make it pass |
+| **critic** | `.claude/agents/critic.md` | verifies the pull request itself (CI, own test run, mutation check, test-weakening check, scope, protected files, diff review, manual run) and merges if all is good, else reports to the owner | changes any file; merges red or unverified work |
 
-Roles: the **owner** decides and approves; the **integrator** (the owner, or one agent he names) merges; each **domain agent** works in one domain.
-1. **Start.** Every agent starts from the latest full archive (or, with git, its own branch/worktree `agent/<domain>`; the tree is not a git
-   repository today, so the archive plus diffs is the working method). Agents never share a working copy.
-2. **Work.** The agent declares its domain, changes only its domain's files, logs in `changes/<domain>.md`, and runs
-   `node tools/check-domain.js <domain> <diff>` and `node tests/js/run.js`.
-3. **Deliver.** One diff `diffs/<domain>/NNN-<name>.diff` (its own numbering), the log entry, the test result, and the full archive of its tree
-   (AGENTS.md rule 3; the integrator's merged archive is the one that counts).
-4. **Merge.** The integrator applies the diffs one by one (`patch -p1 --dry-run`, then for real), runs all three test sets, and builds the archive.
-   Diffs of different domains never touch the same file (the records are per domain), so they do not conflict.
-   A diff that does not apply goes back to its agent, who re-applies the work on the newest archive. Only the integrator edits shared files.
-5. **Cross-domain needs** go through `requests/` (fits the current interface) or `proposals/` (changes an interface); the owner decides.
+Commands: `builder: T-012`, `builder: next`, `builder: <free description>` (becomes an item first), `critic: PR #<n>`, `critic: all open PRs`, `builder: fix PR #<n>` (after a critic's report).
 
-## Git workflow (step 5; replaces the archives and diff files)
+**Why two agents:** an author checking its own work misses what it assumed. The critic runs everything again from `master`, and its mutation check (the new tests must fail without the change) shows whether the tests test anything.
 
-**Layout:** the repository root IS the extension (`app/`, `data/`, `service/`, `tests/`, `tools/`, the documents). In a forum it is installed as `<forum>/ext/ahm/map/`. There is no `ext/`, no `diffs/` and no forum style in the repository; `styles/` holds only the extension's own phpBB styles (owned by data). All paths in this project are relative to the repository root.
+**What the critic cannot verify here:** the map canvas (the map library comes from a CDN the sandbox cannot reach), a real forum, real phones. It lists these as "needs the owner's eyes" with exact steps, and they are never counted as verified.
 
-The project lives on GitHub: `bellaabrahamyanam-alt/ahm` (https://github.com/bellaabrahamyanam-alt/ahm). The trunk branch is `master`. It was moved from GitLab (`bellaabrahamyan.am/ahm`); `.gitlab-ci.yml` and `.gitlab/CODEOWNERS` stay as a mirror of the same logic, but agents work on GitHub. The history before 2026-11-07 is one snapshot commit.
-- **`master`** changes only through pull requests (PR). CI (`.github/workflows/ci.yml`; `.gitlab-ci.yml` runs the same script) must be green. It is ONE job `ci` that runs `tools/ci.sh` (one container start per run): (1) the domain check (`tools/ci-check-pr.js`: the branch may change only the domain(s) named in its name); (2) `graph/`: in a PR the job rebuilds it with `node tools/make-graph.js` and, when it changed, commits it to the PR branch as `chore: update graph/ (generated by CI)` and stops, and the run of that new commit runs the tests (needs the secret `GRAPH_PUSH_TOKEN`, owner setup 4); on `master` the job only checks (`--check`); `graph/*.md` files are exempt from the domain check; (3) `php tests/php/run.php`, `php tests/data/run.php` and `node tests/js/run.js` (all JS tests, browser and lint included; every failing part is reported, not only the first). PRs that change only documents (every `.md` file, `proposals/`, `tasks/`, `tools/prompts/`, `.claude/`) stop after step 1; the code path list is in `tools/ci.sh`. `.github/CODEOWNERS` (made by `check-domain.js --codeowners-github`; `.gitlab/CODEOWNERS` by `--codeowners`) names the owner for every path.
-- **Branches** are named `<domain>/<task>` (`map/highlight`; several domains `shared+state/scaffold`). One branch, one task, one PR. A branch with another name fails the domain check.
-- **Roles per task.** Fixed agent names (files `.claude/agents/<name>.md`, shared rules `tools/prompts/_common.md`): `architect` (task specs, proposals, interfaces), `<domain>-tdd` (commits the failing tests first, `test: ...`, and pushes the branch; no PR, so no CI run on tests that are red on purpose), `<domain>-dev` (continues on that branch, `feat: ...`/`fix: ...`, runs the tests, then opens the PR, does not merge), `gatekeeper` (the only merger, all domains). Domains: sidebar, map, data, core, state, campaigns. Call an agent by name plus a task: `map-dev: task 006` (the file `tasks/006-*.md`), `map-dev: do tasks/006-x.md` or `map-dev: <free description>`. A small task may have one agent doing both tdd and dev, tests first. In a Claude Project chat the first line of a message is `<role>: <task>`; the owner pastes `tools/prompts/project-instructions.md` into the Project once. Agents clone from GitHub and run the tests locally; in Claude Code the session is attached to the repository and `CLAUDE.md` sends the agent to `AGENTS.md`.
-- **Commits** read `<type>: <what>` in English. The change-log entry of the domain (`changes/<domain>.md`) is in the same PR (`AGENTS.md`, requirement 2).
-- **Keep up to date:** `git fetch origin master` and `git rebase origin/master` before the PR is ready (a shallow clone tracks only `master`). Records are per domain, so conflicts are rare; shared files are changed only by shared branches.
-- **PR, CI and acceptance:** only the `-dev` agent opens the PR (`tools/prompts/_common.md` rule 8), after the tests pass locally; it waits until the newest run of the branch is `success` and stops ("PR #n ready for gatekeeper"). It never merges. The `-tdd` agent only pushes its branch. The `gatekeeper` checks the PR against the task spec (domain, acceptance criteria, tests not weakened, interfaces untouched, change-log entry, CI green) and merges it (REST `PUT /pulls/<n>/merge`, squash, only with the head sha it reviewed), or sends it back with a comment. Never merge red.
-- **Merge:** by `gatekeeper` only; squash merge, title = the PR title. The owner pulls with `git pull origin master`.
-- **No diff file and no archive** are needed for work delivered by PR (`docs/legacy-chat-workflow.md` applies only to work NOT delivered that way, or when the owner asks).
-- **Environment note:** in a Claude Code cloud session GitHub's GraphQL API is blocked, so `gh pr create` fails: use `gh api repos/<owner>/<repo>/pulls` (REST). The same sessions cannot delete branches; the repository setting "Automatically delete head branches" does it.
-- **Secrets:** if the repository is public, everything committed is world-readable. Public or not, never commit passwords, tokens, personal data or private forum data; `data/` holds sample data only (live data stays in the forum's `store/ahm_map/`).
-- **Owner setup, once (no agent can change these):** (1) Settings > Branches: protect `master`: require a pull request, require the status check `ci`, no direct pushes (admins included if you want it strict); (2) Settings > General: allow squash merging, tick "Automatically delete head branches"; (3) optional: require review from code owners (`.github/CODEOWNERS` already names you); (4) for `graph/` in CI: create a fine-grained personal access token (repository `ahm` only, Contents: Read and write) and save it as the repository secret `GRAPH_PUSH_TOKEN` (Settings > Secrets and variables > Actions); without it the job fails on a stale `graph/` with a message; pull requests from forks never get the secret. Without branch protection the rule "never merge red" is the only guard.
+## Git workflow
 
-## Features (switchable add-ons, step 4)
+- **Layout:** the repository root IS the extension (`app/`, `data/`, `service/`, `tests/`, `tools/`, documents). In a forum it is installed as `<forum>/ext/ahm/map/`. All paths are relative to the root.
+- **Project:** GitHub `bellaabrahamyanam-alt/ahm`, trunk `master`, squash merges, only by the critic. `.gitlab-ci.yml` and `.gitlab/CODEOWNERS` are a mirror of the same logic.
+- **CI** (`.github/workflows/ci.yml`, one job `ci`, runs `tools/ci.sh`): (1) `tools/ci-check-pr.js`: branch name `<type>/<task>`; protected files changed only when the PR description has `Owner-approved: T-NNN`; (2) `graph/`: in a PR the job rebuilds it and, when changed, commits it to the PR branch (secret `GRAPH_PUSH_TOKEN`) and stops, the new commit's run does the tests; on `master` it only checks; (3) PHP, data and JS tests. PRs that change only documents stop after step 1.
+- **Protected files** (`protected` in `tools/domains.json`): the agent rules (`AGENTS.md`, `CLAUDE.md`, `DOMAINS.md`, `.claude/`, `tools/prompts/`), the contracts (`INTERFACES.md`, `interfaces/`, `contract.test.js`, `boundaries.test.js`), CI and ownership files. The builder cannot loosen the rules or the judge of its own work.
+- **Commits** read `<type>: <what>` in English and end with the attribution lines of the environment.
+- **A shallow clone** tracks only `master`: `git fetch origin master` before a rebase. In a Claude Code cloud session GitHub's GraphQL API is blocked: `gh pr create` fails, use `gh api repos/<owner>/<repo>/pulls` (REST).
+- **Owner setup (no agent can change it):** `TODO.md` item T-004: protect `master` (require a PR and the check `ci`), squash merge on, "Automatically delete head branches" on, secret `GRAPH_PUSH_TOKEN` (fine-grained token, repository `ahm`, Contents: read and write). Never commit tokens or private forum data.
+
+## Features (switchable add-ons)
 
 A feature is new, unfinished functionality that must be **visible in development and hidden in production**, and removable without a trace.
 It is built as a folder `app/features/<name>/` owned by its own domain `<name>` (INTERFACES.md I-5). The mechanism:
@@ -89,47 +68,18 @@ It is built as a folder `app/features/<name>/` owned by its own domain `<name>` 
 - **Loader:** `app/js/features.js` (shared) is the only bridge. Nothing else in the app knows the feature exists; `tests/js/features.test.js`
   fails if any file of another domain mentions a feature's name, if the feature declares top-level names, uses anything but the interface, emits events not
   named `<name>:*`, or styles anything but `.<name>-…`/`#<name>-…`.
-- **Agent rule:** a feature agent touches only its folder, its test file and its records. Needs outside (map drawing, server storage, a sidebar entry) are
-  requests or proposals; the owner decides. First open one: `proposals/002-map-extension-points.md` (custom map layers).
-- **Going live:** when the owner decides, he (or the integrator) adds the name to what the controller sends (data domain request) and the feature is on.
-
-## Requests and proposals (the only way across a boundary)
-
-- **Request** (a need from another domain's code that fits the current interface): add a file
-  `requests/<from>-to-<to>-NNN-<name>.md` (what, why, the exact interface call you expect). The owner forwards it; the owning
-  agent implements it in its own domain.
-- **Proposal** (a change to an interface): `proposals/NNN-<name>.md` with: current text, new text, who is affected, migration
-  steps, tests to add. Nothing is implemented before the owner writes "approved" in the file. After approval the owner (or the
-  integrator agent he names) updates `INTERFACES.md` and its version number, then each affected domain adapts in its own change.
-- Both folders exist (`requests/`, `proposals/`, each with a README). `proposals/001-search-run-options.md` (implemented) and `proposals/002-map-extension-points.md` (pending) exist.
-
-## Integrator
-
-The owner, or one agent he names for a given moment, is the **integrator**. Only the integrator: edits **shared** files, merges
-the domains' diffs, runs the full test set (`php tests/php/run.php`, `php tests/data/run.php`, `node tests/js/run.js`), and builds
-and sends the full archive (`AGENTS.md`, requirement 3). A domain agent delivers its diff, its log entry and its test result; it
-does not build the archive when several agents work in parallel.
+- **Rule:** work on a feature touches only its folder, its test file and its log. A need outside it (map drawing, server storage, a sidebar entry) is a TODO.md item under "Needs you" (first one: T-001, custom map layers).
+- **Going live:** when the owner decides, the owner adds the name to what the controller sends (a TODO.md item, T-013) and the feature is on.
 
 ## How the rules are enforced (all in `node tests/js/run.js`, owned by shared)
 
-- `domains.test.js`: every file has exactly one owner in `tools/domains.json`; CODEOWNERS is in sync; the diff checker accepts and rejects what it should.
+- `domains.test.js`: every file has exactly one owner in `tools/domains.json`; CODEOWNERS is in sync.
+- `ci.test.js`: the branch name rule and the protected-files rule of the pull-request check.
 - `boundaries.test.js`: a script may not use a top-level name declared by another domain (the two written-down exceptions are in the test).
-- `context.test.js`: the starter contexts in `context/` are current and short; the architect package has no application code.
+- `context.test.js`: the starter contexts in `context/` are current and short.
 - `features.test.js`: the feature flag, the loader, and the isolation rules of every `app/features/<name>/` folder (I-5).
 - `contract.test.js`: the endpoint names (I-1), `AHM.map` commands and events (I-2), core function names (I-3), `typeIcon` (I-4), the state manager and its keys (I-6; the map must handle `state:selected`); the names added in 1.5 (I-1, I-2, I-3) are accepted but not yet required.
 - `icons.test.js`: the icon set of I-7 (names, markup, size, load order in `index.html`).
-- A new file needs an owner line in `tools/domains.json` (shared domain, owner approval) or the tests fail.
+- A new file needs an owner line in `tools/domains.json` or the tests fail.
 - Test ownership: `layers.test.js` and `sidebar.test.js` are sidebar's; `dates`, `data`, `search` tests and `dates-vectors.json` are core's; `php`, `data` tests, `parity.test.js`
   and `rules.json` are data's; `browser`, `lint`, `icons` and the five tests above (`features` and `context` too), the runner and `tests/js/lib` are shared.
-
-## Roll-out (each step needs the owner's "go")
-
-1. **Documents** (done): `DOMAINS.md`, `INTERFACES.md`, `AGENTS.md`. No code changes.
-2. **Refactor to the interface** (done, entry #26; the owner reviews it): add `window.AHM` (I-2), move every current
-   cross-domain call onto it (list in `INTERFACES.md`, "Known violations"), split `layers.js` and `search.js` by owner, split
-   `style.css` into `base.css`, `sidebar.css`, `map.css`, move files into `app/js/<domain>/`, and update the script list.
-   Behaviour did not change; the tests pass unchanged except for file paths and load lists.
-3. **Enforcement** (done, `changes/shared.md` #1): `CODEOWNERS`, `tools/check-domain` (rejects a diff with files outside the declared domain), ESLint
-   `no-restricted-globals` / import rules per folder, contract tests for I-1 to I-3, and the per-domain logs, to-dos and diff
-   folders (the legacy `AGENT_CHANGES.md` and `TODO.md` become read-only history).
-4. **Parallel work** (done, `changes/shared.md` #3): "Parallel work" and "Features" above; the campaigns domain and its scaffold; starter prompts in `tools/prompts/`.

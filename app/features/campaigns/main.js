@@ -8,7 +8,7 @@
     badge.textContent = 'Campaigns (development)';
     document.body.appendChild(badge);
     AHM.features.onMapReady(() => {
-      // Draw campaigns here once the map extension points exist (proposals/002-map-extension-points.md).
+      // Draw campaigns here once the map extension points exist (changes/archive/proposals/002-map-extension-points.md).
     });
   });
 })();

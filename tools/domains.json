@@ -1,5 +1,5 @@
 {
-  "_comment": "Who owns which path (DOMAINS.md). Paths are relative to the repository root. An entry ending in / is a folder (everything below it); any other entry is one file. A path matches the FIRST domain whose list contains it. Every file must have an owner (tests/js/domains.test.js). Each domain also owns changes/<domain>.md, todo/<domain>.md and diffs/<domain>/ (added by tools/check-domain.js, not listed here).",
+  "_comment": "Who owns which path (DOMAINS.md). Paths are relative to the repository root. An entry ending in / is a folder (everything below it); any other entry is one file. A path matches the FIRST domain whose list contains it. Every file must have an owner (tests/js/domains.test.js). Each domain also owns changes/<domain>.md and diffs/<domain>/ (added by tools/check-domain.js, not listed here).",
   "owners": {
     "_comment": "Handles for .gitlab/CODEOWNERS (default) and .github/CODEOWNERS (github). default = the human owner; add a domain name as key to give that domain its own person or team.",
     "default": "@bellaabrahamyan.am",
@@ -62,9 +62,6 @@
       "changes/archive/",
       "TODO.md",
       "tools/",
-      "requests/",
-      "proposals/",
-      "tasks/",
       "app/index.html",
       "app/js/config.js",
       "app/js/ahm.js",
@@ -109,5 +106,22 @@
     ".git/",
     "app/node_modules/",
     "dev/archive/"
+  ],
+  "protected": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "DOMAINS.md",
+    "INTERFACES.md",
+    "interfaces/",
+    ".claude/",
+    "tools/prompts/",
+    "tools/domains.json",
+    "tools/check-domain.js",
+    "tools/ci-check-pr.js",
+    "tools/ci.sh",
+    ".github/",
+    ".gitlab-ci.yml",
+    "tests/js/contract.test.js",
+    "tests/js/boundaries.test.js"
   ]
 }

@@ -7,7 +7,7 @@
 #  3. tests: PHP, data and all JS tests (browser and lint included). Every failing part is reported, not only the first.
 set -euo pipefail
 
-# Paths whose change needs tests. Documents (*.md, changes/, todo/, proposals/, requests/, tasks/, tools/prompts/, .claude/) do not.
+# Paths whose change needs tests. Documents (*.md, changes/, tools/prompts/, .claude/) do not.
 # A new top-level folder with code or config must be added here.
 CODE='^(app|controller|service|config|event|language|styles|data|dev|tests|context|graph)/|^tools/[^/]+$|^\.gitlab/CODEOWNERS$|^\.gitlab-ci\.yml$|^\.github/(workflows/|CODEOWNERS$)|^[^/]+\.(php|json)$'
 

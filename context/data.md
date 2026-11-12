@@ -13,7 +13,7 @@ The back end: page controller, file store, endpoints and formats (I-1), the Node
 - `interfaces/I-9-shapes.md`
 - `graph/data.md`
 - `changes/data.md`
-- `todo/data.md`
+- `TODO.md`
 
 ## Code and documents of the domain (open the part the task needs, with offset and limit)
 
@@ -21,9 +21,9 @@ The back end: page controller, file store, endpoints and formats (I-1), the Node
 - `controller/main.php`
 - `dev/save-handler.js`
 
-## Your files (the only ones you may change)
+## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)
 
-`data/`, `service/`, `controller/`, `config/`, `event/`, `language/`, `styles/`, `dev/`, `ext.php`, `composer.json`, `tests/php/`, `tests/data/`, `tests/js/parity.test.js`, `tests/fixtures/rules.json`, and your records `changes/data.md`, `todo/data.md`.
+`data/`, `service/`, `controller/`, `config/`, `event/`, `language/`, `styles/`, `dev/`, `ext.php`, `composer.json`, `tests/php/`, `tests/data/`, `tests/js/parity.test.js`, `tests/fixtures/rules.json`, and the log `changes/data.md`.
 
 ## Token rules
 

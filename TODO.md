@@ -25,6 +25,12 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 - [ ] T-004 GitHub settings no agent can change
   Done when: (1) Settings > Branches: protect `master`, require pull request and the check `ci`; (2) Settings > General: squash merge on, "Automatically delete head branches" on; (3) secret `GRAPH_PUSH_TOKEN` (fine-grained token, repository `ahm`, Contents: read and write) in Settings > Secrets and variables > Actions; (4) delete the old branches `ci-github`, `fix-github-ci-owner`, `shared/fix-github-ci-owner`, `shared/agent-efficiency`, and decide about `feature/routes`.
   Contract: no.
+- [ ] T-005 Decide: Bun and Vite
+  Today: `app/package.json` + `app/bun.lock` already use Bun as package manager (prettier, live-server). CI runs `node:22-bookworm` with no Bun. Vite does not fit: AGENTS.md section 4 says "No build step", `app/index.html` loads 25 classic scripts in a shared global scope (no modules), and `controller/main.php` fills URLs into `app/index.html` at request time.
+  Options: (A) keep as is. (B) Bun only: use it to run tools/tests/prettier locally; CI and the app unchanged. (C) Vite + ES modules: rewrite 25 files, `controller/main.php`, CI, AGENTS.md section 4 and `docs/09-code-style.md`; several items.
+  Recommendation: (A). If you want something now, (B) as one small item. (C) only if you need npm libraries in the browser (e.g. a map library from npm).
+  Done when: you write `Approved: <date> A`, `B` or `C`.
+  Contract: no.
 
 ## Next (builder)
 

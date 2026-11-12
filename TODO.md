@@ -28,6 +28,12 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Next (builder)
 
+- [ ] T-006 CI rebuilds `app/dist/` like `graph/` (so a PR does not need to, and two open PRs do not conflict on it)
+  Done when: a PR that changes `app/js` or `app/css` gets its `app/dist/` rebuilt and committed by the job `ci` (Bun installed in the job), and the `build` test still passes. Needs `Approved:` (protected: `tools/ci.sh`, `.github/workflows/ci.yml`).
+  Contract: no.
+- [ ] T-024 Harden the `app/dist` check
+  Done when: `node tools/build.js --check` also fails when `app.min.js` or `app.min.css` differ in size from the manifest (a hand-edited bundle with a matching manifest); the name test in `tests/js/build.test.js` finds each top-level name as a declaration in the bundle, not anywhere in the text; a test shows each failure. Needs `Approved:` (protected: `tests/js/build.test.js`).
+  Contract: no.
 - [ ] T-021 Log and document the Routes tab (it was merged without a change-log entry)
   Done when: `changes/sidebar.md`, `changes/core.md`, `changes/map.md` and `changes/data.md` each have an entry for what the routes work changed in their files (`app/js/sidebar/routes.js`, `core/routes.js`, `map/shapes.js`, `service/store.php`, `dev/save-handler.js`); the `docs/` sections that describe the tabs and the data format name the Routes tab; `tests/js/routes.test.js` also covers the sidebar part or the item says why not.
   Contract: no.
@@ -49,6 +55,10 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Done
 
+- [x] T-023 The page controller serves the bundle only when its files exist (2026-11-12, PR from branch `fix/dist-guard`)
+  From the review of PR #8 (`critic`); no protected file changed.
+- [x] T-005 Minify the JS and CSS with Bun (2026-11-12, PR from branch `feat/minify-bun`)
+  Approved: 2026-11-12 owner, in the chat: "let's now just minify js and css only with bun. Do it and create PR" (covers `AGENTS.md`, `.claude/agents/builder.md`, `tools/domains.json`, both CODEOWNERS). Vite, webpack and HTML minify were left out on purpose.
 - [x] T-020 Fix red CI on `master` after the `feature/routes` merge (2026-11-12, PR from branch `fix/master-ci`)
   Approved: 2026-11-12 owner, in the chat: "review master branch and fix red CI". Covers the protected files touched: `tools/domains.json` (owner of `tests/js/routes.test.js`: core), `interfaces/I-2-sidebar-map.md` and `tests/js/contract.test.js` (`showFound` added to the contract, because the Routes tab already used it). If you want `showFound` out of the contract, say so and it becomes an item.
 - [x] T-000 Workflow: one `builder` and one `critic`, one `TODO.md`, no proposals (2026-11-12, PR from branch `chore/builder-critic`)

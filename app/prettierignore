@@ -3,6 +3,7 @@ app/css/
 
 # Generated or user data: never reformat.
 data/
+app/dist/
 
 # phpBB template syntax, not plain HTML.
 styles/

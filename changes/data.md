@@ -12,4 +12,16 @@
 **Verify:** `php tests/data/run.php` (CI job `tests`).
 **Follow-ups:** none.
 
+## 2026-11-12 — #3 T-005: the page controller serves the minified bundle
+**What:** `controller/main.php` (`page()`): when `app/dist/manifest.json` exists, the marked blocks of `app/index.html` are replaced by `dist/app.min.css?v=<hash>` and `dist/app.min.js?v=<hash>`; `window.AHM_BACKEND` is still written right before the first script. No manifest: the sources are served as before. `tests/php/ControllerTest.php`: new test.
+**Why:** T-005 (see `changes/shared.md` #34). The hash in the address makes a new build load at once and lets the old one stay cached.
+**Verify:** `php tests/php/run.php 2>&1 | tail -15` (94 passed).
+**Follow-ups:** none.
+
+## 2026-11-12 — #4 T-023: the controller serves the bundle only when its files exist
+**What:** `controller/main.php` (`page()`): the bundle replaces the marked blocks only when `app/dist/app.min.js` and `app/dist/app.min.css` exist as well as a valid manifest; otherwise the sources are served. `tests/php/ControllerTest.php`: new test (each file hidden in turn).
+**Why:** review of PR #8: a manifest without its files (partial copy of the extension) made the page link two dead files.
+**Verify:** `php tests/php/run.php 2>&1 | tail -15` (95 passed).
+**Follow-ups:** T-024.
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the data domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

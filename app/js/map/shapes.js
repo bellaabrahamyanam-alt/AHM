@@ -1,11 +1,11 @@
 // Shapes on the map (map domain): borders (areas) and lines, drawn exactly as the sidebar describes them. The map knows nothing about
 // border types: every feature arrives with its look (colour, opacity, width, dash) already resolved. Also the drawing tool.
 // Commands (AHM.map.*, INTERFACES.md I-2): setShapes(fc), highlightShape(id|null), previewShape(id, {color, opacity}|null),
-//   showPreview(geometry|null) (a blue draft outline), drawShape({ kind: 'area'|'line', coords?, color? }, onChange), isDrawing().
+//   showPreview(geometry|null) (a blue draft outline), drawShape({ kind: 'area'|'line', coords?, ids?, snap? }, onChange), isDrawing().
 // Events: shape:click { id } (a click on a line or an outline, 6 px tolerance), map:click now carries shapes: [{ id }] (areas under the
 //   cursor), draw:finish (Enter or double click while drawing), draw:cancel (Esc).
 // Feature properties: kind ('area' | 'line' | 'label'), id, name, type (text), dates (text), color, ink (label colour), opacity, width,
-//   dash (solid | dashed | dotted | dashdot), label (boolean), halo ('' or a colour), size (area of the bounding box: smaller shapes are drawn on top and hit first).
+//   dash (solid | dashed | dotted | dashdot), arrows (boolean: a one-way route, drawn with direction arrows), label (boolean), halo ('' or a colour), size (area of the bounding box: smaller shapes are drawn on top and hit first).
 //   A 'label' feature is a Point where an area's name is drawn.
 const SHAPE_DASH = { solid: null, dashed: [3, 2], dotted: [0.1, 2.2], dashdot: [4, 1.6, 0.8, 1.6] };
 const SHAPE_HIT_PX = 6;
@@ -18,6 +18,7 @@ let shapesNow = null, // the last collection received (drawn as soon as the map 
   shapeSel = null,
   shapeHover = null,
   shapeTip = null,
+  foundNow = null,
   shapeDrawing = null;
 
 function shapesInit() {
@@ -71,6 +72,40 @@ function shapesInit() {
       },
     })
   );
+  // the path found between two places (sidebar/routes.js): a bold line over the routes, with a white casing
+  map.addSource('ahm-found', { type: 'geojson', data: foundNow || EMPTY });
+  add({ id: 'ahm-found-casing', type: 'line', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-opacity': 0.9 } }, 'ahm-found');
+  add({ id: 'ahm-found-line', type: 'line', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1d6fd1', 'line-width': 5, 'line-opacity': 0.9 } }, 'ahm-found');
+  // direction of a one-way route: arrowheads along the line, in the colour of the route (an SDF image, so one picture serves every colour)
+  if (!map.hasImage('ahm-arrow')) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const x = c.getContext('2d');
+    x.fillStyle = '#000';
+    x.beginPath();
+    x.moveTo(26, 16); // the tip points right: the line direction
+    x.lineTo(8, 5);
+    x.lineTo(13, 16);
+    x.lineTo(8, 27);
+    x.closePath();
+    x.fill();
+    map.addImage('ahm-arrow', x.getImageData(0, 0, 32, 32), { sdf: true, pixelRatio: 2 });
+  }
+  add({
+    id: 'ahm-shape-arrows',
+    type: 'symbol',
+    filter: ['all', ['==', ['get', 'kind'], 'line'], ['==', ['get', 'arrows'], true]],
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 130,
+      'icon-image': 'ahm-arrow',
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 8, 1.1, 12, 1.4],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: { 'icon-color': col, 'icon-halo-color': '#ffffff', 'icon-halo-width': 1.2, 'icon-opacity': ['coalesce', ['feature-state', 'opacity'], ['get', 'opacity']] },
+  });
   if (map.getStyle().glyphs) {
     const text = {
         'text-field': ['get', 'name'],
@@ -154,9 +189,20 @@ function setShapeHover(f, at) {
 function drawShape(opts, onChange) {
   endDraw();
   setShapeHover(null);
+  // opts: kind 'area' | 'line'; coords = the points to start with; ids = for each of them the id of the place it sits on, or null;
+  //   snap: a click or a drop on a place marker uses the place's position and remembers its id (routes: the stops);
+  //   locate(id): the exact [lon, lat] of that place.
+  // A line also gets a small handle at the middle of every segment: drag it to insert a point there.
+  //   labels: the first point is marked A and the last B (a route: from A through the points to B).
+  //   expand(a, b): async, called for each new point after the first; gives the points to add between a and b (a modern road, say) or nothing.
+  //   onNote(text): a short message about what happened (a road that was not found).
   const kind = opts.kind,
     pts = (opts.coords || []).map((c) => c.slice()),
+    ids = pts.map((_, i) => (opts.ids && opts.ids[i]) || null),
+    flags = pts.map(() => null), // 'road' for a point that only gives a road its course
+    groups = pts.map(() => 1), // how many points each click added, so that Undo takes the road of a click away at once
     marks = [],
+    mids = [],
     geom = () =>
       kind === 'area'
         ? pts.length >= 3
@@ -171,46 +217,139 @@ function drawShape(opts, onChange) {
       if (pts.length >= 2) f.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: kind === 'area' && pts.length > 2 ? [...pts, pts[0]] : pts }, properties: {} });
       map.getSource('ahm-draw').setData({ type: 'FeatureCollection', features: f });
     },
+    // the place marker under a screen point, if any: { id, ll: [lon, lat] }
+    snapAt = (pt) => {
+      if (!opts.snap) return null;
+      const layers = ['ahm-places', SEL.symbol].filter((l) => map.getLayer(l)),
+        r = 12,
+        hit = layers.length && map.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]], { layers }).find((f) => f.properties.id && !f.properties.point_count && f.geometry.type === 'Point');
+      // the position of the rendered feature is rounded to the map tile: the caller knows the exact one
+      return hit ? { id: hit.properties.id, ll: (opts.locate && opts.locate(hit.properties.id)) || hit.geometry.coordinates.slice(0, 2) } : null;
+    },
+    decorate = () => {
+      const n = pts.length;
+      marks.forEach((m, i) => {
+        const el = m.getElement();
+        el.classList.toggle('first', !!opts.labels && i === 0);
+        el.classList.toggle('last', !!opts.labels && n > 1 && i === n - 1);
+        el.classList.toggle('road', flags[i] === 'road');
+        el.textContent = opts.labels && i === 0 ? 'A' : opts.labels && n > 1 && i === n - 1 ? 'B' : '';
+      });
+    },
+    ungroup = () => groups.splice(0, groups.length, ...pts.map(() => 1)),
     changed = () => {
       paint();
+      rebuildMids();
+      decorate();
       if (onChange) onChange(geom());
     },
-    vertex = (ll) => {
-      const el = document.createElement('div');
-      el.className = 'ahm-vtx';
-      const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(ll).addTo(map);
+    wire = (m, el) => {
       m.on('drag', () => {
         const l = m.getLngLat();
         pts[marks.indexOf(m)] = [l.lng, l.lat];
         paint();
       });
-      m.on('dragend', changed);
+      m.on('dragend', () => {
+        const i = marks.indexOf(m),
+          s = snapAt(map.project(m.getLngLat()));
+        if (s) {
+          pts[i] = s.ll;
+          m.setLngLat(s.ll);
+        }
+        ids[i] = s ? s.id : null;
+        flags[i] = null; // a moved point is a point of the person now
+        el.classList.toggle('place', !!ids[i]);
+        changed();
+      });
       ['click', 'dblclick'].forEach((t) => el.addEventListener(t, (ev) => ev.stopPropagation())); // not a new point
       el.addEventListener('contextmenu', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
         const i = marks.indexOf(m);
         pts.splice(i, 1);
+        ids.splice(i, 1);
+        flags.splice(i, 1);
         marks.splice(i, 1);
         m.remove();
+        ungroup();
         changed();
       });
+    },
+    vertex = (ll, id) => {
+      const el = document.createElement('div');
+      el.className = 'ahm-vtx' + (id ? ' place' : '');
+      const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(ll).addTo(map);
+      wire(m, el);
       marks.push(m);
+    },
+    rebuildMids = () => {
+      mids.splice(0).forEach((m) => m.remove());
+      if (kind !== 'line') return;
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const el = document.createElement('div');
+        el.className = 'ahm-vtx mid';
+        el.title = 'Drag to add a point here';
+        const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2]).addTo(map);
+        ['click', 'dblclick'].forEach((t) => el.addEventListener(t, (ev) => ev.stopPropagation()));
+        m.once('dragstart', () => {
+          // the handle becomes a real point between the two (its index is the one it was built for)
+          const l = m.getLngLat();
+          mids.splice(mids.indexOf(m), 1);
+          pts.splice(i + 1, 0, [l.lng, l.lat]);
+          ids.splice(i + 1, 0, null);
+          flags.splice(i + 1, 0, null);
+          marks.splice(i + 1, 0, m);
+          ungroup();
+          el.classList.remove('mid');
+          el.title = '';
+          wire(m, el);
+        });
+        mids.push(m);
+      }
     },
     undo = () => {
       if (!pts.length) return;
-      pts.pop();
-      marks.pop().remove();
+      for (let k = groups.pop() || 1; k > 0 && pts.length; k--) {
+        pts.pop();
+        ids.pop();
+        flags.pop();
+        marks.pop().remove();
+      }
+      changed();
+    },
+    // a new point: with `expand`, the points of the road between the last point and this one come first
+    add = async (ll, id) => {
+      let between = [];
+      if (opts.expand && pts.length) {
+        try {
+          between = (await opts.expand(pts[pts.length - 1], ll)) || [];
+        } catch (e) {
+          between = [];
+        }
+        if (!shapeDrawing || shapeDrawing.dead) return; // the tool was closed while the road was being asked for
+      }
+      between.forEach((c) => {
+        pts.push(c);
+        ids.push(null);
+        flags.push('road');
+        vertex(c, null);
+      });
+      pts.push(ll);
+      ids.push(id || null);
+      flags.push(null);
+      groups.push(between.length + 1);
+      vertex(ll, id);
       changed();
     };
-  let last = { t: 0, x: -99, y: -99 };
+  let last = { t: 0, x: -99, y: -99 },
+    queue = Promise.resolve(); // the points are added in the order of the clicks, also when a road takes a moment
   const onClick = (e) => {
       const now = performance.now();
       if (now - last.t < 400 && Math.hypot(e.point.x - last.x, e.point.y - last.y) < 6) return; // the second click of a double click
       last = { t: now, x: e.point.x, y: e.point.y };
-      pts.push([e.lngLat.lng, e.lngLat.lat]);
-      vertex(e.lngLat);
-      changed();
+      const s = snapAt(e.point),
+        ll = s ? s.ll : [e.lngLat.lng, e.lngLat.lat];
+      queue = queue.then(() => add(ll, s && s.id));
     },
     onDbl = (e) => {
       e.preventDefault();
@@ -225,7 +364,8 @@ function drawShape(opts, onChange) {
         undo();
       }
     };
-  pts.forEach((p) => vertex(p));
+  pts.forEach((p, i) => vertex(p, ids[i]));
+  decorate();
   map.on('click', onClick);
   map.on('dblclick', onDbl);
   document.addEventListener('keydown', onKey);
@@ -233,15 +373,22 @@ function drawShape(opts, onChange) {
   map.getCanvas().style.cursor = 'crosshair';
   hideMenu();
   paint();
+  rebuildMids();
   shapeDrawing = {
     getGeometry: geom,
     count: () => pts.length,
+    points: () => pts.map((p) => p.slice()), // the points, also when there are too few for a geometry
+    ids: () => ids.slice(), // for each point the place it sits on, or null (a free waypoint)
+    flags: () => flags.slice(), // for each point 'road' (it only gives a road its course) or null
+    ready: () => queue, // resolves when every click so far has become a point
     undo,
     remove() {
+      shapeDrawing.dead = true;
       map.off('click', onClick);
       map.off('dblclick', onDbl);
       document.removeEventListener('keydown', onKey);
       marks.forEach((m) => m.remove());
+      mids.forEach((m) => m.remove());
       map.getSource('ahm-draw').setData(EMPTY);
       map.doubleClickZoom.enable();
       map.getCanvas().style.cursor = '';
@@ -277,6 +424,12 @@ Object.assign(AHM.map, {
   showPreview(geometry) {
     const s = mapReady && map.getSource('ahm-preview');
     if (s) s.setData(geometry ? { type: 'Feature', geometry, properties: {} } : EMPTY);
+  },
+  /** The path found between two places: a MultiLineString, or null to clear it. */
+  showFound(geometry) {
+    foundNow = geometry ? { type: 'Feature', geometry, properties: {} } : null;
+    const f = mapReady && map.getSource('ahm-found');
+    if (f) f.setData(foundNow || EMPTY);
   },
   drawShape,
   isDrawing: () => !!shapeDrawing,

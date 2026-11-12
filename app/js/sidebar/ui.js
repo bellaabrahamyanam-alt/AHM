@@ -43,6 +43,7 @@ function tab(n) {
   if (cur && !editMk) closeDetail(); // a tab is navigation: leave the place sheet (but never in the middle of editing)
   lyRenderDetail(); // the layer sheet belongs to the Layers tab
   shRenderView(); // and the border card to the Borders tab
+  rtRenderView(); // and the route card to the Routes tab
 }
 document.querySelector(".tabs").addEventListener("click", (e) => {
   if (e.target.dataset.tab) tab(e.target.dataset.tab);
@@ -65,7 +66,7 @@ sideHandle(false);
 // ---- the details dock: a pane under the lists; the place details (#detail) and the layer details (#lyDetail) live in it ----
 $(".stack").append($("#dock"));
 function dockSync() {
-  $("#dock").hidden = $("#detail").hidden && $("#lyDetail").hidden && $("#shDetail").hidden;
+  $("#dock").hidden = $("#detail").hidden && $("#lyDetail").hidden && $("#shDetail").hidden && $("#rtDetail").hidden;
 }
 // The dock covers the lower half of the panel: if a row is hidden behind it, scroll the list just enough to centre the row.
 function revealRow(li) {
@@ -471,6 +472,7 @@ async function show(id) {
       .join(" · ") +
     "</p>" +
     lyPlaceHTML(p) +
+    rtPlaceHTML(p) +
     lyScopeHTML(scope, ns.length, inLang.length) +
     (ns.length > 1
       ? `<div class="note-tools" hidden><span class="sn">${ns.length} notes</span><button type="button" class="note-all" data-note-all></button></div>`
@@ -971,6 +973,7 @@ Promise.all([loadPlaces(), loadNotesIndex(), loadLanguages(), loadLayers(), load
     if (location.hash.startsWith("#place-")) show(location.hash.slice(7));
     else if (location.hash.startsWith("#layer-")) lyOpen(location.hash.slice(7));
     else if (location.hash.startsWith("#border-")) shOpen(location.hash.slice(8), true);
+    else if (location.hash.startsWith("#route-")) rtOpen(location.hash.slice(7), true);
   })
   .catch(
     (e) =>

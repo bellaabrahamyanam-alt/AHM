@@ -21,6 +21,7 @@
       <nav class="tabs">
         <button data-tab="explore" class="on">Explore</button>
         <button data-tab="shapes">Borders</button>
+        <button data-tab="routes">Routes</button>
         <button data-tab="layers">Layers</button>
         <button data-tab="more">More</button>
       </nav>
@@ -64,7 +65,7 @@
             </span>
           </div>
           <ul id="list"></ul>
-          <div id="dock" hidden><div id="detail" hidden></div><div id="lyDetail" hidden></div><div id="shDetail" hidden></div></div>
+          <div id="dock" hidden><div id="detail" hidden></div><div id="lyDetail" hidden></div><div id="shDetail" hidden></div><div id="rtDetail" hidden></div></div>
           <div id="geo"></div>
         </section>
         <section id="tab-more" hidden>
@@ -149,6 +150,42 @@
           <ul id="shList"></ul>
           <div id="shAdd"></div>
         </section>
+        <section id="tab-routes" hidden>
+          <p class="sn">
+            Historical routes: trade routes, marches, migrations, journeys and
+            roads. A route runs through places and free waypoints; routes that
+            share a place chain into journeys. One-way routes have arrows. They
+            can belong to layers and follow the period filter of Explore.
+          </p>
+          <datalist id="rtPlaceList"></datalist>
+          <details id="rtFinder" open>
+            <summary>Find a path between places</summary>
+            <div class="rt-find">
+              <input id="rtFrom" list="rtPlaceList" placeholder="From (a place)" aria-label="From" autocomplete="off" />
+              <button id="rtSwap" type="button" class="icon-btn" title="Swap" aria-label="Swap">⇄</button>
+              <input id="rtTo" list="rtPlaceList" placeholder="To (a place)" aria-label="To" autocomplete="off" />
+            </div>
+            <div class="row">
+              <button id="rtFind" type="button" class="primary">Find path</button>
+              <button id="rtFindClear" type="button">Clear</button>
+            </div>
+            <div class="sn">
+              Chains the routes that pass a common place, in the direction they
+              allow, for the period chosen in Explore.
+            </div>
+            <div class="err-line" id="rtFindErr"></div>
+            <div id="rtFound"></div>
+          </details>
+          <div class="label">Search routes</div>
+          <div data-searchfield="rtQ" data-placeholder="Search routes…"></div>
+          <div id="rtTypes" class="chips"></div>
+          <div class="bar">
+            <span id="rtCount"></span>
+            <button id="rtFit" title="Zoom the map to the routes in the list">Fit map</button>
+          </div>
+          <ul id="rtList"></ul>
+          <div id="rtAdd"></div>
+        </section>
         <section id="tab-layers" hidden>
           <div id="lyListView">
             <p class="sn">
@@ -226,6 +263,7 @@
     <script src="js/core/dates.js"></script>
     <script src="js/core/layer-rules.js"></script>
     <script src="js/core/shapes.js"></script>
+    <script src="js/core/routes.js"></script>
     <script src="js/core/search.js"></script>
     <script src="js/core/providers.js"></script>
     <script src="js/sidebar/datefield.js"></script>
@@ -238,6 +276,7 @@
     <script src="js/map/overlays.js"></script>
     <script src="js/sidebar/layers.js"></script>
     <script src="js/sidebar/shapes.js"></script>
+    <script src="js/sidebar/routes.js"></script>
     <script src="js/sidebar/ui.js"></script>
     <script src="js/features.js"></script>
   </body>

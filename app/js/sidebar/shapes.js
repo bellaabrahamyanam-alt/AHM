@@ -32,14 +32,28 @@ function shIcon(type) {
   x.setLineDash({ solid: [], dashed: [3, 2], dotted: [0.1, 2.4], dashdot: [4, 1.6, 1, 1.6] }[t.dash]);
   x.lineCap = t.dash === 'dotted' ? 'round' : 'butt';
   x.beginPath();
-  x.roundRect(2, 3, 12, 10, 2);
-  x.fill();
-  x.stroke();
+  if (t.route) {
+    // a route: a line from one end to the other, with an arrowhead
+    x.moveTo(2, 13);
+    x.lineTo(13, 4);
+    x.stroke();
+    x.setLineDash([]);
+    x.beginPath();
+    x.moveTo(14, 3);
+    x.lineTo(8.5, 4.2);
+    x.lineTo(12.8, 8.5);
+    x.fillStyle = t.color;
+    x.fill();
+  } else {
+    x.roundRect(2, 3, 12, 10, 2);
+    x.fill();
+    x.stroke();
+  }
   return (shIcons[type] = `<img class="ti" alt="" width="16" height="16" src="${c.toDataURL()}">`);
 }
 
 // ---- data ----
-const shVisible = () => shapesRun({ q: $('#shQ') ? $('#shQ').value : '', lang: $('#lang').value, types: sh.types, period: periodBounds() });
+const shVisible = () => shapesRun({ q: $('#shQ') ? $('#shQ').value : '', lang: $('#lang').value, types: sh.types, period: periodBounds(), group: 'border' });
 async function shReload() {
   shapes = await loadShapes();
   shRefresh();
@@ -48,14 +62,15 @@ async function shReload() {
 /** Called by update(): the filters, the language or the layers changed. */
 function shRefresh() {
   shRenderList();
+  rtRenderList(); // the routes follow the same filters (routes.js)
   shPush();
 }
 /** Gives the map every visible shape with its look resolved (the map knows nothing about types). */
 function shPush() {
   const l = $('#lang').value,
     out = [];
-  shVisible()
-    .filter((s) => !sh.hidden.has(s.id) && !(sh.draw && sh.draw.id === s.id)) // the shape whose outline is being redrawn is drawn by the tool
+  [...shVisible().filter((s) => !sh.hidden.has(s.id)), ...rtVisible().filter((s) => !rts.hidden.has(s.id))] // borders and routes (routes.js)
+    .filter((s) => !(sh.draw && sh.draw.id === s.id) && !(rts.draw && rts.draw.id === s.id)) // the shape whose outline is being redrawn is drawn by the tool
     .sort((a, b) => bboxArea(shBox(b)) - bboxArea(shBox(a))) // big first: small shapes end on top
     .forEach((s) => {
       const t = shapeType(s.type),
@@ -72,6 +87,7 @@ function shPush() {
           width: t.width,
           dash: t.dash,
           label: s.label,
+          arrows: isRoute(s) && !s.twoway,
           halo: lyState.editing ? lyHalo(s.id) : '', // while members are chosen, the members of the layer get a ring
           size: bboxArea(shBox(s)),
         };
@@ -85,9 +101,8 @@ function shPush() {
 // ---- the list ----
 function shRenderTypes() {
   const c = {};
-  shapes.forEach((s) => (c[s.type] = (c[s.type] || 0) + 1));
-  $('#shTypes').innerHTML = Object.keys(SHAPE_TYPES)
-    .filter((t) => c[t] || sh.types.has(t))
+  shapes.filter((s) => !isRoute(s)).forEach((s) => (c[s.type] = (c[s.type] || 0) + 1));
+  $('#shTypes').innerHTML = BORDER_TYPES.filter((t) => c[t] || sh.types.has(t))
     .map((t) => `<button class="chip${sh.types.has(t) ? ' on' : ''}" data-t="${t}">${shIcon(t)}${esc(SHAPE_TYPES[t].label)} <span>${c[t] || 0}</span></button>`)
     .join('');
 }
@@ -95,7 +110,7 @@ function shRenderList() {
   const l = $('#lang').value,
     rows = shVisible();
   shRenderTypes();
-  $('#shCount').textContent = rows.length + ' of ' + shapes.length + ' borders';
+  $('#shCount').textContent = rows.length + ' of ' + shapes.filter((s) => !isRoute(s)).length + ' borders';
   $('#shList').innerHTML = rows.length
     ? rows
         .map((s) => {
@@ -108,7 +123,7 @@ function shRenderList() {
           );
         })
         .join('')
-    : `<li class="empty">${shapes.length ? 'No borders match. Try fewer filters.' : 'No borders yet.'}</li>`;
+    : `<li class="empty">${shapes.some((s) => !isRoute(s)) ? 'No borders match. Try fewer filters.' : 'No borders yet.'}</li>`;
 }
 $('#shList').addEventListener('click', (e) => {
   if (e.target.closest('.sh-eye')) return;
@@ -142,6 +157,7 @@ function shFit(id) {
 // ---- the card ----
 function shOpen(id, fit) {
   if (!shapeById(id)) return;
+  if (isRoute(shapeById(id))) return rtOpen(id, fit); // a route has its own tab and card (routes.js)
   shCancelForm();
   sh.open = id;
   tab('shapes');
@@ -165,7 +181,7 @@ function shShow(on) {
 function shRenderView() {
   const s = sh.open && shapeById(sh.open),
     d = $('#shDetail');
-  AHM.map.highlightShape(s && curTab === 'shapes' ? s.id : null);
+  if (!(rts.open && curTab === 'routes')) AHM.map.highlightShape(s && curTab === 'shapes' ? s.id : null); // a route card owns the highlight (routes.js)
   document.querySelectorAll('#shList li.on').forEach((x) => x.classList.remove('on'));
   if (sh.form) return shShow(curTab === 'shapes');
   if (!s || curTab !== 'shapes') return shShow(false);
@@ -281,8 +297,7 @@ $('#shDetail').addEventListener('click', async (e) => {
 
 // ---- the form: names, type, dates (new shape or details of an existing one) ----
 const shTypeChips = (cur) =>
-  Object.keys(SHAPE_TYPES)
-    .map((t) => `<button type="button" class="chip${t === cur ? ' on' : ''}" data-shact="typepick" data-t="${t}" title="${esc(SHAPE_TYPES[t].label)}">${shIcon(t)}${esc(SHAPE_TYPES[t].label)}</button>`)
+  BORDER_TYPES.map((t) => `<button type="button" class="chip${t === cur ? ' on' : ''}" data-shact="typepick" data-t="${t}" title="${esc(SHAPE_TYPES[t].label)}">${shIcon(t)}${esc(SHAPE_TYPES[t].label)}</button>`)
     .join('');
 function shOpenForm(f) {
   sh.form = f;
@@ -345,6 +360,7 @@ function shCancelForm() {
 // ---- drawing ----
 function shStartDraw(kind, existing) {
   shCancelForm();
+  if (rts.draw) rtCancelDraw();
   if (sh.draw) sh.draw.ctl.remove();
   sh.open = null;
   sh.adding = false;

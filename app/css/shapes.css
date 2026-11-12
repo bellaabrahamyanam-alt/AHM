@@ -1,11 +1,13 @@
 /* Borders: the card in the dock, the list, the drawing handles. Colours come from base.css. */
-#shDetail {
+#shDetail,
+#rtDetail {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-#shList li .t {
+#shList li .t,
+#rtList li .t {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -72,4 +74,90 @@
 }
 .ahm-vtx:active {
   cursor: grabbing;
+}
+/* a point that sits on a place (a stop of a route) and the handle that inserts a point in the middle of a segment */
+.ahm-vtx.place {
+  width: 18px;
+  height: 18px;
+  border-color: #1b5e20;
+  background: #c8e6c9;
+}
+.ahm-vtx.first,
+.ahm-vtx.last {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: bold 12px/1 sans-serif;
+  color: #fff;
+  background: #2e7d32;
+  border-color: #fff;
+}
+.ahm-vtx.last {
+  background: #c62828;
+}
+.ahm-vtx.road {
+  width: 8px;
+  height: 8px;
+  border-width: 1px;
+  opacity: 0.8;
+}
+.ahm-vtx.mid {
+  width: 10px;
+  height: 10px;
+  border-width: 2px;
+  opacity: 0.65;
+}
+.ahm-vtx.mid:hover {
+  opacity: 1;
+}
+
+/* Routes: the start and end places of the card */
+.rt-ends {
+  align-items: center;
+}
+#rtForm input[list] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Routes: the path finder */
+.rt-find {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 6px 0;
+}
+.rt-find input {
+  flex: 1;
+  min-width: 0;
+}
+#rtFinder summary {
+  font-weight: bold;
+  cursor: pointer;
+  margin: 6px 0;
+}
+.rt-found,
+.rt-legs {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+}
+.rt-found > li {
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border: 1px solid var(--li-row-border-bottom-color);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.rt-found > li.on {
+  border-color: #1d6fd1;
+  box-shadow: inset 3px 0 0 #1d6fd1;
+}
+.rt-legs li {
+  padding: 2px 0;
+}
+#tab-routes.rt-drawing > :not(#rtAdd) {
+  display: none;
 }

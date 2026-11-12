@@ -232,7 +232,7 @@ function lyPickRows(q, byId) {
 function lyShapeList(ly, l) {
   const ss = ly.members.map((m) => m.shape && shapeById(m.shape)).filter(Boolean);
   return ss.length
-    ? `<div class="label">Borders (${ss.length})</div><ul class="ly-members">` +
+    ? `<div class="label">Borders and routes (${ss.length})</div><ul class="ly-members">` +
         ss.map((s) => `<li data-sid="${s.id}"><b>${esc(shapeName(s, l))}</b> <span class="badge">${shIcon(s.type)}${esc(shapeType(s.type).label)}</span></li>`).join('') +
         '</ul>'
     : '';

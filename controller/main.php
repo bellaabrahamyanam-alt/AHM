@@ -115,7 +115,10 @@ class main
         $first = 'js/config.js';
         $dist = @file_get_contents(__DIR__ . '/../app/dist/manifest.json');
         $m = $dist === false ? null : json_decode($dist, true);
-        if (is_array($m) && isset($m['hash']) && preg_match('/^[0-9a-f]{64}$/', $m['hash'])) {
+        if (
+            is_array($m) && isset($m['hash']) && preg_match('/^[0-9a-f]{64}$/', $m['hash'])
+            && is_file(__DIR__ . '/../app/dist/app.min.js') && is_file(__DIR__ . '/../app/dist/app.min.css')
+        ) {
             $v = '?v=' . substr($m['hash'], 0, 12);
             $html = preg_replace(
                 '#<!-- ahm:css -->.*?<!-- /ahm:css -->#s',

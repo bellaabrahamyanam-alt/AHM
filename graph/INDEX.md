@@ -11,7 +11,7 @@ Open `graph/<domain>.md` for one line per file (what it defines, which `AHM.*` c
 | core | 7 | 904 | `app/js/core/dates.js` (296) |
 | state | 1 | 43 | `app/js/state/state.js` (43) |
 | campaigns | 1 | 14 | `app/features/campaigns/main.js` (14) |
-| data | 8 | 3250 | `service/store.php` (1534) |
+| data | 8 | 3253 | `service/store.php` (1534) |
 | shared | 5 | 195 | `app/js/config.js` (88) |
 
 ## Flags

@@ -28,6 +28,7 @@ The sidebar and the map talk only through this object. Neither side may touch th
 | `showMenu({ lon, lat }, { title?, actions: [{ id, icon, label }] })` **[1.5]** | a small menu at a point; `icon` is a name of I-7, `label` is the tooltip and the `aria-label`; one menu at a time |
 | `hideMenu()` **[1.5]** | close the menu |
 | `previewShape(id, { color?, opacity? } \| null)` **[1.5]** | show a colour or an opacity of a shape before it is saved; `null` puts the saved look back |
+| `showFound(geometry \| null)` **[1.6]** | draw the path found between two places (a MultiLineString) as a highlighted line; `null` clears it. Added after the fact: the Routes tab used it before it was in this file (2026-11-12, `TODO.md` T-020) |
 | `showPreview(geometry \| null)` **[1.5]** | a blue draft outline of a search result, shown before it is added |
 | `isDrawing()` **[1.5]** | `true` while the drawing tool is active; read only |
 

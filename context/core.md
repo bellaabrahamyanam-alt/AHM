@@ -25,7 +25,7 @@ Pure logic without DOM: data loading, dates, search/sort/filter, layer rules, pr
 
 ## Files of this domain (where most changes of this area happen; you may change others when the TODO item needs it)
 
-`app/js/core/`, `tests/js/dates.test.js`, `tests/js/data.test.js`, `tests/js/search.test.js`, `tests/fixtures/dates-vectors.json`, and the log `changes/core.md`.
+`app/js/core/`, `tests/js/dates.test.js`, `tests/js/data.test.js`, `tests/js/search.test.js`, `tests/js/routes.test.js`, `tests/fixtures/dates-vectors.json`, and the log `changes/core.md`.
 
 ## Token rules
 

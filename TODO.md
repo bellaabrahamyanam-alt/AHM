@@ -28,6 +28,12 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Next (builder)
 
+- [ ] T-021 Log and document the Routes tab (it was merged without a change-log entry)
+  Done when: `changes/sidebar.md`, `changes/core.md`, `changes/map.md` and `changes/data.md` each have an entry for what the routes work changed in their files (`app/js/sidebar/routes.js`, `core/routes.js`, `map/shapes.js`, `service/store.php`, `dev/save-handler.js`); the `docs/` sections that describe the tabs and the data format name the Routes tab; `tests/js/routes.test.js` also covers the sidebar part or the item says why not.
+  Contract: no.
+- [ ] T-022 Block commits that skip CI
+  Done when: nine commits since #4 carry `[skip ci]` and `master` went red unnoticed. After T-004 (branch protection) is done, `[skip ci]` is only allowed for documents; the critic refuses a PR whose commits skip the check.
+  Contract: no.
 - [ ] T-010 Audit the old task specs 006 to 014 against the code
   Done when: for each spec in `changes/archive/tasks/` a line "done", "partly" or "open" with the evidence (file and test); every "partly" and "open" part becomes a new item here. `changes/shared.md` #29 says code of 2026-11-09 (details dock, borders, markers) was made outside the flow, so many are probably done.
   Contract: no.
@@ -43,5 +49,7 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Done
 
+- [x] T-020 Fix red CI on `master` after the `feature/routes` merge (2026-11-12, PR from branch `fix/master-ci`)
+  Approved: 2026-11-12 owner, in the chat: "review master branch and fix red CI". Covers the protected files touched: `tools/domains.json` (owner of `tests/js/routes.test.js`: core), `interfaces/I-2-sidebar-map.md` and `tests/js/contract.test.js` (`showFound` added to the contract, because the Routes tab already used it). If you want `showFound` out of the contract, say so and it becomes an item.
 - [x] T-000 Workflow: one `builder` and one `critic`, one `TODO.md`, no proposals (2026-11-12, PR from branch `chore/builder-critic`)
   Approved: 2026-11-12 owner, in the chat: one major agent, one critic/gatekeeper, only todos, no proposals.

@@ -257,4 +257,19 @@ namespace ahm\map\tests {
         same(0, substr_count($html, 'css/base.css'));
         ok(strpos($html, 'maplibre-gl.js') !== false && strpos($html, 'maplibre-gl.css') !== false, 'the map library still comes from its CDN');
     });
+
+    test('page: a manifest without its bundle files serves the sources (a partial copy must not break the page)', function () {
+        $dist = __DIR__ . '/../../app/dist/';
+        foreach (['app.min.js', 'app.min.css'] as $f) {
+            rename($dist . $f, $dist . $f . '.hidden');
+            try {
+                $html = visitor(forum_root(), 'members', 2, true)->page()->content;
+                same(0, substr_count($html, 'dist/app.min'), "$f missing: no link to the bundle");
+                same(1, substr_count($html, 'js/config.js'), "$f missing: the sources are served");
+                same(1, substr_count($html, 'css/base.css'), "$f missing: the sources are served");
+            } finally {
+                rename($dist . $f . '.hidden', $dist . $f);
+            }
+        }
+    });
 }

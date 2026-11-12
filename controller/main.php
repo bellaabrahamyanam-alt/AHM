@@ -110,14 +110,37 @@ class main
             'shapeDelete' => $this->helper->route('ahm_map_shape_delete', [], false)
         ];
         $html = file_get_contents(__DIR__ . '/../app/index.html');
-        $html = str_replace(['href="css/', 'src="js/'], ['href="' . $ext . 'css/', 'src="' . $ext . 'js/'], $html);
+        // Production: the committed bundle app/dist (tools/build.js, minified JS and CSS) replaces the marked blocks of
+        // index.html; ?v= is the build hash, so a new build is fetched at once and an old one stays cached. No bundle: the sources.
+        $first = 'js/config.js';
+        $dist = @file_get_contents(__DIR__ . '/../app/dist/manifest.json');
+        $m = $dist === false ? null : json_decode($dist, true);
+        if (is_array($m) && isset($m['hash']) && preg_match('/^[0-9a-f]{64}$/', $m['hash'])) {
+            $v = '?v=' . substr($m['hash'], 0, 12);
+            $html = preg_replace(
+                '#<!-- ahm:css -->.*?<!-- /ahm:css -->#s',
+                '<link rel="stylesheet" href="dist/app.min.css' . $v . '" />',
+                $html
+            );
+            $html = preg_replace(
+                '#<!-- ahm:js -->.*?<!-- /ahm:js -->#s',
+                '<script src="dist/app.min.js' . $v . '"></script>',
+                $html
+            );
+            $first = 'dist/app.min.js';
+        }
         $html = str_replace(
-            '<script src="' . $ext . 'js/config.js">',
+            ['href="css/', 'src="js/', 'href="dist/', 'src="dist/'],
+            ['href="' . $ext . 'css/', 'src="' . $ext . 'js/', 'href="' . $ext . 'dist/', 'src="' . $ext . 'dist/'],
+            $html
+        );
+        $html = str_replace(
+            '<script src="' . $ext . $first,
             '<script>window.AHM_BACKEND=' .
                 json_encode($cfg, JSON_UNESCAPED_SLASHES) .
                 ';</script><script src="' .
                 $ext .
-                'js/config.js">',
+                $first,
             $html
         );
         return new Response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);

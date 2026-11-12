@@ -146,7 +146,7 @@ function readTree(dir = ROOT) {
   const walk = (rel) => {
     for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
       if (e.isDirectory()) {
-        if (e.name !== 'node_modules' && !(rel === '' && TOP_SKIP.has(e.name))) walk(rel + e.name + '/');
+        if (e.name !== 'node_modules' && !(rel === '' && TOP_SKIP.has(e.name)) && rel + e.name !== 'app/dist') walk(rel + e.name + '/'); // app/dist is generated (tools/build.js)
       } else if (/\.(js|php)$/.test(e.name)) out[rel + e.name] = fs.readFileSync(path.join(dir, rel, e.name), 'utf8');
     }
   };

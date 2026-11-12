@@ -25,15 +25,12 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 - [ ] T-004 GitHub settings no agent can change
   Done when: (1) Settings > Branches: protect `master`, require pull request and the check `ci`; (2) Settings > General: squash merge on, "Automatically delete head branches" on; (3) secret `GRAPH_PUSH_TOKEN` (fine-grained token, repository `ahm`, Contents: read and write) in Settings > Secrets and variables > Actions; (4) delete the old branches `ci-github`, `fix-github-ci-owner`, `shared/fix-github-ci-owner`, `shared/agent-efficiency`, and decide about `feature/routes`.
   Contract: no.
-- [ ] T-005 Decide: Bun and Vite
-  Today: `app/package.json` + `app/bun.lock` already use Bun as package manager (prettier, live-server). CI runs `node:22-bookworm` with no Bun. Vite does not fit: AGENTS.md section 4 says "No build step", `app/index.html` loads 25 classic scripts in a shared global scope (no modules), and `controller/main.php` fills URLs into `app/index.html` at request time.
-  Options: (A) keep as is. (B) Bun only: use it to run tools/tests/prettier locally; CI and the app unchanged. (C) Vite + ES modules: rewrite 25 files, `controller/main.php`, CI, AGENTS.md section 4 and `docs/09-code-style.md`; several items.
-  Recommendation: (A). If you want something now, (B) as one small item. (C) only if you need npm libraries in the browser (e.g. a map library from npm).
-  Done when: you write `Approved: <date> A`, `B` or `C`.
-  Contract: no.
 
 ## Next (builder)
 
+- [ ] T-006 CI rebuilds `app/dist/` like `graph/` (so a PR does not need to, and two open PRs do not conflict on it)
+  Done when: a PR that changes `app/js` or `app/css` gets its `app/dist/` rebuilt and committed by the job `ci` (Bun installed in the job), and the `build` test still passes. Needs `Approved:` (protected: `tools/ci.sh`, `.github/workflows/ci.yml`).
+  Contract: no.
 - [ ] T-021 Log and document the Routes tab (it was merged without a change-log entry)
   Done when: `changes/sidebar.md`, `changes/core.md`, `changes/map.md` and `changes/data.md` each have an entry for what the routes work changed in their files (`app/js/sidebar/routes.js`, `core/routes.js`, `map/shapes.js`, `service/store.php`, `dev/save-handler.js`); the `docs/` sections that describe the tabs and the data format name the Routes tab; `tests/js/routes.test.js` also covers the sidebar part or the item says why not.
   Contract: no.
@@ -55,6 +52,8 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Done
 
+- [x] T-005 Minify the JS and CSS with Bun (2026-11-12, PR from branch `feat/minify-bun`)
+  Approved: 2026-11-12 owner, in the chat: "let's now just minify js and css only with bun. Do it and create PR" (covers `AGENTS.md`, `.claude/agents/builder.md`, `tools/domains.json`, both CODEOWNERS). Vite, webpack and HTML minify were left out on purpose.
 - [x] T-020 Fix red CI on `master` after the `feature/routes` merge (2026-11-12, PR from branch `fix/master-ci`)
   Approved: 2026-11-12 owner, in the chat: "review master branch and fix red CI". Covers the protected files touched: `tools/domains.json` (owner of `tests/js/routes.test.js`: core), `interfaces/I-2-sidebar-map.md` and `tests/js/contract.test.js` (`showFound` added to the contract, because the Routes tab already used it). If you want `showFound` out of the contract, say so and it becomes an item.
 - [x] T-000 Workflow: one `builder` and one `critic`, one `TODO.md`, no proposals (2026-11-12, PR from branch `chore/builder-critic`)

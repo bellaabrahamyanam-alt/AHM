@@ -13,9 +13,10 @@
   AHM.on('map:ready', () => {
     mapReady = true;
   });
-  // app/js/features.js -> app/features/ (works under the forum too, where the page URL says nothing about the extension folder)
+  // app/js/features.js -> app/features/ (works under the forum too, where the page URL says nothing about the extension folder);
+  // in production this code runs inside the bundle app/dist/app.min.js?v=<hash>, one folder level below app/ as well
   const here = document.currentScript && document.currentScript.src;
-  const root = here ? here.replace(/js\/[^/]*$/, 'features/') : 'features/';
+  const root = here ? here.replace(/(?:js|dist)\/[^/]*$/, 'features/') : 'features/';
   const guard = (what, fn, arg) => {
     try {
       fn(arg);

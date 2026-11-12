@@ -244,4 +244,17 @@ namespace ahm\map\tests {
         $a = visitor($root, 'admins', 5, false)->page()->content;
         ok(strpos($a, '"canEdit":false') !== false, 'editors=admins: a member cannot edit');
     });
+
+    test('page: serves the minified bundle of app/dist, with the configuration before it and a cache-busting hash', function () {
+        $html = visitor(forum_root(), 'members', 2, true)->page()->content;
+        $m = json_decode(file_get_contents(__DIR__ . '/../../app/dist/manifest.json'), true);
+        $v = substr($m['hash'], 0, 12);
+        ok(preg_match('#<script>window\.AHM_BACKEND=\{.*?\};</script><script src="[^"]*ext/ahm/map/app/dist/app\.min\.js\?v=' . $v . '"></script>#s', $html) === 1, 'configuration, then the bundle');
+        ok(preg_match('#<link rel="stylesheet" href="[^"]*ext/ahm/map/app/dist/app\.min\.css\?v=' . $v . '" />#', $html) === 1, 'the minified style');
+        same(1, substr_count($html, 'app.min.js'));
+        same(0, substr_count($html, 'js/config.js'));
+        same(0, substr_count($html, 'js/sidebar/'));
+        same(0, substr_count($html, 'css/base.css'));
+        ok(strpos($html, 'maplibre-gl.js') !== false && strpos($html, 'maplibre-gl.css') !== false, 'the map library still comes from its CDN');
+    });
 }

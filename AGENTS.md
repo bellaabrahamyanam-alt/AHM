@@ -31,7 +31,7 @@ Other documents, only when the item needs them: `DOMAINS.md` (domains, working m
 
 ## 4. Project rules (details: `docs/09-code-style.md`)
 
-- No build step; classic scripts in the order listed in `app/index.html`. Escape output through `esc()`.
+- No build step in development: classic scripts in the order listed in `app/index.html`, served as they are. Production serves the minified bundle `app/dist/` (JS and CSS; whitespace and syntax only, names are never renamed). After you change a file listed in the marked blocks of `app/index.html` (`<!-- ahm:js -->`, `<!-- ahm:css -->`), run `bun tools/build.js` and commit `app/dist/`; `tests/js/build.test.js` fails when it is stale. Escape output through `esc()`.
 - All data rules live in `service/store.php` (no phpBB classes) and are mirrored in `dev/save-handler.js`. A rule changed in one must be changed in the other.
 - The place-type list is kept in three places: `PLACE_TYPES` (`sidebar/placeform.js`), `TYPE_STYLE` (`map/typeicons.js`), `TYPES` (`store.php`, `save-handler.js`).
 - Every write: lock, archive the old file, atomic write. Never delete data without an archived copy.
@@ -40,7 +40,7 @@ Other documents, only when the item needs them: `DOMAINS.md` (domains, working m
 
 ## 5. Checks before you deliver
 
-- Branch `<type>/<task>` (feat, fix, docs, test, refactor, chore); never push to `master`.
+- Branch `<type>/<task>` (feat, fix, docs, test, refactor, chore); never push to `master`. Changed `app/js` or `app/css`: `bun tools/build.js` first.
 - `node tools/ci-check-pr.js <branch> origin/master`, then `node tests/js/run.js 2>&1 | tail -15`; add `php tests/php/run.php` and `php tests/data/run.php` for `service/`, `controller/` or the data format. 
 - Add a test for every new rule. A validation rule lives in three places (PHP store, Node dev server, and the table `tests/fixtures/rules.json` that checks both): change all. When a PHP rule changes, change `dev/save-handler.js` too.
 - Plans and status of the tests: `tests/README.md`.

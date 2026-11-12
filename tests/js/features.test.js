@@ -68,6 +68,12 @@ test('features: a switched-on feature loads main.js and style.css from app/featu
   ok(p.head[0].removed, 'a missing stylesheet is dropped quietly');
 });
 
+test('features: the folder is found from the production bundle too (app/dist/app.min.js?v=<hash>)', () => {
+  const p = page({ features: ['campaigns'], scriptSrc: 'http://forum.test/ext/ahm/map/app/dist/app.min.js?v=0123456789ab' });
+  eq('http://forum.test/ext/ahm/map/app/features/campaigns/style.css', p.head[0].href);
+  eq('http://forum.test/ext/ahm/map/app/features/campaigns/main.js', p.head[1].src);
+});
+
 test('features: init runs after main.js loaded; a failing or missing feature never breaks the app', () => {
   const p = page({ features: ['campaigns', 'broken'] });
   const calls = [];

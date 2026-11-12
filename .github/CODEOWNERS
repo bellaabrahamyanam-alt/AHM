@@ -76,6 +76,7 @@
 /app/js/icons.js @bellaabrahamyanam-alt
 /app/css/base.css @bellaabrahamyanam-alt
 /app/package.json @bellaabrahamyanam-alt
+/app/dist/ @bellaabrahamyanam-alt
 /app/bun.lock @bellaabrahamyanam-alt
 /app/editorconfig @bellaabrahamyanam-alt
 /app/prettierignore @bellaabrahamyanam-alt
@@ -86,6 +87,7 @@
 /tests/js/lib/ @bellaabrahamyanam-alt
 /tests/js/run.js @bellaabrahamyanam-alt
 /tests/js/lint.test.js @bellaabrahamyanam-alt
+/tests/js/build.test.js @bellaabrahamyanam-alt
 /tests/js/browser.test.js @bellaabrahamyanam-alt
 /tests/js/contract.test.js @bellaabrahamyanam-alt
 /tests/js/domains.test.js @bellaabrahamyanam-alt

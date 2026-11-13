@@ -18,7 +18,7 @@
 - **How to verify:** `node tests/js/run.js --no-browser`. By hand: select a place (its symbol grows with a white outline, no orange ring); hover a place (it lightens, tooltip above it); double click a place (sidebar opens its focus, map does not zoom twice); zoom out on a dense area (round bubbles with counts); click a bubble (map zooms to where it splits).
 - **Follow-ups:** `todo/map.md` not ticked in this change; the sidebar half of double click is task 012.
 
-## 2026-11-12 — Place types are a dictionary (T-021, I-8)
+## 2026-11-12 — Place types are a dictionary (T-025, I-8)
 
 - **What:** `AHM.map.setTypes(types)` rebuilds `TYPE_STYLE` from the dictionary and redraws; `AHM.map.getSymbols()`; new symbols `pentagon`, `tree`, `sword`, `pickaxe`, `flag`; images of a changed type are replaced; `typeIcon` also accepts a draft `{ symbol, color, size }` (preview).
 - **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.

@@ -1,6 +1,6 @@
 # Change log of the sidebar domain
 
-## 2026-11-12 — Place types are a dictionary (T-021, I-8)
+## 2026-11-12 — Place types are a dictionary (T-025, I-8)
 
 - **What:** More tab → "Place types" (list with markers and counts; admins: add, edit, remove, live preview); the place form and the filter chips use the dictionary; the old `PLACE_TYPES` list is gone.
 - **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.

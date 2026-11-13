@@ -1,6 +1,6 @@
 # Change log of the core domain
 
-## 2026-11-12 — Place types are a dictionary (T-021, I-8)
+## 2026-11-12 — Place types are a dictionary (T-025, I-8)
 
 - **What:** `loadTypes()`, global `types`, `typeLabel(code, lang)` (moved from the sidebar), `url.types|typeSave|typeDelete`, `canTypeAdmin`.
 - **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.

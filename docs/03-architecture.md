@@ -8,7 +8,7 @@
             VISITORS (browser)
                   │
    ┌──────────────┴───────────────┐
-   │  Front-end: plain HTML/CSS/JS │   no build step, no framework
+   │  Front-end: plain HTML/CSS/JS │   no framework; minified bundle
    │  (MapLibre GL JS draws the map)│
    └───────┬───────────────┬──────┘
            │ reads         │ writes (editors / admins)

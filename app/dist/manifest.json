@@ -1,0 +1,39 @@
+{
+  "hash": "f191eff23ad767589f16de2ba1862660e6a999dbc49a53e21c797e76450467ad",
+  "js": [
+    "js/config.js",
+    "js/ahm.js",
+    "js/icons.js",
+    "js/state/state.js",
+    "js/core/data.js",
+    "js/core/dates.js",
+    "js/core/layer-rules.js",
+    "js/core/shapes.js",
+    "js/core/routes.js",
+    "js/core/search.js",
+    "js/core/providers.js",
+    "js/sidebar/datefield.js",
+    "js/sidebar/searchfield.js",
+    "js/sidebar/period.js",
+    "js/sidebar/placeform.js",
+    "js/map/typeicons.js",
+    "js/map/map.js",
+    "js/map/shapes.js",
+    "js/map/overlays.js",
+    "js/sidebar/layers.js",
+    "js/sidebar/shapes.js",
+    "js/sidebar/routes.js",
+    "js/sidebar/ui.js",
+    "js/features.js"
+  ],
+  "css": [
+    "css/base.css",
+    "css/sidebar.css",
+    "css/map.css",
+    "css/shapes.css"
+  ],
+  "bytes": {
+    "app.min.js": 183081,
+    "app.min.css": 23010
+  }
+}

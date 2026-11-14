@@ -8,6 +8,14 @@
 - **How to verify:** `node tests/js/run.js`. By hand: as an administrator add "Iron mine" (pickaxe), then pick it in a place.
 - **Follow-ups:** none.
 
+## 2026-11-14 — Custom symbols for place types (T-025)
+
+- **What:** Place types editor: symbol list ends with "Custom (SVG path)…"; paste a path or a whole `<svg>` (paths and viewBox are taken from it); Save stays off until the path is valid; live preview.
+- **Why:** the list of 15 symbols is too small (iron mine, cedar forest, sword artefact, ...).
+- **Files:** `app/js/sidebar/ui.js`
+- **How to verify:** By hand (not checked in a browser here): add a type, pick Custom, paste an icon path, check the preview and the marker on the map.
+- **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the sidebar domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.
 
 ---

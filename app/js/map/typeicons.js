@@ -110,16 +110,34 @@ function setTypeStyles(list) {
         shape: SHAPES[st.symbol] ? st.symbol : 'circle',
         color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : fallback.color,
         r: typeof st.size === 'number' && st.size >= 4 && st.size <= 14 ? st.size : fallback.r,
+        ...(st.symbol === 'custom' && validPath(st.path) ? { path: st.path, box: validBox(st.box) ? st.box : 24 } : {}),
       };
     });
   if (!TYPE_STYLE.settlement) TYPE_STYLE.settlement = fallback;
   Object.keys(iconCache).forEach((k) => delete iconCache[k]);
 }
 
+/** A custom symbol is an SVG path (`d`) drawn in a square box (default 24) whose corner is 0,0; the same rule as the server. */
+const PATH_RE = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/;
+const validPath = (d) => typeof d === 'string' && PATH_RE.test(d) && /^\s*[Mm]/.test(d);
+const validBox = (b) => typeof b === 'number' && b >= 8 && b <= 2048;
+/** Path2D of a custom symbol scaled to about 2.3 radii and centred; null when the browser has no Path2D (the symbol is then a circle). */
+function customPath(st, r) {
+  if (!st.path || typeof Path2D === 'undefined' || typeof DOMMatrix === 'undefined') return null;
+  const k = (r * 2.3) / st.box,
+    p = new Path2D();
+  p.addPath(new Path2D(st.path), new DOMMatrix([k, 0, 0, k, (-st.box / 2) * k, (-st.box / 2) * k]));
+  return p;
+}
 /** The style of a type code, or of a draft `{ symbol, color, size }` (the preview in the type editor). Unknown codes fall back to `settlement`. */
 const styleOf = (t) =>
   t && typeof t === 'object'
-    ? { shape: SHAPES[t.symbol] ? t.symbol : 'circle', color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#8D6E63', r: t.size >= 4 && t.size <= 14 ? t.size : 8 }
+    ? {
+        shape: SHAPES[t.symbol] ? t.symbol : 'circle',
+        color: /^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : '#8D6E63',
+        r: t.size >= 4 && t.size <= 14 ? t.size : 8,
+        ...(t.symbol === 'custom' && validPath(t.path) ? { path: t.path, box: validBox(t.box) ? t.box : 24 } : {}),
+      }
     : TYPE_STYLE[t] || TYPE_STYLE.settlement;
 /** Draws the symbol of a type on a canvas of px × px logical pixels (ratio = device pixels per logical pixel). */
 function iconCanvas(type, px, ratio) {
@@ -132,23 +150,26 @@ function iconCanvas(type, px, ratio) {
   g.translate(px / 2, px / 2);
   g.lineJoin = 'round';
   g.beginPath();
+  const P = customPath(st, st.r * f),
+    stroke = () => (P ? g.stroke(P) : g.stroke()),
+    fill = () => (P ? g.fill(P) : g.fill());
   SHAPES[st.shape](g, st.r * f);
   if (st.shape === 'ring') {
     g.lineWidth = 6 * f;
     g.strokeStyle = '#fff';
-    g.stroke();
+    stroke();
     g.lineWidth = 3 * f;
     g.strokeStyle = st.color;
-    g.stroke();
+    stroke();
   } else {
     g.lineWidth = 3.2 * f;
     g.strokeStyle = '#fff';
-    g.stroke();
+    stroke();
     g.fillStyle = st.color;
-    g.fill();
+    fill();
     g.lineWidth = f;
     g.strokeStyle = 'rgba(0,0,0,.35)';
-    g.stroke();
+    stroke();
   }
   return c;
 }
@@ -162,26 +183,29 @@ function iconCanvasHl(type, px, ratio) {
   g.translate(px / 2, px / 2);
   g.lineJoin = 'round';
   g.beginPath();
+  const P = customPath(st, st.r),
+    stroke = () => (P ? g.stroke(P) : g.stroke()),
+    fill = () => (P ? g.fill(P) : g.fill());
   SHAPES[st.shape](g, st.r);
   if (st.shape === 'ring') {
     g.lineWidth = 10;
     g.strokeStyle = 'rgba(0,0,0,.35)';
-    g.stroke();
+    stroke();
     g.lineWidth = 8.4;
     g.strokeStyle = '#fff';
-    g.stroke();
+    stroke();
     g.lineWidth = 3;
     g.strokeStyle = st.color;
-    g.stroke();
+    stroke();
   } else {
     g.lineWidth = 8;
     g.strokeStyle = 'rgba(0,0,0,.35)';
-    g.stroke();
+    stroke();
     g.lineWidth = 6.4;
     g.strokeStyle = '#fff';
-    g.stroke();
+    stroke();
     g.fillStyle = st.color;
-    g.fill();
+    fill();
   }
   return c;
 }

@@ -148,7 +148,8 @@ function saveLang(inp) {
 // ---------------- place types: the dictionary (types.json); same rules as service/store.php ----------------
 const TYPE_FILE = path.join(DATA, 'types.json'),
   TYPE_COLOR = /^#[0-9a-fA-F]{6}$/,
-  SYMBOL = /^[a-z0-9-]{1,24}$/;
+  SYMBOL = /^[a-z0-9-]{1,24}$/,
+  PATH = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/; // SVG path data of a custom symbol: drawing commands and numbers only
 const SEED_STYLE = {
   settlement: ['circle', '#8D6E63', 7.5],
   city: ['circle', '#B3261E', 10],
@@ -223,7 +224,18 @@ function saveType(inp) {
     if (!en) throw bad('give the type a name in English (its code is made from it)');
     code = typeCodeFrom(en, list.map((t) => t.code));
   }
-  const entry = { code, geometry: 'point', names, color: color.toLowerCase(), style: { symbol, size } };
+  const style = { symbol, size };
+  if (symbol === 'custom') {
+    // A custom symbol: an SVG path drawn in a square box (default 24) whose corner is 0,0.
+    const path = typeof st.path === 'string' ? st.path.trim() : '',
+      box = st.box == null ? 24 : st.box;
+    if (!PATH.test(path) || !/^[Mm]/.test(path))
+      throw bad('a custom symbol needs an SVG path (the d value, 2 to 4000 characters of drawing commands and numbers, starting with M)');
+    if (typeof box !== 'number' || !(box >= 8 && box <= 2048)) throw bad('the box of a custom symbol must be a number from 8 to 2048');
+    style.path = path;
+    style.box = box;
+  }
+  const entry = { code, geometry: 'point', names, color: color.toLowerCase(), style };
   if (inp.edit) list[at] = entry;
   else list.push(entry);
   putTypes(list);

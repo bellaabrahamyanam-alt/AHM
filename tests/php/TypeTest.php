@@ -150,3 +150,29 @@ test('delete_type: the count in the message is the number of places', function (
         $s->delete_type('iron-mine');
     });
 });
+
+test('save_type: a custom symbol is an SVG path in a box; path and box are stored, only for symbol "custom"', function () {
+    $s = fresh_store($dir);
+    $s->save_type(iron(['style' => ['symbol' => 'custom', 'size' => 9, 'path' => " M256 10 L500 500 H10 z ", 'box' => 512]]));
+    same(['symbol' => 'custom', 'size' => 9, 'path' => 'M256 10 L500 500 H10 z', 'box' => 512], find_by($s->types()['types'], 'code', 'iron-mine')['style']);
+    $s->save_type(iron(['code' => 'iron-mine', 'edit' => true, 'style' => ['symbol' => 'custom', 'size' => 9, 'path' => 'M0 0 L5 5 Z']]));
+    same(24, find_by($s->types()['types'], 'code', 'iron-mine')['style']['box'], 'box defaults to 24');
+    $s->save_type(iron(['code' => 'iron-mine', 'edit' => true, 'style' => ['symbol' => 'star', 'size' => 9, 'path' => 'M0 0 L5 5 Z']]));
+    same(['symbol' => 'star', 'size' => 9], find_by($s->types()['types'], 'code', 'iron-mine')['style'], 'a path is dropped when the symbol is not custom');
+});
+
+test('save_type: a custom symbol needs a clean path (only drawing commands and numbers, starting with M) and a box of 8 to 2048', function () {
+    $s = fresh_store($dir);
+    $before = file_get_contents("$dir/types.json");
+    foreach ([null, '', 'M', 'L0 0 L5 5', 'M0 0 <script>', 'M0 0 url(x)', 'M0 0 ' . str_repeat('1 ', 2100), ['M0 0']] as $path) {
+        throws('/SVG path/', function () use ($s, $path) {
+            $s->save_type(iron(['style' => ['symbol' => 'custom', 'size' => 8, 'path' => $path]]));
+        }, json_encode($path === null ? null : (is_string($path) ? substr($path, 0, 20) : $path)));
+    }
+    foreach ([2, 4000, '24', 'x'] as $box) {
+        throws('/box/', function () use ($s, $box) {
+            $s->save_type(iron(['style' => ['symbol' => 'custom', 'size' => 8, 'path' => 'M0 0 L5 5', 'box' => $box]]));
+        }, json_encode($box));
+    }
+    same($before, file_get_contents("$dir/types.json"), 'nothing written');
+});

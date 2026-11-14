@@ -973,19 +973,39 @@ function renderTypes() {
       )
       .join("") || '<li class="sn">No types yet.</li>';
 }
-const tyDraft = () => ({
-  symbol: $("#tySym").value,
-  color: $("#tyColor").value,
-  size: Number($("#tySize").value),
-});
+const tyDraft = () => {
+  const d = { symbol: $("#tySym").value, color: $("#tyColor").value, size: Number($("#tySize").value) };
+  if (d.symbol === "custom") {
+    d.path = $("#tyPath").value.trim();
+    d.box = Number($("#tyBox").value);
+  }
+  return d;
+};
+// A whole <svg> pasted into the path box: keep the d of its paths and take the box from its viewBox.
+function tyPastedSvg() {
+  const t = $("#tyPath").value;
+  if (!/<svg/i.test(t)) return;
+  const ds = [...t.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1].trim()),
+    vb = /viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(t);
+  $("#tyPath").value = ds.join(" ");
+  if (vb) $("#tyBox").value = Math.max(Number(vb[1]), Number(vb[2]));
+}
 const tyNames = () =>
   [...$("#typeAdmin").querySelectorAll(".pf-name")]
     .map((r) => ({ lang: r.querySelector(".nl").value, name: r.querySelector(".nn").value.trim() }))
     .filter((x) => x.name);
 // Save stays off until there is an English name (the code is made from it) when adding, or any name when editing.
 const tyValidate = () => {
+  if (!$("#tySym")) return; // the form is closed
   const b = $("#tyAdd");
-  if (b) b.disabled = !(tyEditing ? tyNames().length : tyNames().some((x) => x.lang === "en"));
+  const custom = $("#tySym").value === "custom";
+  $("#tyCustom").hidden = !custom;
+  if (b) {
+    const d = tyDraft();
+    b.disabled =
+      !(tyEditing ? tyNames().length : tyNames().some((x) => x.lang === "en")) ||
+      (custom && !(/^\s*[Mm]/.test(d.path) && /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/.test(d.path) && d.box >= 8 && d.box <= 2048));
+  }
   const pv = $("#tyPrev");
   if (pv) pv.innerHTML = typeIcon(tyDraft()) + " " + esc($("#tySize").value);
 };
@@ -1008,7 +1028,10 @@ function tyRenderAdmin(t) {
     `<div class="label">Symbol</div><select id="tySym">${AHM.map
       .getSymbols()
       .map((y) => `<option value="${esc(y.name)}"${y.name === st.symbol ? " selected" : ""}>${esc(y.label)}</option>`)
-      .join("")}</select>` +
+      .join("")}<option value="custom"${st.symbol === "custom" ? " selected" : ""}>Custom (SVG path)…</option></select>` +
+    `<div id="tyCustom" hidden><div class="sn">Paste an SVG path (the <code>d</code> value, starts with M) or a whole <code>&lt;svg&gt;</code>, for example from a free icon set. It is drawn in one colour; the box is the size of the drawing area (24 for most icons, 512 for game-icons.net).</div>` +
+    `<textarea id="tyPath" rows="4" maxlength="20000" spellcheck="false" aria-label="SVG path">${esc(st.path || "")}</textarea>` +
+    `<div class="label">Box</div><input id="tyBox" type="number" min="8" max="2048" step="1" value="${Number(st.box) || 24}" aria-label="Box size"></div>` +
     `<div class="label">Colour</div><input id="tyColor" type="color" value="${esc((t && t.color) || "#8d6e63").toLowerCase()}" aria-label="Colour">` +
     `<div class="label">Size</div><input id="tySize" type="range" min="4" max="14" step="0.5" value="${Number(st.size) || 8}" aria-label="Size"> <span id="tyPrev"></span>` +
     '<div class="btn-pair"><button id="tyAdd" class="primary" disabled>Save</button><button id="tyCancel">Cancel</button>' +
@@ -1044,7 +1067,10 @@ async function tyPost(url, body) {
 }
 tyRenderAdmin();
 placeFormWire($("#typeAdmin")); // the add / move up / remove buttons of the name rows
-$("#typeAdmin").addEventListener("input", tyValidate);
+$("#typeAdmin").addEventListener("input", (e) => {
+  if (e.target.id === "tyPath") tyPastedSvg();
+  tyValidate();
+});
 $("#typeAdmin").addEventListener("change", tyValidate);
 $("#typeAdmin").addEventListener("click", tyValidate);
 $("#typeList").addEventListener("click", (e) => {
@@ -1068,7 +1094,7 @@ $("#typeAdmin").addEventListener("click", async (e) => {
         geometry: "point",
         names: tyNames(),
         color: d.color,
-        style: { symbol: d.symbol, size: d.size },
+        style: { symbol: d.symbol, size: d.size, ...(d.symbol === "custom" ? { path: d.path, box: d.box } : {}) },
       });
     } else return;
     tySet(await loadTypes());

@@ -32,4 +32,12 @@
 - **How to verify:** `php tests/php/run.php`, `php tests/data/run.php`, `node tests/js/run.js`.
 - **Follow-ups:** line and area types (`geometry` other than `point`); owner decisions in `TODO.md` T-026 (contract: `style.size`, `_` in codes, `typeIcon` with a draft).
 
+## 2026-11-14 — Custom symbols for place types (T-025)
+
+- **What:** `save_type` accepts `style.symbol = "custom"` with `style.path` (SVG path data, checked by a whitelist of characters, must start with M) and `style.box` (8–2048, default 24); dropped for other symbols. PHP and the dev server give the same verdicts (8 new parity cases).
+- **Why:** the list of 15 symbols is too small (iron mine, cedar forest, sword artefact, ...).
+- **Files:** `service/store.php`, `dev/save-handler.js`, `tests/php/TypeTest.php`, `tests/fixtures/rules.json`, `docs/05-data-model.md`
+- **How to verify:** `php tests/php/run.php`, `node tests/js/run.js`.
+- **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the data domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

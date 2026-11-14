@@ -973,3 +973,19 @@ test('types: AHM.map.setTypes before the map is ready only updates the table (ic
   p.X('AHM.map.setTypes(__0)', TYPES_DICT);
   ok(p.X('"iron-mine" in TYPE_STYLE'));
 });
+
+test('types: a custom symbol keeps its SVG path and box; a bad path or box falls back (circle, box 24)', () => {
+  const p = load(['typeicons.js']);
+  const mk = (code, st) => ({ code, geometry: 'point', names: [{ lang: 'en', name: code }], color: '#2e7d32', style: { size: 9, ...st } });
+  p.X('setTypeStyles(__0)', [
+    mk('cedar', { symbol: 'custom', path: 'M256 10 L500 500 H10 z', box: 512 }),
+    mk('nobox', { symbol: 'custom', path: 'M0 0 L5 5 Z' }),
+    mk('evil', { symbol: 'custom', path: 'M0 0 <script>alert(1)</script>' }),
+    mk('plain', { symbol: 'star', path: 'M0 0 L5 5 Z' }),
+  ]);
+  const st = J(p.X('TYPE_STYLE'));
+  eq({ shape: 'circle', color: '#2e7d32', r: 9, path: 'M256 10 L500 500 H10 z', box: 512 }, st.cedar);
+  eq(24, st.nobox.box, 'box defaults to 24');
+  ok(!('path' in st.evil) && st.evil.shape === 'circle', 'markup in a path is never used');
+  ok(!('path' in st.plain), 'a path of a type that is not custom is ignored');
+});

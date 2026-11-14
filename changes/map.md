@@ -26,4 +26,12 @@
 - **How to verify:** `node tests/js/run.js`. By hand: add a type in More → Place types, give it to a place: the marker changes on the map without a reload.
 - **Follow-ups:** none.
 
+## 2026-11-14 — Custom symbols for place types (T-025)
+
+- **What:** A type with a custom symbol is drawn from its path (`Path2D`, scaled to the marker size and centred); the same for the editor preview, the list and the hover look. Bad path or box = circle.
+- **Why:** the list of 15 symbols is too small (iron mine, cedar forest, sword artefact, ...).
+- **Files:** `app/js/map/typeicons.js`, `tests/js/map.test.js`, `tests/js/lint.test.js`, `app/dist/`
+- **How to verify:** `node tests/js/run.js`.
+- **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the map domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

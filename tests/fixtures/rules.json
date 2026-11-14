@@ -1204,6 +1204,169 @@
     }
    },
    "expect": "ok"
+  },
+  {
+   "name": "type: custom symbol",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M12 2 L22 22 H2 Z",
+     "box": 24
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: custom symbol, box 512",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M256 10 L500 500 H10 z",
+     "box": 512
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: custom symbol without path",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom path with markup",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M0 0 <script>"
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom path must start with M",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "L0 0 L5 5"
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom path too short",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M"
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom box too small",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M0 0 L5 5",
+     "box": 2
+    }
+   },
+   "expect": "box"
+  },
+  {
+   "name": "type: custom box not a number",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M0 0 L5 5",
+     "box": "24"
+    }
+   },
+   "expect": "box"
   }
  ]
 }

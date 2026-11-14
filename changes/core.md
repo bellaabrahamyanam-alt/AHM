@@ -39,3 +39,11 @@ The layer state is shared between domains and lives in `AHM.state` (task 001, IN
 
 ### Follow-ups
 None. `search.js` and the sidebar code are out of scope.
+
+## 2026-11-14 — T-021: route rules in core (written afterwards; commits `b0b76d2`, `571630d`)
+
+- **What:** new `app/js/core/routes.js` (pure rules: `routeSegments`, `findRoutePaths`, `routesThrough`, one-way and two-way use, a change of route costs `ROUTE_TRANSFER_KM`); `core/shapes.js`: route types, `lineKm`, `geomLines`, `twoway` and `stops` in the shape object, `shapesRun` also filters routes.
+- **Why:** routes that share a place chain into journeys; the rules need no DOM and no map, so they are testable.
+- **Files:** `app/js/core/routes.js`, `app/js/core/shapes.js`, `tests/js/routes.test.js` (9 tests).
+- **How to verify:** `node tests/js/run.js` (routes tests).
+- **Follow-ups:** none.

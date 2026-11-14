@@ -2,7 +2,7 @@
 // Production bundle (T-005): minifies the browser JS and CSS into app/dist/. Only whitespace and syntax are minified; names are
 // NOT renamed, because the scripts are classic scripts that share one global scope (AGENTS.md, section 4).
 //   bun tools/build.js            write app/dist/app.min.js, app/dist/app.min.css and app/dist/manifest.json (needs Bun)
-//   node tools/build.js --check   exit 1 if app/dist was not built from the current sources (tests/js/build.test.js; no Bun needed)
+//   node tools/build.js --check   exit 1 if app/dist was not built from the current sources, or a bundle differs in size from the manifest (tests/js/build.test.js; no Bun needed)
 // The files to bundle, and their order, are read from the marked blocks of app/index.html:
 //   <!-- ahm:css --> ... <!-- /ahm:css -->   and   <!-- ahm:js --> ... <!-- /ahm:js -->
 // app/dist/ is committed: a forum installs the extension by copying the repository and has no Bun.
@@ -42,13 +42,20 @@ function hashOf(s) {
   return h.digest('hex');
 }
 
-/** true when app/dist is missing or was built from other sources. */
-function stale() {
-  const file = path.join(DIST, 'manifest.json');
+/** true when app/dist is missing, was built from other sources, or a bundle differs in size from the manifest (a hand-edited bundle). */
+function stale(dist = DIST) {
+  const file = path.join(dist, 'manifest.json');
   if (!fs.existsSync(file)) return true;
   const m = JSON.parse(fs.readFileSync(file, 'utf8'));
   const s = sources();
-  return m.hash !== hashOf(s) || ['app.min.js', 'app.min.css'].some((f) => !fs.existsSync(path.join(DIST, f)));
+  if (m.hash !== hashOf(s)) return true;
+  return ['app.min.js', 'app.min.css'].some((f) => !fs.existsSync(path.join(dist, f)) || !m.bytes || fs.statSync(path.join(dist, f)).size !== m.bytes[f]);
+}
+
+/** true when `name` is declared in the bundle: `function|class|const|let|var name`, or a later declarator of a merged declaration (`let a=1,name=2`). A call, a property or an assignment does not count. */
+function hasDeclaration(code, name) {
+  const n = name.replace(/\$/g, '\\$');
+  return new RegExp(`(?:^|[^\\w$.])(?:function\\*?|class|const|let|var)\\s+${n}(?![\\w$])|[,;]\\s*${n}\\s*=(?!=)`).test(code);
 }
 
 function bunBuild(inFile, outFile, flags) {
@@ -74,7 +81,7 @@ function build() {
   }
 }
 
-module.exports = { sources, joinJs, joinCss, hashOf, stale, build, DIST };
+module.exports = { sources, joinJs, joinCss, hashOf, stale, hasDeclaration, build, DIST };
 
 if (require.main === module) {
   if (process.argv.includes('--check')) {

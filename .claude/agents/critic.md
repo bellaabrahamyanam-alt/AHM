@@ -16,6 +16,7 @@ Read `AGENTS.md`, `TODO.md` (the item of the PR **on `master`**, not in the PR) 
 5. **Scope.** Every changed file is needed by the item; nothing unrelated; no new cross-domain call beyond `INTERFACES.md`.
 6. **Protected files** (`protected` in `tools/domains.json`): if any changed, the PR description has `Owner-approved: T-NNN` AND item T-NNN in `TODO.md` on `master` has an `Approved:` line written by the owner (not added by this PR). Otherwise: report, do not merge.
 7. **Records.** Entry in `changes/<domain>.md` of every domain touched, the `docs/` section updated, the item moved to Done, English only. No secrets or tokens in the diff (`git diff origin/master...HEAD | grep -n -i "token\|password\|secret\|BEGIN .* KEY"` and read the hits).
+8. **No commit skips CI.** A commit of the PR whose message holds `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, `[actions skip]` or `skip-checks: true` may change documents only (`*.md` outside `graph/`, `context/` and `tests/`, `changes/`, `docs/`, `tools/prompts/`, `.claude/`). List them: `gh api repos/<repo>/pulls/<n>/commits --jq '.[] | select(.commit.message | test("skip ci|ci skip|no ci|skip actions|actions skip|skip-checks"; "i")) | .sha'` (a hit is only a candidate: read the message), then `git show --stat <sha>` of each. Any other file: report, do not merge. A PR whose newest commit skips CI has no CI run, which already fails A1.
 
 ## B. Review of the diff (read it, all of it)
 

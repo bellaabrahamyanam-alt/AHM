@@ -47,7 +47,7 @@
 
 ### Sidebar and page
 
-- Three tabs: **Explore**, **Layers**, **More**. More holds three folds: **Maps & base map** (base map toggles, historical map images), **Directions**, **Languages**. Calling `tab('route')` (etc.) opens the right fold.
+- Five tabs: **Explore**, **Borders**, **Routes**, **Layers**, **More**. More holds three folds: **Maps & base map** (base map toggles, historical map images), **Directions**, **Languages**. Calling `tab('route')` (etc.) opens the right fold.
 - **Sheets, not view swaps:** a place or a layer opens as a *sheet* over the list (back button on top, actions in a sticky bar at the bottom). The list underneath keeps its scroll position and filters. A place opened from a layer sheet lies on top of it, so Back returns to the layer. Clicking a tab or typing in the search box leaves the sheet.
 - **Filters:** closed by default; whatever is active (types, language, period, layers) is shown as removable chips under the Filters line.
 - **Buttons:** one language everywhere: default (secondary), `primary` (the one main action of a view), `danger`, `back`.
@@ -58,6 +58,7 @@
 
 - The **general layer** is everything: every place with every note. It is not stored. A **layer** is a named subset of it, for example "Military campaigns of Hammurabi". A place is never removed from the general layer; it can be in many layers.
 - A layer has names and descriptions in dictionary languages, **one optional category**, an optional **colour**, an optional **date range**, its own **notes** and an **ordered** list of places (the order is kept for future route lines; there is no ordering interface yet).
+- **Routes tab:** historical routes (trade, military, migration, journey, road). A route is a line through places and free waypoints; a place is a *stop* when a point of the line sits on it. A person draws it on the map (click A, the points, B; a click on a place marker makes that place a stop; optionally the line follows modern roads between the clicks, OSRM), then gives names, type, direction (one-way routes are drawn with arrows) and dates. Routes that share a stop chain into journeys: **Find a path** between two places gives the shortest chain and alternatives. Same layers and period filter as borders.
 - **Borders and routes** have notes too (title, language, optional date, text), written and read in the card of the border (Borders tab) or route (Routes tab). They are stored with the layer notes. Editors add and edit them.
 - **Layers tab:** search layers, filter by category, **Only** (show just the places of the layer; several layers = OR) and **Hide** (NOT IN). The active filters are chips in Explore → Filters and are cleared by Reset. A layer detail view shows its places, notes, **Fit map**, and for editors **Add note**, **Edit layer**, **Choose places**. The period filter does not look at layers.
 - **Choose places:** click places on the map or tick them in a list; nothing is saved until **Save places** (one request). Members get a ring on the map. There is no box-select.

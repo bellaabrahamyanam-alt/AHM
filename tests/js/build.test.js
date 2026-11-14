@@ -28,7 +28,7 @@ test('build: the minified script parses and keeps every top-level name of the so
   const names = new Set();
   for (const m of src.matchAll(/^(?:async\s+)?(?:function\*?|class|const|let|var)\s+([A-Za-z_$][\w$]*)/gm)) names.add(m[1]);
   ok(names.size > 100, 'found the top-level names: ' + names.size);
-  const lost = [...names].filter((n) => !new RegExp('(?<![\\w$])' + n.replace(/\$/g, '\\$') + '(?![\\w$])').test(min));
+  const lost = [...names].filter((n) => !b.hasDeclaration(min, n));
   eq([], lost);
   ok(min.length < src.length * 0.8, 'the bundle is smaller than the sources');
 });
@@ -51,4 +51,41 @@ test('build: the manifest lists the files and sizes of the bundle', () => {
   eq(Buffer.byteLength(dist('app.min.js')), m.bytes['app.min.js']);
   eq(Buffer.byteLength(dist('app.min.css')), m.bytes['app.min.css']);
   ok(/^[0-9a-f]{64}$/.test(m.hash), 'hash is sha256');
+});
+
+test('build: hasDeclaration finds a name only where it is declared, not anywhere in the text', () => {
+  ok(b.hasDeclaration('function foo(){}', 'foo'));
+  ok(b.hasDeclaration('x();async function foo(){}', 'foo'));
+  ok(b.hasDeclaration('class Foo{}', 'Foo'));
+  ok(b.hasDeclaration('const a=1;let b=2,foo=3;', 'foo'), 'a second declarator of a merged declaration');
+  ok(b.hasDeclaration('var $x=1', '$x'), 'a name with $');
+  ok(!b.hasDeclaration('x.foo();', 'foo'), 'a call');
+  ok(!b.hasDeclaration('foo=1;', 'foo'), 'an assignment');
+  ok(!b.hasDeclaration('function foobar(){}', 'foo'), 'a longer name');
+  ok(!b.hasDeclaration('a.foo=1;', 'foo'), 'a property');
+});
+
+test('build: --check also fails when a bundle differs in size from the manifest (a hand-edited bundle with a matching manifest hash)', () => {
+  const os = require('os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ahm-dist-'));
+  try {
+    const fresh = () => fs.cpSync(b.DIST, tmp, { recursive: true });
+    fresh();
+    ok(!b.stale(tmp), 'an untouched copy is not stale');
+    fs.appendFileSync(path.join(tmp, 'app.min.js'), '\n');
+    ok(b.stale(tmp), 'app.min.js longer than the manifest says');
+    fresh();
+    fs.appendFileSync(path.join(tmp, 'app.min.css'), ' ');
+    ok(b.stale(tmp), 'app.min.css longer than the manifest says');
+    fresh();
+    const m = JSON.parse(fs.readFileSync(path.join(tmp, 'manifest.json'), 'utf8'));
+    m.bytes['app.min.js'] -= 1;
+    fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify(m));
+    ok(b.stale(tmp), 'a manifest that states another size');
+    fresh();
+    fs.rmSync(path.join(tmp, 'app.min.css'));
+    ok(b.stale(tmp), 'a missing bundle file');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });

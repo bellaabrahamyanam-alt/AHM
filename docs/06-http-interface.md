@@ -18,6 +18,9 @@ In the forum every address is below `…/app.php` (for example `https://forum.ex
 | `/map/language-save`       | POST   | admins   | Add a language (JSON `{ code, name, native }`).       |
 | `/map/layer-save`          | POST   | editors  | Create or change a layer; change its places; add or edit a layer note (see below). |
 | `/map/layer-delete`        | POST   | admins   | Delete a layer (JSON `{ "id": … }`; archived first). |
+| `/map/data/shapes`         | GET    | everyone | `shapes.geojson`: borders and routes.                 |
+| `/map/shape-save`          | POST   | editors  | Add or change a border or a route (JSON; a route may have `stops` and `twoway`). |
+| `/map/shape-delete`        | POST   | editors  | Delete a border or a route (JSON `{ "id": … }`; archived first; its notes are archived with it). |
 | `/map/category-save`       | POST   | admins   | Add or rename a category (JSON `{ id?, names }`).     |
 | `/map/type-save`           | POST   | admins   | Add a place type, or with `edit: true` change one (JSON `{ code?, edit?, geometry: "point", names, color, style: { symbol, size } }`; answers `{ ok, code }`). |
 | `/map/type-delete`         | POST   | admins   | Remove a place type nobody uses (JSON `{ code }`; 400 with the number of places otherwise). |

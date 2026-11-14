@@ -91,3 +91,30 @@ One entry per change, newest last: date, what, why, files, how to verify, open f
 **Files:** `tools/ci.sh`, `tests/js/ci.test.js`. Owner-approved: T-006 (protected file `tools/ci.sh`; `.github/workflows/ci.yml` needed no change).
 **Verify:** `node tests/js/run.js 2>&1 | tail -15`; locally: append a line to a file of `app/js`, `node tools/build.js --check` exits 1, `bun tools/build.js` changes `app/dist/`. Not run: the CI commit itself (needs a PR that changes `app/js` and the secret `GRAPH_PUSH_TOKEN`).
 **Follow-ups:** T-028 (agent texts still say to build before a PR). `docs/` has no section on the build or CI, so none changed.
+
+## 2026-11-14 — T-024, T-022, T-021, T-010 in one PR (owner: "all give my approve")
+
+**What:**
+- **T-024** `tools/build.js`: `stale(dist)` is also true when `app.min.js` or `app.min.css` is missing or differs in size from the manifest; new `hasDeclaration(code, name)` (a name counts only after `function|class|const|let|var`, or as a later declarator `,name=` of a merged declaration; a call, a property or an assignment does not). `tests/js/build.test.js`: the name test uses it; two new tests show each failure.
+- **T-022** `tools/ci-check-pr.js`: a commit of the branch with `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`, `[actions skip]` or `skip-checks: true` may change documents only (the `CODE` paths of `tools/ci.sh` are code); `.claude/agents/critic.md` rule A8 says the same, because a PR whose newest commit skips CI never runs the check. `tests/js/ci.test.js`: 2 tests, one in a real git repository. Not done: branch protection (T-004).
+- **T-021** change-log entries in `changes/{sidebar,core,map,data}.md`; `docs/02`, `docs/05` (`shapes.geojson`), `docs/06` (`shape-save`, `shape-delete`, `data/shapes`).
+- **T-010** the audit below.
+**Why:** the critic found these gaps (nine `[skip ci]` commits, a hand-editable bundle, the routes work without records).
+**Files:** `tools/build.js`, `tools/ci-check-pr.js`, `.claude/agents/critic.md`, `tests/js/build.test.js`, `tests/js/ci.test.js`, `changes/*.md`, `docs/02`, `docs/05`, `docs/06`, `TODO.md`. Owner-approved: T-022 (protected: `tools/ci-check-pr.js`, `.claude/agents/critic.md`).
+**Verify:** `node tests/js/run.js 2>&1 | tail -15`; `node tools/build.js --check`.
+
+**T-010 audit** (done = code and test; partly = code without the test the spec asked for, or only a part of the code; open = no code). Checked by reading the code and grepping; the app was not run.
+
+| Spec | Result | Evidence |
+|---|---|---|
+| 006 sidebar test file | done | `tests/js/sidebar.test.js`; listed in `tools/domains.json`, `.gitlab/CODEOWNERS`, `.github/CODEOWNERS` |
+| 007 sidebar fixes | partly | code: `catSave` disabled until valid, "Rename category" editor (`sidebar/layers.js`), second click of a double click skipped (`sidebar/ui.js:334`); no test for hover, selection, flicker, forms (`sidebar.test.js` has 4 tests, all about types) → T-029 |
+| 008 map marker UX | done | `tests/js/map.test.js`: selected look, clusters (`CLUSTER_RADIUS`, `CLUSTER_MAX_ZOOM` in `map/map.js`), hover, tooltip, double click. Selected symbol is 1.25x (`SEL_SCALE`), the spec said about 30% |
+| 009 UI contract v1.5 | done | `INTERFACES.md` 1.5 with I-7 to I-9, `app/js/icons.js` (Phosphor), `DESIGN.md`, `tests/js/icons.test.js`; `contract.test.js` already lists the new core names |
+| 010 map point menu | partly | `showMenu`, `hideMenu`, `map:menu` in `map/map.js`; `map.test.js` only lists the command names → T-030 |
+| 011 types and shapes storage | partly | `data/types.json` (13 point types only, no `border`, `route`, `territory`), `data/shapes.geojson`, `shape-save`, `loadTypes`, `loadShapes`, `typeLabel`, `add_shapes`/`remove_shapes` in `store.php`; no `layerAllowsShape`, no test or `rules.json` row for shape members → T-031, T-034 |
+| 012 sidebar layout | partly | dock (`ui.js` `dockSync`), `+ Add layer` button, collapse handle (`panel-left`/`panel-right`), `showMenu` with `route-from`/`route-to`, `place:dblclick`; no tests → T-029 |
+| 013 map types and shapes | partly | `setTypes`, `getSymbols`, `setShapes`, `highlightShape`, `drawShape`, `shape:click`, `map:click.shapes` exist; no `hideShape`, no `double`/`triple` pattern; 2 shape tests in `map.test.js` → T-033 |
+| 014 sidebar types and shapes UI | partly | types editor (`ui.js` `typeSave`, `typeDelete`), Borders and Routes tabs instead of a "Places \| Shapes" switch; no "Shapes (n)" or "Choose shapes" in the layer detail → T-031, T-034 |
+
+**Follow-ups:** T-029 to T-034, T-028.

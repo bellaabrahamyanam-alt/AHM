@@ -56,3 +56,11 @@ One entry per change, newest last: date, what, why, files, how to verify, open f
 **Why:** the owner asked for notes on routes and borders. No new endpoint, config key or contract change: the notes use `layer-save` with `layer_note` and the `layer-notes/` folders, the owner id is a shape id. The store is the only code that touches these files, so a later move to MySQL replaces `save_layer_note`, the index and `archive_layer_notes` only.
 **Verify:** `php tests/php/run.php | tail -15`, `php tests/data/run.php | tail -15`, `node tests/js/run.js parity`.
 **Follow-ups:** none.
+
+## 2026-11-14 — T-021: route types and fields in the shape store (written afterwards; commits `b0b76d2`, `571630d`)
+
+- **What:** `service/store.php` and `dev/save-handler.js`: shape types `trade`, `military`, `migration`, `journey`, `road` (`ROUTE_TYPES`); a route has optional `stops` (ordered ids of existing places, at most 60; error `unknown place among the route stops`) and `twoway` (boolean; error `twoway must be true or false`); a route must be a line (`a route must be a line`); `clean_shape` and `cleanShape` take the places.
+- **Why:** routes are stored with the borders, in `shapes.geojson`, with the same layers and period filter (T-021).
+- **Files:** `service/store.php`, `dev/save-handler.js`, `docs/05-data-model.md`, `docs/06-http-interface.md`, `docs/02-implemented-features.md`.
+- **How to verify:** `php tests/php/run.php`, `node tests/js/run.js` (parity table).
+- **Follow-ups:** `tests/fixtures/rules.json` and `tests/php` have no test for the three errors (stops, twoway, line): T-032.

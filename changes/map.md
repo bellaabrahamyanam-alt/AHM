@@ -43,3 +43,11 @@
 - **Follow-ups:** the type editor of the sidebar (`ui.js`) and `dev/save-handler.js` have no new tests: the editor needs a browser run, the dev server was left out on purpose.
 
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the map domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.
+
+## 2026-11-14 — T-021: routes on the map (written afterwards; commits `b0b76d2`, `571630d`, `2f38036`)
+
+- **What:** `app/js/map/shapes.js`: route lines with direction arrows (one-way routes), the path found by Find a path drawn as a bold line over the routes, and the drawing tool for lines `drawShape({ kind: 'line', coords, ids, snap, locate, expand, onNote })`: A and B labels, a click on a place marker makes it a stop, a handle in the middle of each segment inserts a point, undo takes a click and its road away together, optional roads between clicks through `expand`.
+- **Why:** the Routes tab draws on the map first (T-021).
+- **Files:** `app/js/map/shapes.js`.
+- **How to verify:** the map library comes from a CDN, so only by eye: Routes tab, add a route, click place markers and free points, drag a handle, save.
+- **Follow-ups:** the map canvas is not covered by any automatic test.

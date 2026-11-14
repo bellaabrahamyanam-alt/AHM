@@ -128,6 +128,10 @@ The same folders and index also hold the notes of a **border or route** (a shape
 
 A **place note** may carry an extra header line `layers: <id>,<id>` and its `notes/index.json` entry has `layers: []`. A note can only be tied to layers the place belongs to. Taking a place out of a layer, or deleting a layer, removes the tags from the notes (the changed notes are archived first). Every change archives the old file.
 
+### `shapes.geojson` (borders and routes)
+
+A GeoJSON `FeatureCollection`; every feature is one **border** (an area, `Polygon` or `MultiPolygon`) or one **route** (a line, `LineString` or `MultiLineString`). Properties: `id` (UUID), `names` (`[ { lang, name } ]`), `type`, `color` (`#rrggbb`), `opacity`, `label` (boolean), `date_from`, `date_to` (the [date model](#dates)), `source`, `created`, `updated`. Border types: `country`, `kingdom`, `region`, `district`, `territory`, `disputed`. **Route types:** `trade`, `military`, `migration`, `journey`, `road`. A route type is refused for an area (`a route must be a line`). Only routes have two more fields: `stops` (the ids of the places the line passes, in order, at most 60, every id an existing place: `unknown place among the route stops`) and `twoway` (boolean: usable both ways; a one-way route is drawn with arrows). Both are optional; absent means unchanged when saving. Routes that share a stop chain into journeys (`core/routes.js`). Layers list a shape in `members` (`shape` instead of `place`). The rules are in `service/store.php` and `dev/save-handler.js`.
+
 ### Languages
 
 `languages.json` is the dictionary every name and note language is chosen from:

@@ -35,23 +35,27 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Next (builder)
 
-- [ ] T-024 Harden the `app/dist` check
-  Done when: `node tools/build.js --check` also fails when `app.min.js` or `app.min.css` differ in size from the manifest (a hand-edited bundle with a matching manifest); the name test in `tests/js/build.test.js` finds each top-level name as a declaration in the bundle, not anywhere in the text; a test shows each failure. Needs `Approved:` (protected: `tests/js/build.test.js`).
-  Approved: 2026-11-14 owner, in the chat: "all give my approve" (builder: T-021, T-022, T-024, T-010, one PR).
-  Contract: no.
 - [ ] T-025 Place types dictionary (admins add markers such as iron mine, cedar forest, sword artefact) — this branch `feat/place-types-dictionary`
   Done when: PR merged; the 4 owner decisions below are answered.
   Contract: no (`interfaces/I-8` is not edited; the code follows it except the points below).
 
-- [ ] T-021 Log and document the Routes tab (it was merged without a change-log entry)
-  Done when: `changes/sidebar.md`, `changes/core.md`, `changes/map.md` and `changes/data.md` each have an entry for what the routes work changed in their files (`app/js/sidebar/routes.js`, `core/routes.js`, `map/shapes.js`, `service/store.php`, `dev/save-handler.js`); the `docs/` sections that describe the tabs and the data format name the Routes tab; `tests/js/routes.test.js` also covers the sidebar part or the item says why not.
+- [ ] T-029 Tests for the sidebar fixes and layout (audit of specs 007 and 012: the code exists, the tests the specs asked for do not; `tests/js/sidebar.test.js` has 4 tests, all about types)
+  Done when: tests show a double click selects no text, no frame shows the previous place after a click, Save of the language and category forms is disabled until the input is valid and Rename opens at the bottom of the fold, the dock opens and closes without moving the list, and the point-menu actions run the old code.
   Contract: no.
-- [ ] T-022 Block commits that skip CI
-  Done when: nine commits since #4 carry `[skip ci]` and `master` went red unnoticed. After T-004 (branch protection) is done, `[skip ci]` is only allowed for documents; the critic refuses a PR whose commits skip the check.
-  Approved: 2026-11-14 owner, in the chat: "all give my approve" (builder: T-021, T-022, T-024, T-010, one PR). Touches protected `tools/ci-check-pr.js` and `.claude/agents/critic.md`.
+- [ ] T-030 Tests for the map point menu (audit of spec 010: `showMenu`, `hideMenu`, `map:menu` exist in `app/js/map/map.js`; `tests/js/map.test.js` has no test of them)
+  Done when: tests show the menu opens above the point and below when there is no room, a button emits `map:menu { id, lon, lat }` and closes it, Esc, a click elsewhere, a drag or zoom and another menu close it, and one menu at a time.
   Contract: no.
-- [ ] T-010 Audit the old task specs 006 to 014 against the code
-  Done when: for each spec in `changes/archive/tasks/` a line "done", "partly" or "open" with the evidence (file and test); every "partly" and "open" part becomes a new item here. `changes/shared.md` #29 says code of 2026-11-09 (details dock, borders, markers) was made outside the flow, so many are probably done.
+- [ ] T-031 Shapes as layer members (audit of specs 011 and 014: `add_shapes` and `remove_shapes` are in `service/store.php`; there is no `layerAllowsShape`, no test, no row in `tests/fixtures/rules.json`, no "Shapes (n)" or "Choose shapes" in the layer detail)
+  Done when: `layerAllowsShape(id)` exists in core with the Only/Hide meaning of places; tests (PHP, Node, `rules.json`) cover `add_shapes`, `remove_shapes`, an unknown id (400) and the removal of a deleted shape from all layers; the layer detail shows "Shapes (n)" and lets an editor add and remove shapes.
+  Contract: no.
+- [ ] T-032 Route rules in the parity table (follow-up of T-021: `stops`, `twoway` and `a route must be a line` have no row in `tests/fixtures/rules.json` and no PHP test)
+  Done when: `rules.json` has a row for each of the three errors and one for a route that saves, and `php tests/php/run.php` and `node tests/js/run.js` pass.
+  Contract: no.
+- [ ] T-033 Map: parts of spec 013 that are missing (audit): `hideShape(id | null)` and the line patterns `double` and `triple` (the code has solid, dashed, dotted, dashdot)
+  Done when: each exists in `app/js/map/` with a test in `tests/js/map.test.js`, or the owner drops it.
+  Contract: no.
+- [ ] T-034 Owner decision: line and area types (specs 011 and 014 wanted `border`, `route` and `territory` in the types dictionary and a Types editor for lines and areas; built: the dictionary holds only point types, border and route types are fixed lists in `service/store.php`)
+  Done when: the owner says keep the fixed lists or make them dictionary types; in the second case the builder gets an item.
   Contract: no.
 - [ ] T-011 Make `graph/` cheaper to use: line ranges per definition
   Done when: `graph/<domain>.md` lists `name:line` for the definitions of each file, so an agent opens a part with offset and limit without a search; the size limits of `tests/js/graph.test.js` still hold or are changed with the reason. Measure before and after (bytes an agent reads for one change in `map.js`).
@@ -69,6 +73,12 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Done
 
+- [x] T-024 Harden the `app/dist` check (2026-11-14, branch `chore/records-ci-audit`)
+  Approved: 2026-11-14 owner, in the chat. `build.js --check` also fails when a bundle differs in size from the manifest; the name test finds declarations (`hasDeclaration`); tests show each failure.
+- [x] T-022 Block commits that skip CI (2026-11-14, same branch)
+  Approved: 2026-11-14 owner, in the chat. `tools/ci-check-pr.js` refuses a commit with a skip marker that changes more than documents; critic rule A8. Not done: branch protection (T-004).
+- [x] T-021 Log and document the Routes tab (2026-11-14, same branch). Entries in `changes/{sidebar,core,map,data}.md`; `docs/02`, `05`, `06` name the Routes tab and the shape format. The sidebar part has no test (the `rt*` functions need the page DOM); the entry says so.
+- [x] T-010 Audit the old task specs 006 to 014 against the code (2026-11-14, same branch). Result: `changes/shared.md`, "T-010 audit"; the open parts are T-029 to T-034.
 - [x] T-006 CI rebuilds `app/dist/` like `graph/` (2026-11-14, branch `chore/ci-dist`)
   Approved: 2026-11-14 owner, in the chat: yes. In a PR the job `ci` runs `bun tools/build.js` (Bun 1.4.4) only when `node tools/build.js --check` finds `app/dist/` stale, and commits `graph/` and `app/dist/` together.
 - [x] T-027 Notes for borders and routes (2026-11-14, branch `feat/shape-notes`)

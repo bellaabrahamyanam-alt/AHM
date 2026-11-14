@@ -886,6 +886,21 @@
    "expect": "ok"
   },
   {
+   "name": "shape note: a note of an owner that is neither a layer nor a border",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "22222222-2222-4222-8222-222222222222",
+     "note": {
+      "lang": "en",
+      "title": "t",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "unknown layer or border"
+  },
+  {
    "name": "layer_save: empty body",
    "via": "layer",
    "body": {},

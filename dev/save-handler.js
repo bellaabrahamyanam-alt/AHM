@@ -167,8 +167,17 @@ const SEED_STYLE = {
 };
 // Reads types.json; when it does not exist yet, creates it from the seed (the types that existed before).
 function typeLoad() {
-  const d = readJSON(TYPE_FILE, null);
-  if (d && Array.isArray(d.types)) return d.types;
+  if (fs.existsSync(TYPE_FILE)) {
+    // Never replace a file that exists: a damaged one must not silently drop the types an administrator added.
+    let d = null;
+    try {
+      d = JSON.parse(fs.readFileSync(TYPE_FILE, 'utf8'));
+    } catch (e) {
+      d = null;
+    }
+    if (!d || !Array.isArray(d.types)) throw bad('types.json cannot be read; restore it from the archive folder or fix it, nothing was changed');
+    return d.types;
+  }
   const list = Object.entries(SEED_STYLE).map(([code, s]) => ({
     code,
     geometry: 'point',

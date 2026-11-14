@@ -175,7 +175,7 @@ function lyRenderDetail() {
       ? lyEditPanel(ly, byId)
       : `<div class="label">Places (${ly.members.filter((m) => m.place).length})</div><ul class="ly-members">` +
         (ly.members
-          .map((m, i) => byId.get(m.place) && `<li data-pid="${m.place}"><span class="sn">${i + 1}.</span> <b>${esc(label(byId.get(m.place), l))}</b> <span class="badge">${typeIcon(byId.get(m.place).type)}${typeLabel(byId.get(m.place).type)}</span></li>`)
+          .map((m, i) => byId.get(m.place) && `<li data-pid="${m.place}"><span class="sn">${i + 1}.</span> <b>${esc(label(byId.get(m.place), l))}</b> <span class="badge">${typeIcon(byId.get(m.place).type)}${esc(typeLabel(byId.get(m.place).type, l))}</span></li>`)
           .filter(Boolean)
           .join('') || '<li class="empty">No places yet.</li>') +
         '</ul>' +
@@ -218,7 +218,7 @@ function lyPickRows(q, byId) {
       .sort((a, b) => label(a, l).localeCompare(label(b, l)))
       .map(
         (p) =>
-          `<li data-pid="${p.id}"><label><input type="checkbox"${lyState.staged.has(p.id) ? ' checked' : ''}> ${esc(label(p, l))}</label> <span class="badge">${typeLabel(p.type, l)}</span></li>`
+          `<li data-pid="${p.id}"><label><input type="checkbox"${lyState.staged.has(p.id) ? ' checked' : ''}> ${esc(label(p, l))}</label> <span class="badge">${esc(typeLabel(p.type, l))}</span></li>`
       )
       .join('') +
       shapes

@@ -986,7 +986,12 @@ function tyUseSvg(text, from) {
   const r = svgToPath(text),
     msg = $("#tySvgMsg");
   if (!r.path) {
-    msg.textContent = "Nothing to draw in this file. Use a simple one-colour SVG icon (paths, rectangles, circles).";
+    msg.textContent =
+      r.why === "transform"
+        ? "This SVG moves or scales its shapes (transform), which is not supported. Export it again without transforms."
+        : r.why === "origin"
+          ? "The drawing area (viewBox) of this SVG does not start at 0 0, which is not supported. Export it again with a viewBox that starts at 0 0."
+          : "Nothing to draw in this file. Use a simple one-colour SVG icon (paths, rectangles, circles).";
     return;
   }
   $("#tyPath").value = r.path;

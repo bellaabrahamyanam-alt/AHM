@@ -21,7 +21,8 @@ const typeOptions = (cur, l) => {
 };
 /**
  * Turns the text of an SVG file into one path and the size of its box: the paths, rectangles, circles, ellipses and
- * polygons of the file are joined (colours, transforms and everything else are ignored). `path` is '' when there is nothing to draw.
+ * polygons of the file are joined (colours and everything else are ignored). `path` is '' when there is nothing to draw or the
+ * file cannot be used; `why` is then 'transform' or 'origin'.
  */
 function svgToPath(text) {
   const attr = (tag, n) => {
@@ -35,10 +36,13 @@ function svgToPath(text) {
   const f = (x) => String(Math.round(x * 1000) / 1000);
   const parts = [];
   let box = 0;
+  // Not supported, so refused instead of drawn wrong: a viewBox that does not start at 0 0, and any transform.
+  if (/\stransform\s*=/i.test(text)) return { path: '', box: 24, why: 'transform' };
   for (const tag of String(text).match(/<(?:svg|path|rect|circle|ellipse|polygon)\b[^>]*>/gi) || []) {
     const name = /^<(\w+)/.exec(tag)[1].toLowerCase();
     if (name === 'svg') {
       const vb = /([-\d.]+)[\s,]+([-\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(attr(tag, 'viewBox') || '');
+      if (vb && (Number(vb[1]) !== 0 || Number(vb[2]) !== 0)) return { path: '', box: 24, why: 'origin' };
       box = vb ? Math.max(Number(vb[3]), Number(vb[4])) : Math.max(num(tag, 'width'), num(tag, 'height'));
     } else if (name === 'path') {
       if (attr(tag, 'd')) parts.push(attr(tag, 'd').trim());

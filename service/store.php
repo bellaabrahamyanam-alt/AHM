@@ -598,8 +598,12 @@ class store
     private function type_load()
     {
         $f = $this->base . 'types.json';
-        $d = is_file($f) ? json_decode(file_get_contents($f), true) : null;
-        if (is_array($d) && isset($d['types']) && is_array($d['types'])) {
+        if (is_file($f)) {
+            // Never replace a file that exists: a damaged one must not silently drop the types an administrator added.
+            $d = json_decode((string) file_get_contents($f), true);
+            if (!is_array($d) || !isset($d['types']) || !is_array($d['types'])) {
+                throw self::bad('types.json cannot be read; restore it from the archive folder or fix it, nothing was changed');
+            }
             return $d['types'];
         }
         $list = [];

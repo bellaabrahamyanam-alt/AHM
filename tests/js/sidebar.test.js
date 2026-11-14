@@ -34,3 +34,25 @@ test('types: svgToPath joins the shapes of an SVG file into one path and takes t
   eq({ path: '', box: 24 }, r('<svg><text>hi</text><image href="x.png"/></svg>'), 'nothing drawable');
   eq(24, r('<svg viewBox="0 0 3000 3000"><path d="M0 0L1 1"/></svg>').box, 'a box outside 8..2048 becomes 24');
 });
+
+test('types: svgToPath refuses an SVG it would draw wrong (viewBox not starting at 0 0, any transform) and says why', () => {
+  const p = load(['config.js', 'data.js', 'placeform.js']);
+  const r = (svg) => J(p.X('svgToPath(__0)', svg));
+  eq({ path: '', box: 24, why: 'origin' }, r('<svg viewBox="-12 -12 24 24"><path d="M0 0L5 5"/></svg>'));
+  eq('origin', r('<svg viewBox="0 3 24 24"><path d="M0 0L5 5"/></svg>').why);
+  eq({ path: '', box: 24, why: 'transform' }, r('<svg viewBox="0 0 24 24"><g transform="scale(2)"><path d="M0 0L5 5"/></g></svg>'));
+  eq('transform', r('<svg viewBox="0 0 24 24"><path transform="translate(1 1)" d="M0 0L5 5"/></svg>').why);
+});
+
+test('types: a type name is written by administrators, so it never reaches HTML without esc()', () => {
+  const fs = require('fs'),
+    path = require('path'),
+    dir = path.join(__dirname, '..', '..', 'app', 'js', 'sidebar');
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+    fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach((line, i) => {
+      // inside a template it must be esc(typeLabel(...)); routes.js puts one into a dropdown key that it escapes when it makes the <option>
+      const raw = line.replace(/\$\{esc\(typeLabel\(/g, '').includes('${typeLabel(');
+      ok(!raw || f === 'routes.js', `${f}:${i + 1} prints typeLabel without esc()`);
+    });
+  }
+});

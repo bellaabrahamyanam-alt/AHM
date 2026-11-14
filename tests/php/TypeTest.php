@@ -176,3 +176,24 @@ test('save_type: a custom symbol needs a clean path (only drawing commands and n
     }
     same($before, file_get_contents("$dir/types.json"), 'nothing written');
 });
+
+test('types: a types.json that cannot be read is never replaced by the seed, and nothing is written', function () {
+    $s = fresh_store($dir);
+    $s->save_type(iron());
+    file_put_contents("$dir/types.json", '{"version":1,"types":[{"code":"iron-mi'); // cut in the middle
+    $broken = file_get_contents("$dir/types.json");
+    throws('/types.json cannot be read/', function () use ($s) {
+        $s->types();
+    });
+    throws('/types.json cannot be read/', function () use ($s) {
+        $s->save_type(iron(['names' => [['lang' => 'en', 'name' => 'Salt mine']]]));
+    });
+    throws('/types.json cannot be read/', function () use ($s) {
+        $s->save(['place' => array_merge(BASE, ['type' => 'city'])]);
+    });
+    same($broken, file_get_contents("$dir/types.json"), 'the damaged file is left as it is');
+    file_put_contents("$dir/types.json", '{"version":1}');
+    throws('/types.json cannot be read/', function () use ($s) {
+        $s->types();
+    }, 'valid JSON without types');
+});

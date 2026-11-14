@@ -629,7 +629,10 @@ class store
     /** Code of a new type: its English name in lower case, letters and digits joined by "-"; "-2", "-3" ... when taken. */
     private static function type_code_from($name, array $taken)
     {
-        $c = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name)), '-'));
+        // Accents become plain letters where the server's iconv can do it; any other character is dropped below. Some servers refuse
+        // the //IGNORE flag, so it is not used, and a failing iconv never breaks the code.
+        $ascii = function_exists('iconv') ? @iconv('UTF-8', 'ASCII//TRANSLIT', $name) : false;
+        $c = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $ascii === false ? (string) $name : $ascii), '-'));
         $c = rtrim(substr($c, 0, 28), '-');
         if ($c === '') {
             throw self::bad('the English name must have letters or digits (the code of the type is made from it)');

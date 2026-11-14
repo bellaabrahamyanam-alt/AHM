@@ -35,6 +35,9 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Next (builder)
 
+- [ ] T-027 Notes for borders and routes — branch `feat/shape-notes`
+  Owner, in the chat: "let's add notes for routes and boards" (borders). Done when: the card of a border and of a route lists its notes and editors can add and edit them; deleting a border archives its notes; the rules in `service/store.php`, `dev/save-handler.js` and `tests/fixtures/rules.json` agree. Notes are layer notes whose owner id is a shape id.
+  Contract: no (no protected file changes).
 - [ ] T-006 CI rebuilds `app/dist/` like `graph/` (so a PR does not need to, and two open PRs do not conflict on it)
   Done when: a PR that changes `app/js` or `app/css` gets its `app/dist/` rebuilt and committed by the job `ci` (Bun installed in the job), and the `build` test still passes. Needs `Approved:` (protected: `tools/ci.sh`, `.github/workflows/ci.yml`).
   Contract: no.

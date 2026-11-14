@@ -10,7 +10,7 @@
 
 ## 2026-11-14 — Custom symbols for place types (T-025)
 
-- **What:** Place types editor: symbol list ends with "Custom (SVG path)…"; paste a path or a whole `<svg>` (paths and viewBox are taken from it); Save stays off until the path is valid; live preview.
+- **What:** Place types editor: symbol list ends with "Custom (SVG path)…"; the admin chooses an SVG file (button) and the paths, rectangles, circles, ellipses and polygons of it become the symbol (`svgToPath` in `placeform.js`); the path and box can still be edited under "Advanced" or a whole `<svg>` pasted there; Save stays off until the path is valid; live preview. The path limit is 20000 characters (real icons are long).
 - **Why:** the list of 15 symbols is too small (iron mine, cedar forest, sword artefact, ...).
 - **Files:** `app/js/sidebar/ui.js`
 - **How to verify:** By hand (not checked in a browser here): add a type, pick Custom, paste an icon path, check the preview and the marker on the map.

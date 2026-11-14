@@ -118,7 +118,7 @@ function setTypeStyles(list) {
 }
 
 /** A custom symbol is an SVG path (`d`) drawn in a square box (default 24) whose corner is 0,0; the same rule as the server. */
-const PATH_RE = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/;
+const PATH_RE = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,20000}$/;
 const validPath = (d) => typeof d === 'string' && PATH_RE.test(d) && /^\s*[Mm]/.test(d);
 const validBox = (b) => typeof b === 'number' && b >= 8 && b <= 2048;
 /** Path2D of a custom symbol scaled to about 2.3 radii and centred; null when the browser has no Path2D (the symbol is then a circle). */

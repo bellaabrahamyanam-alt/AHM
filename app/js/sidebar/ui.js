@@ -981,14 +981,18 @@ const tyDraft = () => {
   }
   return d;
 };
-// A whole <svg> pasted into the path box: keep the d of its paths and take the box from its viewBox.
-function tyPastedSvg() {
-  const t = $("#tyPath").value;
-  if (!/<svg/i.test(t)) return;
-  const ds = [...t.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1].trim()),
-    vb = /viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(t);
-  $("#tyPath").value = ds.join(" ");
-  if (vb) $("#tyBox").value = Math.max(Number(vb[1]), Number(vb[2]));
+// An SVG (a file the admin chose, or a whole <svg> pasted into the path box) becomes the path and the box of the symbol.
+function tyUseSvg(text, from) {
+  const r = svgToPath(text),
+    msg = $("#tySvgMsg");
+  if (!r.path) {
+    msg.textContent = "Nothing to draw in this file. Use a simple one-colour SVG icon (paths, rectangles, circles).";
+    return;
+  }
+  $("#tyPath").value = r.path;
+  $("#tyBox").value = r.box;
+  msg.textContent = from ? "Loaded " + from + "." : "SVG read.";
+  tyValidate();
 }
 const tyNames = () =>
   [...$("#typeAdmin").querySelectorAll(".pf-name")]
@@ -1004,7 +1008,7 @@ const tyValidate = () => {
     const d = tyDraft();
     b.disabled =
       !(tyEditing ? tyNames().length : tyNames().some((x) => x.lang === "en")) ||
-      (custom && !(/^\s*[Mm]/.test(d.path) && /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/.test(d.path) && d.box >= 8 && d.box <= 2048));
+      (custom && !(/^\s*[Mm]/.test(d.path) && /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,20000}$/.test(d.path) && d.box >= 8 && d.box <= 2048));
   }
   const pv = $("#tyPrev");
   if (pv) pv.innerHTML = typeIcon(tyDraft()) + " " + esc($("#tySize").value);
@@ -1029,9 +1033,10 @@ function tyRenderAdmin(t) {
       .getSymbols()
       .map((y) => `<option value="${esc(y.name)}"${y.name === st.symbol ? " selected" : ""}>${esc(y.label)}</option>`)
       .join("")}<option value="custom"${st.symbol === "custom" ? " selected" : ""}>Custom (SVG path)…</option></select>` +
-    `<div id="tyCustom" hidden><div class="sn">Paste an SVG path (the <code>d</code> value, starts with M) or a whole <code>&lt;svg&gt;</code>, for example from a free icon set. It is drawn in one colour; the box is the size of the drawing area (24 for most icons, 512 for game-icons.net).</div>` +
-    `<textarea id="tyPath" rows="4" maxlength="20000" spellcheck="false" aria-label="SVG path">${esc(st.path || "")}</textarea>` +
-    `<div class="label">Box</div><input id="tyBox" type="number" min="8" max="2048" step="1" value="${Number(st.box) || 24}" aria-label="Box size"></div>` +
+    `<div id="tyCustom" hidden><div class="sn">Choose an SVG icon file. It is drawn in the colour above. Simple one-colour icons work best (free ones: game-icons.net, lucide.dev).</div>` +
+    `<input id="tyFile" type="file" accept=".svg,image/svg+xml" aria-label="SVG file"><div id="tySvgMsg" class="sn">${st.path ? "Current symbol kept; choose a file to replace it." : ""}</div>` +
+    `<details><summary>Advanced: path and box</summary><textarea id="tyPath" rows="3" maxlength="60000" spellcheck="false" aria-label="SVG path">${esc(st.path || "")}</textarea>` +
+    `<div class="label">Box</div><input id="tyBox" type="number" min="8" max="2048" step="1" value="${Number(st.box) || 24}" aria-label="Box size"></details></div>` +
     `<div class="label">Colour</div><input id="tyColor" type="color" value="${esc((t && t.color) || "#8d6e63").toLowerCase()}" aria-label="Colour">` +
     `<div class="label">Size</div><input id="tySize" type="range" min="4" max="14" step="0.5" value="${Number(st.size) || 8}" aria-label="Size"> <span id="tyPrev"></span>` +
     '<div class="btn-pair"><button id="tyAdd" class="primary" disabled>Save</button><button id="tyCancel">Cancel</button>' +
@@ -1068,8 +1073,12 @@ async function tyPost(url, body) {
 tyRenderAdmin();
 placeFormWire($("#typeAdmin")); // the add / move up / remove buttons of the name rows
 $("#typeAdmin").addEventListener("input", (e) => {
-  if (e.target.id === "tyPath") tyPastedSvg();
-  tyValidate();
+  if (e.target.id === "tyPath" && /<svg/i.test(e.target.value)) tyUseSvg(e.target.value);
+  else tyValidate();
+});
+$("#typeAdmin").addEventListener("change", (e) => {
+  const f = e.target.id === "tyFile" && e.target.files[0];
+  if (f) f.text().then((t) => tyUseSvg(t, f.name));
 });
 $("#typeAdmin").addEventListener("change", tyValidate);
 $("#typeAdmin").addEventListener("click", tyValidate);

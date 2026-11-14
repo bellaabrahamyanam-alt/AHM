@@ -569,7 +569,7 @@ class store
     // to a type by its code. Today only point types (the markers of places) can be added; lines and areas follow.
     const TYPE_CODE = '/^[a-z0-9][a-z0-9_-]{0,31}$/';
     const SYMBOL = '/^[a-z0-9-]{1,24}$/';
-    const PATH = '/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/'; // SVG path data of a custom symbol: drawing commands and numbers only
+    const PATH = '/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,20000}$/'; // SVG path data of a custom symbol: drawing commands and numbers only
     const SEED_STYLE = [
         'settlement' => ['circle', '#8D6E63', 7.5],
         'city' => ['circle', '#B3261E', 10],
@@ -695,7 +695,7 @@ class store
                 // A custom symbol: an SVG path drawn in a square box (default 24) whose corner is 0,0.
                 $path = is_string($st['path'] ?? null) ? trim($st['path']) : '';
                 if (!preg_match(self::PATH, $path) || !preg_match('/^[Mm]/', $path)) {
-                    throw self::bad('a custom symbol needs an SVG path (the d value, 2 to 4000 characters of drawing commands and numbers, starting with M)');
+                    throw self::bad('a custom symbol needs an SVG path (the d value, 2 to 20000 characters of drawing commands and numbers, starting with M)');
                 }
                 $box = $st['box'] ?? 24;
                 if (!(is_int($box) || is_float($box)) || $box < 8 || $box > 2048) {

@@ -164,7 +164,7 @@ test('save_type: a custom symbol is an SVG path in a box; path and box are store
 test('save_type: a custom symbol needs a clean path (only drawing commands and numbers, starting with M) and a box of 8 to 2048', function () {
     $s = fresh_store($dir);
     $before = file_get_contents("$dir/types.json");
-    foreach ([null, '', 'M', 'L0 0 L5 5', 'M0 0 <script>', 'M0 0 url(x)', 'M0 0 ' . str_repeat('1 ', 2100), ['M0 0']] as $path) {
+    foreach ([null, '', 'M', 'L0 0 L5 5', 'M0 0 <script>', 'M0 0 url(x)', 'M0 0 ' . str_repeat('1 ', 11000), ['M0 0']] as $path) {
         throws('/SVG path/', function () use ($s, $path) {
             $s->save_type(iron(['style' => ['symbol' => 'custom', 'size' => 8, 'path' => $path]]));
         }, json_encode($path === null ? null : (is_string($path) ? substr($path, 0, 20) : $path)));

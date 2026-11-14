@@ -149,7 +149,7 @@ function saveLang(inp) {
 const TYPE_FILE = path.join(DATA, 'types.json'),
   TYPE_COLOR = /^#[0-9a-fA-F]{6}$/,
   SYMBOL = /^[a-z0-9-]{1,24}$/,
-  PATH = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,4000}$/; // SVG path data of a custom symbol: drawing commands and numbers only
+  PATH = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,20000}$/; // SVG path data of a custom symbol: drawing commands and numbers only
 const SEED_STYLE = {
   settlement: ['circle', '#8D6E63', 7.5],
   city: ['circle', '#B3261E', 10],
@@ -230,7 +230,7 @@ function saveType(inp) {
     const path = typeof st.path === 'string' ? st.path.trim() : '',
       box = st.box == null ? 24 : st.box;
     if (!PATH.test(path) || !/^[Mm]/.test(path))
-      throw bad('a custom symbol needs an SVG path (the d value, 2 to 4000 characters of drawing commands and numbers, starting with M)');
+      throw bad('a custom symbol needs an SVG path (the d value, 2 to 20000 characters of drawing commands and numbers, starting with M)');
     if (typeof box !== 'number' || !(box >= 8 && box <= 2048)) throw bad('the box of a custom symbol must be a number from 8 to 2048');
     style.path = path;
     style.box = box;

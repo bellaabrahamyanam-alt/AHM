@@ -19,6 +19,44 @@ const typeOptions = (cur, l) => {
     .map((t) => `<option value="${esc(t)}"${t === cur ? ' selected' : ''}>${esc(typeLabel(t, l))}</option>`)
     .join('');
 };
+/**
+ * Turns the text of an SVG file into one path and the size of its box: the paths, rectangles, circles, ellipses and
+ * polygons of the file are joined (colours, transforms and everything else are ignored). `path` is '' when there is nothing to draw.
+ */
+function svgToPath(text) {
+  const attr = (tag, n) => {
+    const m = new RegExp('(?:^|\\s)' + n + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', 'i').exec(tag);
+    return m ? (m[1] !== undefined ? m[1] : m[2]) : null;
+  };
+  const num = (tag, n) => {
+    const v = parseFloat(attr(tag, n));
+    return Number.isFinite(v) ? v : 0;
+  };
+  const f = (x) => String(Math.round(x * 1000) / 1000);
+  const parts = [];
+  let box = 0;
+  for (const tag of String(text).match(/<(?:svg|path|rect|circle|ellipse|polygon)\b[^>]*>/gi) || []) {
+    const name = /^<(\w+)/.exec(tag)[1].toLowerCase();
+    if (name === 'svg') {
+      const vb = /([-\d.]+)[\s,]+([-\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(attr(tag, 'viewBox') || '');
+      box = vb ? Math.max(Number(vb[3]), Number(vb[4])) : Math.max(num(tag, 'width'), num(tag, 'height'));
+    } else if (name === 'path') {
+      if (attr(tag, 'd')) parts.push(attr(tag, 'd').trim());
+    } else if (name === 'rect') {
+      const x = num(tag, 'x'), y = num(tag, 'y'), w = num(tag, 'width'), h = num(tag, 'height');
+      if (w > 0 && h > 0) parts.push(`M${f(x)} ${f(y)}H${f(x + w)}V${f(y + h)}H${f(x)}Z`);
+    } else if (name === 'circle' || name === 'ellipse') {
+      const cx = num(tag, 'cx'), cy = num(tag, 'cy'), rx = name === 'circle' ? num(tag, 'r') : num(tag, 'rx'), ry = name === 'circle' ? rx : num(tag, 'ry');
+      if (rx > 0 && ry > 0) parts.push(`M${f(cx - rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx + rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx - rx)} ${f(cy)}Z`);
+    } else if (name === 'polygon') {
+      const n = (attr(tag, 'points') || '').trim().split(/[\s,]+/).map(Number);
+      if (n.length >= 6 && n.length % 2 === 0 && n.every(Number.isFinite)) {
+        parts.push('M' + n.map((v, i) => (i && i % 2 === 0 ? 'L' : i ? ' ' : '') + f(v)).join('') + 'Z');
+      }
+    }
+  }
+  return { path: parts.join(' '), box: box >= 8 && box <= 2048 ? box : 24 };
+}
 const TYPE_HINT = 'Type missing? Ask an administrator to add it (More tab, Place types).';
 const LANG_HINT = 'Language missing? Ask an administrator to add it (Languages tab).';
 const pfRow = (n) =>

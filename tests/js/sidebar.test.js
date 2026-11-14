@@ -2,7 +2,7 @@
 // (tests/js/domains.test.js requires every registered file to exist). `sidebar-tdd: task 007` fills it
 // (tasks/007-sidebar-fixes.md); tasks 012 and 014 add to it.
 
-const { test, ok } = require('./lib/harness');
+const { test, ok, eq, J } = require('./lib/harness');
 const { load } = require('./lib/ctx');
 
 // ---- types dictionary (INTERFACES.md I-8) ----
@@ -21,4 +21,16 @@ test('types: the place form offers the point types of the dictionary, sorted by 
   ok(!h.includes('border'), 'no line types');
   ok(h.indexOf('value="city"') < h.indexOf('value="odd"'), 'sorted by name');
   ok(p.X('typeOptions("gone", "en")').includes('value="gone" selected'), 'a type not in the dictionary stays visible');
+});
+
+test('types: svgToPath joins the shapes of an SVG file into one path and takes the box from the viewBox', () => {
+  const p = load(['config.js', 'data.js', 'placeform.js']);
+  const r = (svg) => J(p.X('svgToPath(__0)', svg));
+  eq({ path: 'M256 10L500 500H10z', box: 512 }, r('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 10L500 500H10z"/></svg>'));
+  eq({ path: 'M2 3H12V9H2Z', box: 24 }, r('<svg width="24" height="24"><rect x="2" y="3" width="10" height="6"/></svg>'), 'rectangle');
+  eq('M2 5A3 3 0 1 0 8 5A3 3 0 1 0 2 5Z', r('<svg viewBox="0 0 24 24"><circle cx="5" cy="5" r="3"/></svg>').path, 'circle');
+  eq('M0 0L10 0L5 8Z', r("<svg><polygon points='0,0 10,0 5,8'/></svg>").path, 'polygon');
+  eq('M0 0L1 1 M5 5L6 6', r('<svg><path d="M0 0L1 1"/><path fill="red" d="M5 5L6 6"/></svg>').path, 'paths joined');
+  eq({ path: '', box: 24 }, r('<svg><text>hi</text><image href="x.png"/></svg>'), 'nothing drawable');
+  eq(24, r('<svg viewBox="0 0 3000 3000"><path d="M0 0L1 1"/></svg>').box, 'a box outside 8..2048 becomes 24');
 });

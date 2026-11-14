@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { parseBranch, approvalOf, protectedTouched } = require('../../tools/ci-check-pr');
+const { parseBranch, approvalOf, protectedTouched, hasSkipMarker, skipCiOffenders } = require('../../tools/ci-check-pr');
 const TOOL = path.join(__dirname, '..', '..', 'tools', 'ci-check-pr.js');
 
 test('ci: branch names are <type>/<task>', () => {
@@ -71,4 +71,37 @@ test('ci: ONE job (tools/ci.sh) does the domain check, the graph and every test;
   for (const f of fs.readdirSync(__dirname).filter((x) => x.endsWith('.test.js'))) {
     ok(cd.DOMAINS.includes(cd.ownerOf('tests/js/' + f)), `tests/js/${f} has no domain, so no CI job would run it`);
   }
+});
+
+test('ci: a commit that skips CI ([skip ci] and the other markers) is allowed only when it changes documents', () => {
+  for (const m of ['fix: x [skip ci]', 'x [ci skip]', 'x [no ci]', 'x [skip actions]', 'x [actions skip]', 'x\n\nskip-checks: true', 'X [SKIP CI]']) ok(hasSkipMarker(m), `"${m}" skips CI`);
+  for (const m of ['fix: skip the ci step', 'feat: no ci config', 'x [skip] y', '']) ok(!hasSkipMarker(m), `"${m}" does not`);
+  const c = (message, ...files) => ({ sha: 'abcdef1234', message, files });
+  eq([], skipCiOffenders([c('docs: x [skip ci]', 'changes/map.md', 'README.md', 'docs/02-implemented-features.md', '.claude/agents/critic.md', 'tools/prompts/_common.md')]), 'documents only');
+  eq(['abcdef1'], skipCiOffenders([c('fix: x [skip ci]', 'app/js/map/map.js')]).map((o) => o.slice(0, 7)), 'code');
+  eq(1, skipCiOffenders([c('fix: x [skip ci]', 'changes/map.md', 'service/store.php')]).length, 'documents and code together');
+  eq(1, skipCiOffenders([c('x [skip ci]', 'graph/core.md')]).length, 'graph/ is generated code: CI must run');
+  eq(1, skipCiOffenders([c('x [skip ci]', 'tools/ci.sh')]).length, 'CI itself');
+  eq([], skipCiOffenders([c('fix: x', 'app/js/map/map.js')]), 'code without the marker');
+});
+
+test('ci: the check refuses a pull request with a skip-CI commit on code, in a real git repository', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ahm_ci_'));
+  const git = (...a) => execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { stdio: 'pipe' });
+  const put = (f, t) => (fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }), fs.writeFileSync(path.join(dir, f), t));
+  git('init', '-q', '-b', 'main');
+  put('app/js/a.js', 'a\n');
+  put('changes/map.md', 'a\n');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'base');
+  git('checkout', '-q', '-b', 'fix/x');
+  put('changes/map.md', 'b\n');
+  git('commit', '-qam', 'docs: note [skip ci]');
+  const run = () => spawnSync('node', [TOOL, 'fix/x', 'main'], { cwd: dir, encoding: 'utf8', env: { ...process.env, PR_BODY: '' } });
+  eq(0, run().status, 'a document commit may skip CI');
+  put('app/js/a.js', 'b\n');
+  git('commit', '-qam', 'fix: quick change [skip ci]');
+  const r = run();
+  eq(1, r.status);
+  ok(/skip/i.test(r.stderr) && /app\/js\/a\.js|fix: quick change/.test(r.stderr), r.stderr);
 });

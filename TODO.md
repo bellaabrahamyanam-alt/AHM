@@ -37,6 +37,7 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 - [ ] T-024 Harden the `app/dist` check
   Done when: `node tools/build.js --check` also fails when `app.min.js` or `app.min.css` differ in size from the manifest (a hand-edited bundle with a matching manifest); the name test in `tests/js/build.test.js` finds each top-level name as a declaration in the bundle, not anywhere in the text; a test shows each failure. Needs `Approved:` (protected: `tests/js/build.test.js`).
+  Approved: 2026-11-14 owner, in the chat: "all give my approve" (builder: T-021, T-022, T-024, T-010, one PR).
   Contract: no.
 - [ ] T-025 Place types dictionary (admins add markers such as iron mine, cedar forest, sword artefact) — this branch `feat/place-types-dictionary`
   Done when: PR merged; the 4 owner decisions below are answered.
@@ -47,6 +48,7 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
   Contract: no.
 - [ ] T-022 Block commits that skip CI
   Done when: nine commits since #4 carry `[skip ci]` and `master` went red unnoticed. After T-004 (branch protection) is done, `[skip ci]` is only allowed for documents; the critic refuses a PR whose commits skip the check.
+  Approved: 2026-11-14 owner, in the chat: "all give my approve" (builder: T-021, T-022, T-024, T-010, one PR). Touches protected `tools/ci-check-pr.js` and `.claude/agents/critic.md`.
   Contract: no.
 - [ ] T-010 Audit the old task specs 006 to 014 against the code
   Done when: for each spec in `changes/archive/tasks/` a line "done", "partly" or "open" with the evidence (file and test); every "partly" and "open" part becomes a new item here. `changes/shared.md` #29 says code of 2026-11-09 (details dock, borders, markers) was made outside the flow, so many are probably done.

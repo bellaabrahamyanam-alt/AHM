@@ -212,6 +212,7 @@ function shRenderView() {
     (inLy.length ? inLy.map((ly) => `<button class="chip ly-chip" data-shact="layer" data-lid="${ly.id}"${ly.color ? ` style="--a:${esc(ly.color)}"` : ''}>${esc(lyName(ly, l))}</button>`).join('') : '<span class="sn">None yet.</span>') +
     `</div>` +
     (can && free.length ? `<select id="shAddLayer" aria-label="Add to a layer"><option value="">Add to a layer…</option>${free.map((ly) => `<option value="${ly.id}">${esc(lyName(ly, l))}</option>`).join('')}</select>` : '') +
+    lyOwnerNotesHTML(s.id, l, 'shact') +
     (osm ? `<div class="sn">Outline © <a href="https://www.openstreetmap.org/${osm[1]}/${osm[2]}" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL).</div>` : '') +
     `<div class="err-line" id="shErr"></div></div><div class="dock-foot">` +
     `<button type="button" data-shact="fit">Fit map</button>` +
@@ -279,6 +280,8 @@ $('#shDetail').addEventListener('click', async (e) => {
   if (!s) return;
   if (act === 'fit') shFit(s.id);
   else if (act === 'layer') lyOpen(b.dataset.lid);
+  else if (act === 'addnote') lyOpenNoteDlg(s, null, 'border');
+  else if (act === 'editnote') lyOpenNoteDlg(s, layerNotes.find((n) => n.id === b.dataset.id), 'border');
   else if (act === 'edit') shOpenForm({ id: s.id, kind: shapeKind(s.geometry), ...s });
   else if (act === 'editshape') shStartDraw(shapeKind(s.geometry), s);
   else if (act === 'delete') {

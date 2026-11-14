@@ -51,3 +51,9 @@ Task 003 / I-6: the map (and others) read shared selection and layer filter stat
 
 ### Open follow-ups
 None for this task. Known violation 1 in INTERFACES.md closes when task 002 is also merged.
+
+## 2026-11-14 — #3 T-027: notes in the cards of borders and routes
+**What:** `sidebar/layers.js`: new `lyOwnerNotesHTML(id, lang, attr)` (the notes block of a card, edit buttons for editors); `lyOpenNoteDlg(owner, note, what)` takes any object with `id` and `names` and names what the note is about; after saving, the border and route cards are drawn again. `sidebar/shapes.js` and `sidebar/routes.js`: the card shows the block and handles `addnote` and `editnote`. Tests: `tests/js/layers.test.js` (2, "shape notes").
+**Why:** the owner asked for notes on routes and borders (T-027). The note dialog and the data are those of layer notes.
+**Verify:** `node tests/js/run.js "shape notes"`, then the whole run.
+**Follow-ups:** the search field of the Borders and Routes lists does not look into notes; the Explore view does not show them.

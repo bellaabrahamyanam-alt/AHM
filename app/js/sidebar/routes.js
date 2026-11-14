@@ -43,7 +43,7 @@ function rtKeys() {
   const count = {},
     map = new Map();
   places.forEach((p) => (count[label(p, l)] = (count[label(p, l)] || 0) + 1));
-  places.forEach((p) => map.set(count[label(p, l)] > 1 ? `${label(p, l)} (${typeLabel(p.type)}, ${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})` : label(p, l), p.id));
+  places.forEach((p) => map.set(count[label(p, l)] > 1 ? `${label(p, l)} (${typeLabel(p.type, l)}, ${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})` : label(p, l), p.id));
   rts.keys = { sig, map };
   $('#rtPlaceList').innerHTML = [...map.keys()].map((k) => `<option value="${esc(k)}"></option>`).join('');
   return map;

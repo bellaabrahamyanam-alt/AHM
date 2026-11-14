@@ -11,7 +11,7 @@
 //     map) arrives after the selection, and stays through base-map switches;
 //   - the map listens to AHM.on('state:selected', ({ value }) => ...) and reads AHM.state for nothing else
 //     (AHM.state.get('selected') at most), emits no event of its own and adds no AHM.map command.
-const { test, ok, eq } = require('./lib/harness');
+const { test, ok, eq, J } = require('./lib/harness');
 const { load } = require('./lib/ctx');
 
 const HL = 'ahm-highlight';
@@ -274,7 +274,7 @@ test('map: highlight: reads AHM.state only for the selection, calls no sidebar c
 test('map: highlight: adds no AHM.map command (INTERFACES.md I-2 stays as it is)', () => {
   const { p } = boot();
   eq(
-    ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getZoom', 'hideMenu', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers', 'showMenu'],
+    ['editPin', 'fitRoute', 'fitTo', 'focusPlace', 'focusPoint', 'getSymbols', 'getZoom', 'hideMenu', 'hidePlace', 'resize', 'setFeatures', 'setPick', 'setRoute', 'setRouteMarkers', 'setTypes', 'showMenu'], // getSymbols and setTypes: I-8, types dictionary
     p.X('Object.keys(AHM.map).sort()'),
   );
 });
@@ -937,4 +937,177 @@ test('map: selected place: its own layer answers click, double click and hover (
   eq('pointer', rec.canvas.style.cursor);
   eq(1, active(rec).length, 'tooltip on the selected place');
   eq(p.X('(TYPE_STYLE.city || TYPE_STYLE.settlement).r * SEL_SCALE * zoomScale(map.getZoom()) + TIP_GAP + 4'), offsetOf(active(rec)[0]).y, 'clear of the (larger) selected symbol');
+});
+
+// ---- types dictionary (INTERFACES.md I-8) ----
+const TYPES_DICT = [
+  { code: 'city', geometry: 'point', names: [{ lang: 'en', name: 'City' }, { lang: 'ru', name: 'Город' }], color: '#b3261e', style: { symbol: 'circle', size: 10 } },
+  { code: 'iron-mine', geometry: 'point', names: [{ lang: 'ru', name: 'Рудник' }, { lang: 'hy', name: 'Հանք' }], color: '#a0522d', style: { symbol: 'pickaxe', size: 9 } },
+  { code: 'odd', geometry: 'point', names: [{ lang: 'en', name: 'Odd' }], color: 'red', style: { symbol: 'no-such-symbol', size: 99 } },
+  { code: 'border', geometry: 'line', names: [{ lang: 'en', name: 'Border' }], color: '#000000', style: {} },
+];
+
+test('types: setTypeStyles rebuilds the table from point types; bad symbol, colour and size fall back, settlement stays', () => {
+  const p = load(['typeicons.js']);
+  p.X('setTypeStyles(__0)', TYPES_DICT);
+  const st = J(p.X('TYPE_STYLE'));
+  eq(['city', 'iron-mine', 'odd', 'settlement'], Object.keys(st).sort(), 'line types are not markers');
+  eq({ shape: 'pickaxe', color: '#a0522d', r: 9 }, st['iron-mine']);
+  eq('circle', st.odd.shape, 'unknown symbol is drawn as a circle');
+  ok(/^#[0-9a-f]{6}$/i.test(st.odd.color), 'bad colour replaced');
+  ok(st.odd.r >= 4 && st.odd.r <= 14, 'bad size replaced');
+  p.X('setTypeStyles(__0)', [TYPES_DICT[1]]);
+  eq(['iron-mine', 'settlement'], Object.keys(J(p.X('TYPE_STYLE'))).sort(), 'settlement is always there as the fallback');
+});
+
+test('types: getSymbols lists the symbols the map can draw, every one has a shape', () => {
+  const p = load(['typeicons.js', 'map.js']);
+  const syms = J(p.X('AHM.map.getSymbols()'));
+  const names = syms.map((s) => s.name);
+  for (const n of ['circle', 'tree', 'sword', 'pickaxe', 'flag', 'star']) ok(names.includes(n), n);
+  ok(syms.every((s) => s.label && p.X('typeof SHAPES[__0]', s.name) === 'function'), 'label and shape for each');
+});
+
+test('types: AHM.map.setTypes before the map is ready only updates the table (icons are made on load)', () => {
+  const p = load(['typeicons.js', 'map.js']);
+  p.X('AHM.map.setTypes(__0)', TYPES_DICT);
+  ok(p.X('"iron-mine" in TYPE_STYLE'));
+});
+
+test('types: a custom symbol keeps its SVG path and box; a bad path or box falls back (circle, box 24)', () => {
+  const p = load(['typeicons.js']);
+  const mk = (code, st) => ({ code, geometry: 'point', names: [{ lang: 'en', name: code }], color: '#2e7d32', style: { size: 9, ...st } });
+  p.X('setTypeStyles(__0)', [
+    mk('cedar', { symbol: 'custom', path: 'M256 10 L500 500 H10 z', box: 512 }),
+    mk('nobox', { symbol: 'custom', path: 'M0 0 L5 5 Z' }),
+    mk('evil', { symbol: 'custom', path: 'M0 0 <script>alert(1)</script>' }),
+    mk('plain', { symbol: 'star', path: 'M0 0 L5 5 Z' }),
+  ]);
+  const st = J(p.X('TYPE_STYLE'));
+  eq({ shape: 'circle', color: '#2e7d32', r: 9, path: 'M256 10 L500 500 H10 z', box: 512 }, st.cedar);
+  eq(24, st.nobox.box, 'box defaults to 24');
+  ok(!('path' in st.evil) && st.evil.shape === 'circle', 'markup in a path is never used');
+  ok(!('path' in st.plain), 'a path of a type that is not custom is ignored');
+});
+
+// ---- the drawing of types: a canvas, Path2D and DOMMatrix of the page are stood in for ----
+function iconPage(withPath2D = true) {
+  const p = load(['typeicons.js']),
+    log = [];
+  p.ctx.document = {
+    createElement() {
+      const c = {
+        width: 0,
+        height: 0,
+        toDataURL: () => 'data:image/png;base64,FAKE' + log.length,
+        getContext: () =>
+          new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => log.push([k, ...a])), set: (t, k, v) => ((t[k] = v), true) }),
+      };
+      log.push(['canvas']);
+      return c;
+    },
+  };
+  if (withPath2D) {
+    p.ctx.Path2D = class {
+      constructor(d) {
+        this.d = d;
+        this.added = [];
+      }
+      addPath(path, m) {
+        this.added.push([path, m]);
+      }
+    };
+    p.ctx.DOMMatrix = class {
+      constructor(a) {
+        this.a = a;
+      }
+    };
+  }
+  return { p, log };
+}
+const CEDAR = { code: 'cedar', geometry: 'point', names: [{ lang: 'en', name: 'Cedar' }], color: '#2e7d32', style: { symbol: 'custom', size: 9, path: 'M256 10 L500 500 H10 z', box: 512 } };
+
+test('types: a custom symbol is stroked and filled as one Path2D of its path, scaled from its box and centred', () => {
+  const { p, log } = iconPage();
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  p.X('iconCanvas("cedar", 28, 2)');
+  const drawn = log.filter((l) => (l[0] === 'stroke' || l[0] === 'fill') && l[1]);
+  ok(drawn.length >= 3, 'stroke twice and fill once with a path: ' + drawn.length);
+  const path = drawn[0][1];
+  eq('object', typeof path);
+  const [inner, m] = path.added[0];
+  eq('M256 10 L500 500 H10 z', inner.d, 'the path of the type');
+  const k = (9 * 1 * 2.3) / 512; // r 9, f = px / 28 = 1
+  eq([k, 0, 0, k, -256 * k, -256 * k], m.a, 'scaled so the box fills about 2.3 radii, centred on 0,0');
+  ok(drawn.every((l) => l[1] === path), 'every stroke and the fill use the same path');
+});
+
+test('types: without Path2D a custom symbol is a circle (stroke and fill without a path)', () => {
+  const { p, log } = iconPage(false);
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  p.X('iconCanvas("cedar", 28, 2)');
+  ok(log.some((l) => l[0] === 'arc'), 'a circle is drawn');
+  ok(log.filter((l) => l[0] === 'stroke' || l[0] === 'fill').every((l) => l.length === 1), 'no path argument');
+});
+
+test('types: a type that is not custom is drawn from its shape, never from a path', () => {
+  const { p, log } = iconPage();
+  p.X('setTypeStyles(__0)', [{ ...CEDAR, style: { symbol: 'star', size: 9, path: 'M0 0 L1 1' } }]);
+  p.X('iconCanvas("cedar", 28, 2)');
+  ok(log.filter((l) => l[0] === 'stroke' || l[0] === 'fill').every((l) => l.length === 1), 'no path argument');
+});
+
+test('types: typeIcon gives an <img> with a data URL; it is made once per type, again after the dictionary changed; a draft is never cached', () => {
+  const { p, log } = iconPage();
+  const canvases = () => log.filter((l) => l[0] === 'canvas').length;
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  const a = p.X('typeIcon("cedar")');
+  ok(/^<img class="ti" alt="" src="data:image\/png;base64,FAKE\d+">$/.test(a), a);
+  p.X('typeIcon("cedar")');
+  eq(1, canvases(), 'second call: from the cache');
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  p.X('typeIcon("cedar")');
+  eq(2, canvases(), 'the dictionary changed: drawn again');
+  const d1 = p.X('typeIcon(__0)', { symbol: 'star', color: '#112233', size: 7 });
+  p.X('typeIcon(__0)', { symbol: 'star', color: '#112233', size: 7 });
+  eq(4, canvases(), 'a draft is drawn each time');
+  ok(d1.startsWith('<img'));
+  ok(/^<img/.test(p.X('typeIcon("nobody")')), 'an unknown type is drawn like settlement');
+});
+
+test('types: registerTypeIcons adds a normal and a highlighted image per type, and replaces the ones that exist', () => {
+  const { p } = iconPage();
+  p.X('setTypeStyles(__0)', [CEDAR, { ...CEDAR, code: 'tower', style: { symbol: 'flag', size: 8 } }]);
+  const calls = [],
+    have = new Set(['ahm-type-tower']);
+  const map = {
+    hasImage: (n) => have.has(n),
+    removeImage: (n) => (calls.push(['remove', n]), have.delete(n)),
+    addImage: (n) => (calls.push(['add', n]), have.add(n)),
+  };
+  p.X('registerTypeIcons(__0)', map);
+  eq(['add:ahm-type-cedar', 'add:ahm-type-cedar-hl', 'remove:ahm-type-tower', 'add:ahm-type-tower', 'add:ahm-type-tower-hl', 'add:ahm-type-settlement', 'add:ahm-type-settlement-hl'].sort(), calls.map((c) => c.join(':')).sort(), 'settlement is always there as the fallback');
+  // a map that cannot say which images it has (older stand-ins) still works
+  p.X('registerTypeIcons(__0)', { addImage() {} });
+});
+
+test('map: AHM.map.setTypes after the map is ready makes the images of every type again and keeps the places drawn', () => {
+  const calls = [];
+  const { p, errors } = boot({ before: (pg) => (pg.ctx.registerTypeIcons = (m) => calls.push(m)) });
+  eq(1, calls.length, 'once on load');
+  setFeatures(p, fc(P1, P2));
+  p.X('AHM.map.setTypes(__0)', [CEDAR]);
+  eq(2, calls.length, 'again for the new dictionary');
+  ok(p.X('"cedar" in TYPE_STYLE') && !p.X('"city" in TYPE_STYLE'), 'the table follows the dictionary');
+  eq([], errors);
+});
+
+test('map: AHM.map.setTypes before the map is ready only updates the table; the images are made on load', () => {
+  const calls = [];
+  const { p, ml } = boot({ ready: false, before: (pg) => (pg.ctx.registerTypeIcons = (m) => calls.push(m)) });
+  p.X('AHM.map.setTypes(__0)', [CEDAR]);
+  eq(0, calls.length, 'nothing yet');
+  ok(p.X('"cedar" in TYPE_STYLE'));
+  ml.fire('load');
+  eq(1, calls.length, 'on load, from the new table');
 });

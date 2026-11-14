@@ -7,6 +7,7 @@ const AHM_CONFIG = {
   loginUrl: window.AHM_BACKEND ? window.AHM_BACKEND.loginUrl : "",
   canOverlay: window.AHM_BACKEND ? !!window.AHM_BACKEND.canOverlay : true, // administrators: manage historical map images
   canLanguage: window.AHM_BACKEND ? !!window.AHM_BACKEND.canLanguage : true, // administrators: add languages to the dictionary
+  canTypeAdmin: window.AHM_BACKEND ? !!window.AHM_BACKEND.canTypeAdmin : true, // administrators: add, change and remove place types
   canLayerAdmin: window.AHM_BACKEND ? !!window.AHM_BACKEND.canLayerAdmin : true, // administrators: delete layers, manage categories
   // Optional features (app/features/<name>/, loaded by js/features.js). In the forum: only what the page controller sends in
   // AHM_BACKEND.features (nothing today, so every feature is hidden). In development: the list below; add ?features=a,b to the page
@@ -27,6 +28,9 @@ const AHM_CONFIG = {
         save: window.AHM_BACKEND.save,
         languages: window.AHM_BACKEND.languages,
         languageSave: window.AHM_BACKEND.languageSave,
+        types: window.AHM_BACKEND.types,
+        typeSave: window.AHM_BACKEND.typeSave,
+        typeDelete: window.AHM_BACKEND.typeDelete,
         overlays: window.AHM_BACKEND.overlays,
         overlayImage: (o) =>
           window.AHM_BACKEND.overlayImage.replace("{id}", o.id),
@@ -51,6 +55,9 @@ const AHM_CONFIG = {
         save: "/api/save", // dev/save-handler.js (browser-sync middleware)
         languages: "data/languages.json",
         languageSave: "/api/language/save",
+        types: "data/types.json",
+        typeSave: "/api/type/save",
+        typeDelete: "/api/type/delete",
         overlays: "data/overlays.json",
         overlayImage: (o) => "data/overlays/" + o.file,
         overlaySave: "/api/overlay/save",

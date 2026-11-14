@@ -1,6 +1,12 @@
 # Change log of the core domain
 
-No entries yet.
+## 2026-11-12 — Place types are a dictionary (T-025, I-8)
+
+- **What:** `loadTypes()`, global `types`, `typeLabel(code, lang)` (moved from the sidebar), `url.types|typeSave|typeDelete`, `canTypeAdmin`.
+- **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.
+- **Files:** `app/js/core/data.js`, `app/js/config.js`, `tests/js/data.test.js`
+- **How to verify:** `node tests/js/run.js`.
+- **Follow-ups:** none.
 
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the core domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.
 

@@ -145,18 +145,137 @@ function saveLang(inp) {
   return code;
 }
 
+// ---------------- place types: the dictionary (types.json); same rules as service/store.php ----------------
+const TYPE_FILE = path.join(DATA, 'types.json'),
+  TYPE_COLOR = /^#[0-9a-fA-F]{6}$/,
+  SYMBOL = /^[a-z0-9-]{1,24}$/,
+  PATH = /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,20000}$/; // SVG path data of a custom symbol: drawing commands and numbers only
+const SEED_STYLE = {
+  settlement: ['circle', '#8D6E63', 7.5],
+  city: ['circle', '#B3261E', 10],
+  town: ['circle', '#E07B39', 8],
+  village: ['circle', '#C9A227', 6.5],
+  fortress: ['square', '#455A64', 8.5],
+  temple: ['diamond', '#7B1FA2', 9],
+  tomb: ['plus', '#5D4037', 9],
+  inscription_site: ['star', '#F9A825', 10],
+  monument: ['hexagon', '#00796B', 9],
+  mountain: ['triangle', '#2E7D32', 10],
+  lake: ['drop', '#1976D2', 9],
+  river: ['bar', '#0288D1', 9],
+  region: ['ring', '#6A1B9A', 10],
+};
+// Reads types.json; when it does not exist yet, creates it from the seed (the types that existed before).
+function typeLoad() {
+  if (fs.existsSync(TYPE_FILE)) {
+    // Never replace a file that exists: a damaged one must not silently drop the types an administrator added.
+    let d = null;
+    try {
+      d = JSON.parse(fs.readFileSync(TYPE_FILE, 'utf8'));
+    } catch (e) {
+      d = null;
+    }
+    if (!d || !Array.isArray(d.types)) throw bad('types.json cannot be read; restore it from the archive folder or fix it, nothing was changed');
+    return d.types;
+  }
+  const list = Object.entries(SEED_STYLE).map(([code, s]) => ({
+    code,
+    geometry: 'point',
+    names: [{ lang: 'en', name: code.charAt(0).toUpperCase() + code.slice(1).replace(/_/g, ' ') }],
+    color: s[1],
+    style: { symbol: s[0], size: s[2] },
+  }));
+  writeAtomic(TYPE_FILE, JSON.stringify({ version: 1, types: list }, null, 1));
+  return list;
+}
+function putTypes(list) {
+  if (fs.existsSync(TYPE_FILE)) {
+    fs.mkdirSync(ARCH, { recursive: true });
+    fs.copyFileSync(TYPE_FILE, archivePath('types', 'json'));
+  }
+  writeAtomic(TYPE_FILE, JSON.stringify({ version: 1, types: list }, null, 1));
+}
+// Code of a new type: its English name in lower case, letters and digits joined by "-"; "-2", "-3" ... when taken.
+function typeCodeFrom(name, taken) {
+  let c = name
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 28)
+    .replace(/-+$/, '');
+  if (!c) throw bad('the English name must have letters or digits (the code of the type is made from it)');
+  let code = c;
+  for (let i = 2; taken.includes(code); i++) code = c + '-' + i;
+  return code;
+}
+// Administrators only: adds a type, or with edit:true changes one (code and geometry never change). Returns its code.
+function saveType(inp) {
+  if (inp.geometry !== 'point')
+    throw bad('only point types (markers of places) can be added for now: geometry must be "point"');
+  const names = cleanNames(inp.names, langLoad().map((l) => l.code), 'a type needs at least one name');
+  const color = String(inp.color === undefined ? '' : inp.color);
+  if (!TYPE_COLOR.test(color)) throw bad('the colour must look like #1a2b3c');
+  const st = inp.style && typeof inp.style === 'object' ? inp.style : {},
+    symbol = String(st.symbol == null ? 'circle' : st.symbol),
+    size = st.size == null ? 8 : st.size;
+  if (!SYMBOL.test(symbol)) throw bad('the symbol must be a slug of letters, digits and "-" (for example circle, tree)');
+  if (typeof size !== 'number' || !(size >= 4 && size <= 14)) throw bad('the size must be a number from 4 to 14');
+  const list = typeLoad(),
+    at = list.findIndex((t) => t.code === inp.code);
+  let code;
+  if (inp.edit) {
+    if (at < 0) throw bad('unknown type');
+    code = list[at].code;
+  } else {
+    const en = (names.find((n) => n.lang === 'en') || {}).name;
+    if (!en) throw bad('give the type a name in English (its code is made from it)');
+    code = typeCodeFrom(en, list.map((t) => t.code));
+  }
+  const style = { symbol, size };
+  if (symbol === 'custom') {
+    // A custom symbol: an SVG path drawn in a square box (default 24) whose corner is 0,0.
+    const path = typeof st.path === 'string' ? st.path.trim() : '',
+      box = st.box == null ? 24 : st.box;
+    if (!PATH.test(path) || !/^[Mm]/.test(path))
+      throw bad('a custom symbol needs an SVG path (the d value, 2 to 20000 characters of drawing commands and numbers, starting with M)');
+    if (typeof box !== 'number' || !(box >= 8 && box <= 2048)) throw bad('the box of a custom symbol must be a number from 8 to 2048');
+    style.path = path;
+    style.box = box;
+  }
+  const entry = { code, geometry: 'point', names, color: color.toLowerCase(), style };
+  if (inp.edit) list[at] = entry;
+  else list.push(entry);
+  putTypes(list);
+  return code;
+}
+// Administrators only: removes a type nobody uses. 400 with the number of places when some place still has it.
+function deleteType(code) {
+  const list = typeLoad(),
+    at = list.findIndex((t) => t.code === code);
+  if (at < 0) throw bad('unknown type');
+  if (code === 'mountain') throw bad('the type "mountain" cannot be removed (a mountain has a height instead of dates)');
+  const used = (readJSON(GEO, { features: [] }).features || []).filter((f) => (f.properties || {}).type === code).length;
+  if (used > 0) throw bad(`${used} place${used === 1 ? '' : 's'} use the type "${code}"; change their type first`);
+  list.splice(at, 1);
+  putTypes(list);
+  return true;
+}
+
 const oneLine = (v, max) =>
   String(v ?? '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
-// Checks the fields of a place (new or edited). Several names per language are allowed; codes = the language dictionary.
+// Checks the fields of a place (new or edited). Several names per language are allowed; codes = the language dictionary,
+// types = the codes of the types dictionary.
 // A mountain has a height (optional) and no dates; every other type has optional dates and no height.
-function cleanPlace(p, codes) {
+function cleanPlace(p, codes, types) {
   const lat = Number(p.lat),
     lon = Number(p.lon);
   if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw bad('bad coordinates');
-  if (!TYPES.includes(p.type)) throw bad('bad type');
+  if (!types.includes(p.type)) throw bad('bad type');
   const names = (p.names || [])
     .map((n) => ({ lang: String(n.lang || ''), name: oneLine(n.name, 200) }))
     .filter((n) => n.name);
@@ -194,7 +313,8 @@ function cleanPlace(p, codes) {
 }
 function save(inp) {
   migrate();
-  const codes = langLoad().map((l) => l.code); // the only languages a name or note may use
+  const codes = langLoad().map((l) => l.code), // the only languages a name or note may use
+    types = typeLoad().map((t) => t.code); // the only place types a place may use
   // a new place may join layers at once: "layer_ids" (a list) and/or "layer_id" (one); checked before anything is written
   const joins = [];
   if (inp.place) {
@@ -216,7 +336,7 @@ function save(inp) {
   const fc = JSON.parse(fs.readFileSync(GEO, 'utf8'));
   let pid = inp.place_id || null;
   if (inp.place) {
-    const c = cleanPlace(inp.place, codes);
+    const c = cleanPlace(inp.place, codes, types);
     pid = crypto.randomUUID();
     fs.copyFileSync(GEO, archivePath('places', 'geojson'));
     fc.features.push({
@@ -229,7 +349,7 @@ function save(inp) {
   } else if (inp.place_update) {
     // change an existing place: position, names, type, dates (its id never changes)
     const u = inp.place_update,
-      c = cleanPlace(u, codes),
+      c = cleanPlace(u, codes, types),
       f = fc.features.find((x) => x.properties.id === String(u.id || ''));
     if (!f) throw bad('unknown place');
     pid = f.properties.id;
@@ -910,6 +1030,8 @@ const saveNotes = (req, res, next) => {
 module.exports = (req, res, next) => {
   const url = req.url.split('?')[0];
   if (url === '/api/language/save') return jsonPost(req, res, (inp) => ({ code: saveLang(inp) })); // admins only in the forum
+  if (url === '/api/type/save') return jsonPost(req, res, (inp) => ({ code: saveType(inp) })); // admins only in the forum
+  if (url === '/api/type/delete') return jsonPost(req, res, (inp) => ({ ok: deleteType(String(inp.code || '')) })); // admins only in the forum
   if (url === '/api/layer/save') return jsonPost(req, res, (inp) => layerSave(inp)); // editors in the forum
   if (url === '/api/layer/delete') return jsonPost(req, res, (inp) => (deleteLayer(String(inp.id || '')), {})); // admins only in the forum
   if (url === '/api/shape/save') return jsonPost(req, res, (inp) => ({ id: saveShape(inp) })); // editors in the forum

@@ -11,7 +11,7 @@ In the forum every address is below `…/app.php` (for example `https://forum.ex
 | `/map/data/notes-index`    | GET    | everyone | `notes/index.json`.                                   |
 | `/map/data/overlays`       | GET    | everyone | The overlay list.                                     |
 | `/map/data/languages`      | GET    | everyone | The language dictionary.                              |
-| `/map/data/layers`, `/map/data/layer-notes-index`, `/map/data/categories` | GET | everyone | Layers, layer notes index, categories. |
+| `/map/data/layers`, `/map/data/layer-notes-index`, `/map/data/categories`, `/map/data/types` | GET | everyone | Layers, layer notes index, categories, place types. |
 | `/map/note/{place}/{id}`   | GET    | everyone | One note, as Markdown.                                |
 | `/map/overlay/{id}`        | GET    | everyone | One overlay image.                                    |
 | `/map/save`                | POST   | editors  | Add a place, edit a place, add or edit a note (JSON). |
@@ -19,6 +19,8 @@ In the forum every address is below `…/app.php` (for example `https://forum.ex
 | `/map/layer-save`          | POST   | editors  | Create or change a layer; change its places; add or edit a layer note (see below). |
 | `/map/layer-delete`        | POST   | admins   | Delete a layer (JSON `{ "id": … }`; archived first). |
 | `/map/category-save`       | POST   | admins   | Add or rename a category (JSON `{ id?, names }`).     |
+| `/map/type-save`           | POST   | admins   | Add a place type, or with `edit: true` change one (JSON `{ code?, edit?, geometry: "point", names, color, style: { symbol, size } }`; answers `{ ok, code }`). |
+| `/map/type-delete`         | POST   | admins   | Remove a place type nobody uses (JSON `{ code }`; 400 with the number of places otherwise). |
 | `/map/overlay-save`        | POST   | admins   | Create or update an overlay's settings (JSON).        |
 | `/map/overlay-upload/{id}` | POST   | admins   | Send the image bytes (`Content-Type: image/*`).       |
 | `/map/overlay-delete`      | POST   | admins   | Delete an overlay (JSON `{ "id": … }`).               |

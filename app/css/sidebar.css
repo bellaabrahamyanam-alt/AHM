@@ -895,6 +895,23 @@ button.ly-dadd:hover:not(:disabled) {
 #catList li.tr {
   border: 0;
 }
+/* place types: [button] [marker] [name] [number of places] */
+#typeList li.tr {
+  grid-template-columns: 32px 2em 1fr auto;
+}
+#typeAdmin {
+  margin-top: 8px;
+}
+#typeAdmin .btn-pair {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+#typeAdmin select,
+#typeAdmin input[type="color"],
+#typeAdmin input[type="range"] {
+  max-width: 100%;
+}
 
 /* ---- sidebar v2: three tabs, sheets over the list, folds, one button language ---- */
 /* Buttons: default = secondary; .primary = the one main action of a view; .danger = destructive; .back = navigation. */

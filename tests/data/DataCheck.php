@@ -51,9 +51,11 @@ class DataCheck
         $cats = $this->json('categories.json', true);
         $layers = $this->json('layers.json', true);
         $over = $this->json('overlays.json', true);
+        $types = $this->json('types.json', true);
         $codes = $langs ? array_column($langs['languages'] ?? [], 'code') : [];
         $this->languages($langs);
-        $placeIds = $places ? $this->places($places, $codes) : [];
+        $typeCodes = $types ? $this->types($types, $codes) : store::TYPES; // no types.json yet: the seed list
+        $placeIds = $places ? $this->places($places, $codes, $typeCodes) : [];
         $shapeIds = $this->shapeIds();
         $notes = $this->notes($placeIds, $codes);
         $catIds = $cats ? $this->categories($cats, $codes) : [];
@@ -110,7 +112,47 @@ class DataCheck
         }
     }
 
-    private function places($fc, $codes)
+    /** The types dictionary (types.json): returns the codes of the point types. */
+    private function types($d, $codes)
+    {
+        $seen = [];
+        foreach ($d['types'] ?? [] as $i => $t) {
+            $c = $t['code'] ?? '';
+            $w = "type #$i \"$c\"";
+            if (!is_string($c) || !preg_match(store::TYPE_CODE, $c)) {
+                $this->bad('type-code', "$w: bad code");
+            }
+            if (isset($seen[$c])) {
+                $this->bad('type-duplicate', "$w: code used twice");
+            }
+            if (!in_array($t['geometry'] ?? '', ['point', 'line', 'area'], true)) {
+                $this->bad('type-geometry', "$w: geometry must be point, line or area");
+            }
+            if (!preg_match(store::COLOR, (string) ($t['color'] ?? ''))) {
+                $this->bad('type-color', "$w: colour must look like #aabbcc");
+            }
+            if (($t['geometry'] ?? '') === 'point' && !preg_match(store::SYMBOL, (string) ($t['style']['symbol'] ?? ''))) {
+                $this->bad('type-symbol', "$w: bad symbol");
+            }
+            if (($t['geometry'] ?? '') === 'point' && ($t['style']['symbol'] ?? '') === 'custom') {
+                $path = $t['style']['path'] ?? null;
+                if (!is_string($path) || !preg_match(store::PATH, $path) || !preg_match('/^[Mm]/', $path)) {
+                    $this->bad('type-path', "$w: a custom symbol needs an SVG path");
+                }
+                $box = $t['style']['box'] ?? null;
+                if (!(is_int($box) || is_float($box)) || $box < 8 || $box > 2048) {
+                    $this->bad('type-box', "$w: the box of a custom symbol must be 8 to 2048");
+                }
+            }
+            $this->names($t['names'] ?? [], $codes, $w, 'type');
+            if (($t['geometry'] ?? '') === 'point') {
+                $seen[$c] = true;
+            }
+        }
+        return array_keys($seen);
+    }
+
+    private function places($fc, $codes, $typeCodes)
     {
         $ids = [];
         if (($fc['type'] ?? '') !== 'FeatureCollection') {
@@ -132,7 +174,7 @@ class DataCheck
             if (!is_array($c) || count($c) !== 2 || abs($c[0]) > 180 || abs($c[1]) > 90) {
                 $this->bad('place-coordinates', "$w: bad coordinates");
             }
-            if (!in_array($p['type'] ?? '', store::TYPES, true)) {
+            if (!in_array($p['type'] ?? '', $typeCodes, true)) {
                 $this->bad('place-type', "$w: type \"" . ($p['type'] ?? '') . '" is not in the list');
             }
             if (empty($p['names'])) {

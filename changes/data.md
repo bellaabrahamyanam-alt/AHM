@@ -24,4 +24,29 @@
 **Verify:** `php tests/php/run.php 2>&1 | tail -15` (95 passed).
 **Follow-ups:** T-024.
 
+## 2026-11-12 — Place types are a dictionary (T-025, I-8)
+
+- **What:** `data/types.json` (seed of the 13 types), `store.php`: `types()`, `save_type()`, `delete_type()` (place type checked against the dictionary; a used type and `mountain` cannot be removed; old file archived), controller `type_save`/`type_delete` (admins only) and the `types` data route, page config `types`/`typeSave`/`typeDelete`/`canTypeAdmin`, the same in `dev/save-handler.js`; `DataCheck` checks `types.json`.
+- **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.
+- **Files:** `data/types.json`, `service/store.php`, `controller/main.php`, `config/routing.yml`, `dev/save-handler.js`, `tests/php/TypeTest.php`, `tests/php/{ControllerTest,RoutingTest,ParityTest}.php`, `tests/data/DataCheck.php`, `tests/fixtures/rules.json`, `tests/js/parity.test.js`
+- **How to verify:** `php tests/php/run.php`, `php tests/data/run.php`, `node tests/js/run.js`.
+- **Follow-ups:** line and area types (`geometry` other than `point`); owner decisions in `TODO.md` T-026 (contract: `style.size`, `_` in codes, `typeIcon` with a draft).
+
+## 2026-11-14 — Custom symbols for place types (T-025)
+
+- **What:** `save_type` accepts `style.symbol = "custom"` with `style.path` (SVG path data, checked by a whitelist of characters, must start with M) and `style.box` (8–2048, default 24); dropped for other symbols. PHP and the dev server give the same verdicts (8 new parity cases).
+- **Review fix (critic, PR #10):** a `types.json` that exists but cannot be read is never replaced by the seed (PHP and dev server answer 400 and change nothing); the seed is made only when the file does not exist.
+- **Why:** the list of 15 symbols is too small (iron mine, cedar forest, sword artefact, ...).
+- **Files:** `service/store.php`, `dev/save-handler.js`, `tests/php/TypeTest.php`, `tests/fixtures/rules.json`, `docs/05-data-model.md`
+- **How to verify:** `php tests/php/run.php`, `node tests/js/run.js`.
+- **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
+
+## 2026-11-14 — More tests for the place types dictionary (T-025)
+
+- **What:** Tests: place edits to and from added types, removing a type after its last place moved, every type usable by a place, several languages, the `types` data route; `DataCheck` also checks a custom symbol (`type-path`, `type-box`) and 12 defects of `types.json` are reported.
+- **Why:** the dictionary and custom symbols had tests for the main paths only; no code changed.
+- **Files:** `tests/php/TypeTest.php`, `tests/php/ControllerTest.php`, `tests/data/DataCheck.php`, `tests/data/DataTest.php`
+- **How to verify:** `php tests/php/run.php`, `php tests/data/run.php`.
+- **Follow-ups:** the type editor of the sidebar (`ui.js`) and `dev/save-handler.js` have no new tests: the editor needs a browser run, the dev server was left out on purpose.
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the data domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

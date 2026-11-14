@@ -1,0 +1,200 @@
+{
+ "version": 1,
+ "types": [
+  {
+   "code": "settlement",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Settlement"
+    }
+   ],
+   "color": "#8D6E63",
+   "style": {
+    "symbol": "circle",
+    "size": 7.5
+   }
+  },
+  {
+   "code": "city",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "City"
+    }
+   ],
+   "color": "#B3261E",
+   "style": {
+    "symbol": "circle",
+    "size": 10
+   }
+  },
+  {
+   "code": "town",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Town"
+    }
+   ],
+   "color": "#E07B39",
+   "style": {
+    "symbol": "circle",
+    "size": 8
+   }
+  },
+  {
+   "code": "village",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Village"
+    }
+   ],
+   "color": "#C9A227",
+   "style": {
+    "symbol": "circle",
+    "size": 6.5
+   }
+  },
+  {
+   "code": "fortress",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Fortress"
+    }
+   ],
+   "color": "#455A64",
+   "style": {
+    "symbol": "square",
+    "size": 8.5
+   }
+  },
+  {
+   "code": "temple",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Temple"
+    }
+   ],
+   "color": "#7B1FA2",
+   "style": {
+    "symbol": "diamond",
+    "size": 9
+   }
+  },
+  {
+   "code": "tomb",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Tomb"
+    }
+   ],
+   "color": "#5D4037",
+   "style": {
+    "symbol": "plus",
+    "size": 9
+   }
+  },
+  {
+   "code": "inscription_site",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Inscription site"
+    }
+   ],
+   "color": "#F9A825",
+   "style": {
+    "symbol": "star",
+    "size": 10
+   }
+  },
+  {
+   "code": "monument",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Monument"
+    }
+   ],
+   "color": "#00796B",
+   "style": {
+    "symbol": "hexagon",
+    "size": 9
+   }
+  },
+  {
+   "code": "mountain",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Mountain"
+    }
+   ],
+   "color": "#2E7D32",
+   "style": {
+    "symbol": "triangle",
+    "size": 10
+   }
+  },
+  {
+   "code": "lake",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Lake"
+    }
+   ],
+   "color": "#1976D2",
+   "style": {
+    "symbol": "drop",
+    "size": 9
+   }
+  },
+  {
+   "code": "river",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "River"
+    }
+   ],
+   "color": "#0288D1",
+   "style": {
+    "symbol": "bar",
+    "size": 9
+   }
+  },
+  {
+   "code": "region",
+   "geometry": "point",
+   "names": [
+    {
+     "lang": "en",
+     "name": "Region"
+    }
+   ],
+   "color": "#6A1B9A",
+   "style": {
+    "symbol": "ring",
+    "size": 10
+   }
+  }
+ ]
+}

@@ -98,6 +98,10 @@ class main
             'languages' => $this->helper->route('ahm_map_data', ['f' => 'languages'], false),
             'languageSave' => $this->helper->route('ahm_map_language_save', [], false),
             'canLanguage' => $this->can_admin(),
+            'types' => $this->helper->route('ahm_map_data', ['f' => 'types'], false),
+            'typeSave' => $this->helper->route('ahm_map_type_save', [], false),
+            'typeDelete' => $this->helper->route('ahm_map_type_delete', [], false),
+            'canTypeAdmin' => $this->can_admin(), // add, change and remove place types
             'layers' => $this->helper->route('ahm_map_data', ['f' => 'layers'], false),
             'layerNotesIndex' => $this->helper->route('ahm_map_data', ['f' => 'layer-notes-index'], false),
             'categories' => $this->helper->route('ahm_map_data', ['f' => 'categories'], false),
@@ -151,7 +155,7 @@ class main
 
     public function data($f)
     {
-        $lists = ['overlays', 'languages', 'layers', 'layer-notes-index', 'categories', 'shapes'];
+        $lists = ['overlays', 'languages', 'layers', 'layer-notes-index', 'categories', 'shapes', 'types'];
         if (in_array($f, $lists, true)) {
             $d = [
                 'overlays' => 'overlays',
@@ -159,7 +163,8 @@ class main
                 'layers' => 'layers',
                 'layer-notes-index' => 'layer_notes_index',
                 'categories' => 'categories',
-                'shapes' => 'shapes'
+                'shapes' => 'shapes',
+                'types' => 'types'
             ][$f];
             return new Response(
                 json_encode($this->store->$d(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -344,6 +349,40 @@ class main
         }
         return $this->overlay_run(function () use ($in) {
             return ['ok' => true, 'id' => $this->store->save_category($in)];
+        });
+    }
+
+    /** POST JSON {code?, geometry, names: [{lang, name}], color, style, edit?}: adds a place type or changes one. Administrators only. */
+    public function type_save()
+    {
+        if ($g = $this->admin_guard('manage place types')) {
+            return $g;
+        }
+        if (!$this->is_json()) {
+            return $this->json(['error' => 'JSON required'], 415);
+        }
+        if (($in = $this->json_body()) === null) {
+            return $this->json(['error' => 'bad request'], 400);
+        }
+        return $this->overlay_run(function () use ($in) {
+            return ['ok' => true, 'code' => $this->store->save_type($in)];
+        });
+    }
+
+    /** POST JSON {code}: removes a place type that no place uses (400 with the count otherwise). Administrators only. */
+    public function type_delete()
+    {
+        if ($g = $this->admin_guard('manage place types')) {
+            return $g;
+        }
+        if (!$this->is_json()) {
+            return $this->json(['error' => 'JSON required'], 415);
+        }
+        if (($in = $this->json_body()) === null) {
+            return $this->json(['error' => 'bad request'], 400);
+        }
+        return $this->overlay_run(function () use ($in) {
+            return ['ok' => $this->store->delete_type((string) ($in['code'] ?? ''))];
         });
     }
 

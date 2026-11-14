@@ -4,6 +4,7 @@ namespace ahm\map\service;
 /** All reading and writing of the map data (places.geojson + notes/<place>/<note-id>.md). Knows nothing about phpBB. */
 class store
 {
+    /** The point types of a new store (seed of types.json); after that the dictionary in types.json is the only list. */
     const TYPES = [
         'settlement',
         'city',
@@ -80,6 +81,7 @@ class store
         try {
             $this->migrate();
             $codes = array_column($this->lang_load(), 'code'); // the only languages a name or note may use
+            $types = array_column($this->type_load(), 'code'); // the only place types a place may use
             // a new place may join layers at once: "layer_ids" (a list) and/or "layer_id" (one); checked before anything is written
             $joins = [];
             if (isset($in['place'])) {
@@ -110,7 +112,7 @@ class store
             $pid = $in['place_id'] ?? null;
             $stamp = date('Ymd-His');
             if (isset($in['place'])) {
-                $c = self::clean_place($in['place'], $codes);
+                $c = self::clean_place($in['place'], $codes, $types);
                 $pid = self::uuid4();
                 copy($geo, $this->archive_path('places', 'geojson'));
                 $fc['features'][] = [
@@ -126,7 +128,7 @@ class store
                 // change an existing place: position, names, type, dates (its id never changes)
                 $u = $in['place_update'];
                 $pid = (string) ($u['id'] ?? '');
-                $c = self::clean_place($u, $codes);
+                $c = self::clean_place($u, $codes, $types);
                 $found = false;
                 foreach ($fc['features'] as $k => $f) {
                     if (($f['properties']['id'] ?? '') === $pid) {
@@ -231,17 +233,17 @@ class store
 
     /**
      * Checks the fields of a place (new or edited) and returns [lat, lon, props]. Several names per language are
-     * allowed. $codes = the language dictionary. A mountain has a height (optional) and no dates; every other type has
+     * allowed. $codes = the language dictionary, $types = the codes of the point types dictionary. A mountain has a height (optional) and no dates; every other type has
      * optional dates and no height.
      */
-    private static function clean_place(array $p, array $codes)
+    private static function clean_place(array $p, array $codes, array $types)
     {
         $lat = (float) ($p['lat'] ?? 999);
         $lon = (float) ($p['lon'] ?? 999);
         if ($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
             throw self::bad('bad coordinates');
         }
-        if (!in_array($p['type'] ?? '', self::TYPES, true)) {
+        if (!in_array($p['type'] ?? '', $types, true)) {
             throw self::bad('bad type');
         }
         $names = [];
@@ -559,6 +561,204 @@ class store
             }
             self::write_atomic($f, json_encode(['version' => 1, 'languages' => $list], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
             return $code;
+        });
+    }
+
+    // ------------------------------------------------------------------ place types (the dictionary)
+    // One dictionary of types, managed like languages and categories: only administrators add to it. A place points
+    // to a type by its code. Today only point types (the markers of places) can be added; lines and areas follow.
+    const TYPE_CODE = '/^[a-z0-9][a-z0-9_-]{0,31}$/';
+    const SYMBOL = '/^[a-z0-9-]{1,24}$/';
+    const PATH = '/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]{2,20000}$/'; // SVG path data of a custom symbol: drawing commands and numbers only
+    const SEED_STYLE = [
+        'settlement' => ['circle', '#8D6E63', 7.5],
+        'city' => ['circle', '#B3261E', 10],
+        'town' => ['circle', '#E07B39', 8],
+        'village' => ['circle', '#C9A227', 6.5],
+        'fortress' => ['square', '#455A64', 8.5],
+        'temple' => ['diamond', '#7B1FA2', 9],
+        'tomb' => ['plus', '#5D4037', 9],
+        'inscription_site' => ['star', '#F9A825', 10],
+        'monument' => ['hexagon', '#00796B', 9],
+        'mountain' => ['triangle', '#2E7D32', 10],
+        'lake' => ['drop', '#1976D2', 9],
+        'river' => ['bar', '#0288D1', 9],
+        'region' => ['ring', '#6A1B9A', 10]
+    ];
+
+    /** The dictionary as the browser gets it. */
+    public function types()
+    {
+        return $this->locked(function () {
+            return ['version' => 1, 'types' => $this->type_load()];
+        });
+    }
+
+    /** Reads types.json; when it does not exist yet, creates it from the seed (the types that existed before). Caller holds the lock. */
+    private function type_load()
+    {
+        $f = $this->base . 'types.json';
+        if (is_file($f)) {
+            // Never replace a file that exists: a damaged one must not silently drop the types an administrator added.
+            $d = json_decode((string) file_get_contents($f), true);
+            if (!is_array($d) || !isset($d['types']) || !is_array($d['types'])) {
+                throw self::bad('types.json cannot be read; restore it from the archive folder or fix it, nothing was changed');
+            }
+            return $d['types'];
+        }
+        $list = [];
+        foreach (self::SEED_STYLE as $code => $s) {
+            $list[] = [
+                'code' => $code,
+                'geometry' => 'point',
+                'names' => [['lang' => 'en', 'name' => ucfirst(str_replace('_', ' ', $code))]],
+                'color' => $s[1],
+                'style' => ['symbol' => $s[0], 'size' => $s[2]]
+            ];
+        }
+        @mkdir($this->base, 0775, true);
+        self::write_atomic($f, json_encode(['version' => 1, 'types' => $list], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        return $list;
+    }
+
+    private function put_types(array $list)
+    {
+        $f = $this->base . 'types.json';
+        if (is_file($f)) {
+            copy($f, $this->archive_path('types', 'json'));
+        }
+        self::write_atomic($f, json_encode(['version' => 1, 'types' => array_values($list)], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    }
+
+    /** Code of a new type: its English name in lower case, letters and digits joined by "-"; "-2", "-3" ... when taken. */
+    private static function type_code_from($name, array $taken)
+    {
+        // Accents become plain letters where the server's iconv can do it; any other character is dropped below. Some servers refuse
+        // the //IGNORE flag, so it is not used, and a failing iconv never breaks the code.
+        $ascii = function_exists('iconv') ? @iconv('UTF-8', 'ASCII//TRANSLIT', $name) : false;
+        $c = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $ascii === false ? (string) $name : $ascii), '-'));
+        $c = rtrim(substr($c, 0, 28), '-');
+        if ($c === '') {
+            throw self::bad('the English name must have letters or digits (the code of the type is made from it)');
+        }
+        $code = $c;
+        for ($i = 2; in_array($code, $taken, true); $i++) {
+            $code = $c . '-' . $i;
+        }
+        return $code;
+    }
+
+    /** Administrators only (checked by the controller): adds a type, or with edit:true changes one (code and geometry never change). Returns its code. */
+    public function save_type(array $in)
+    {
+        return $this->locked(function () use ($in) {
+            if (($in['geometry'] ?? '') !== 'point') {
+                throw self::bad('only point types (markers of places) can be added for now: geometry must be "point"');
+            }
+            $names = self::clean_names($in['names'] ?? [], array_column($this->lang_load(), 'code'), 'a type needs at least one name');
+            $color = (string) ($in['color'] ?? '');
+            if (!preg_match(self::COLOR, $color)) {
+                throw self::bad('the colour must look like #1a2b3c');
+            }
+            $st = is_array($in['style'] ?? null) ? $in['style'] : [];
+            $symbol = (string) ($st['symbol'] ?? 'circle');
+            if (!preg_match(self::SYMBOL, $symbol)) {
+                throw self::bad('the symbol must be a slug of letters, digits and "-" (for example circle, tree)');
+            }
+            $size = $st['size'] ?? 8;
+            if (!(is_int($size) || is_float($size)) || $size < 4 || $size > 14) {
+                throw self::bad('the size must be a number from 4 to 14');
+            }
+            $list = $this->type_load();
+            $edit = !empty($in['edit']);
+            $at = null;
+            foreach ($list as $i => $t) {
+                if ($t['code'] === ($in['code'] ?? null)) {
+                    $at = $i;
+                }
+            }
+            if ($edit) {
+                if ($at === null) {
+                    throw self::bad('unknown type');
+                }
+                if (($list[$at]['geometry'] ?? 'point') !== 'point') {
+                    throw self::bad('the geometry of a type never changes');
+                }
+                $code = $list[$at]['code'];
+            } else {
+                $en = '';
+                foreach ($names as $n) {
+                    if ($n['lang'] === 'en' && $en === '') {
+                        $en = $n['name'];
+                    }
+                }
+                if ($en === '') {
+                    throw self::bad('give the type a name in English (its code is made from it)');
+                }
+                $code = self::type_code_from($en, array_column($list, 'code'));
+            }
+            $style = ['symbol' => $symbol, 'size' => $size + 0];
+            if ($symbol === 'custom') {
+                // A custom symbol: an SVG path drawn in a square box (default 24) whose corner is 0,0.
+                $path = is_string($st['path'] ?? null) ? trim($st['path']) : '';
+                if (!preg_match(self::PATH, $path) || !preg_match('/^[Mm]/', $path)) {
+                    throw self::bad('a custom symbol needs an SVG path (the d value, 2 to 20000 characters of drawing commands and numbers, starting with M)');
+                }
+                $box = $st['box'] ?? 24;
+                if (!(is_int($box) || is_float($box)) || $box < 8 || $box > 2048) {
+                    throw self::bad('the box of a custom symbol must be a number from 8 to 2048');
+                }
+                $style['path'] = $path;
+                $style['box'] = $box + 0;
+            }
+            $entry = [
+                'code' => $code,
+                'geometry' => 'point',
+                'names' => $names,
+                'color' => strtolower($color),
+                'style' => $style
+            ];
+            if ($edit) {
+                $list[$at] = $entry;
+            } else {
+                $list[] = $entry;
+            }
+            $this->put_types($list);
+            return $code;
+        });
+    }
+
+    /** Administrators only: removes a type nobody uses. 400 with the number of places when some place still has it. */
+    public function delete_type($code)
+    {
+        return $this->locked(function () use ($code) {
+            $list = $this->type_load();
+            $at = null;
+            foreach ($list as $i => $t) {
+                if ($t['code'] === $code) {
+                    $at = $i;
+                }
+            }
+            if ($at === null) {
+                throw self::bad('unknown type');
+            }
+            if ($code === 'mountain') {
+                throw self::bad('the type "mountain" cannot be removed (a mountain has a height instead of dates)');
+            }
+            $geo = $this->base . 'places.geojson';
+            $fc = is_file($geo) ? json_decode(file_get_contents($geo), true) : null;
+            $used = 0;
+            foreach ($fc['features'] ?? [] as $f) {
+                if (($f['properties']['type'] ?? '') === $code) {
+                    $used++;
+                }
+            }
+            if ($used > 0) {
+                throw self::bad("$used place" . ($used === 1 ? '' : 's') . " use the type \"$code\"; change their type first");
+            }
+            unset($list[$at]);
+            $this->put_types($list);
+            return true;
         });
     }
 

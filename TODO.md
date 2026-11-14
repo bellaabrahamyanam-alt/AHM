@@ -13,6 +13,13 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Needs you (owner)
 
+- [ ] T-026 Decide: amend `interfaces/I-8` / `I-4` for the place types dictionary (T-025 deviates in 4 points)
+  1. optional `style.size` 4–14 (without it city, town and village look alike); 2. codes may contain `_` (`inscription_site` already exists); 3. `typeIcon` also accepts a draft `{ symbol, color, size }` (editor preview). Recommendation: yes to all three.
+  4. custom symbols: `style.symbol = "custom"` with `style.path` (SVG path data) and `style.box`. Recommendation: yes.
+  Also: line and area types (and the seed `border`, `route`, `territory`) are not built yet; separate item.
+  Done when: you write `Approved: <date> yes` or the points you refuse.
+  Contract: yes.
+
 - [ ] T-001 Decide: map extension points for the campaigns feature (old proposal 002, `changes/archive/proposals/002-map-extension-points.md`)
   Done when: you write `Approved: <date> yes` or `no`. Yes means the builder adds the extension points to the map and the contract (I-5).
   Contract: yes.
@@ -34,6 +41,10 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 - [ ] T-024 Harden the `app/dist` check
   Done when: `node tools/build.js --check` also fails when `app.min.js` or `app.min.css` differ in size from the manifest (a hand-edited bundle with a matching manifest); the name test in `tests/js/build.test.js` finds each top-level name as a declaration in the bundle, not anywhere in the text; a test shows each failure. Needs `Approved:` (protected: `tests/js/build.test.js`).
   Contract: no.
+- [ ] T-025 Place types dictionary (admins add markers such as iron mine, cedar forest, sword artefact) — this branch `feat/place-types-dictionary`
+  Done when: PR merged; the 4 owner decisions below are answered.
+  Contract: no (`interfaces/I-8` is not edited; the code follows it except the points below).
+
 - [ ] T-021 Log and document the Routes tab (it was merged without a change-log entry)
   Done when: `changes/sidebar.md`, `changes/core.md`, `changes/map.md` and `changes/data.md` each have an entry for what the routes work changed in their files (`app/js/sidebar/routes.js`, `core/routes.js`, `map/shapes.js`, `service/store.php`, `dev/save-handler.js`); the `docs/` sections that describe the tabs and the data format name the Routes tab; `tests/js/routes.test.js` also covers the sidebar part or the item says why not.
   Contract: no.

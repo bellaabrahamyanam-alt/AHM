@@ -974,6 +974,399 @@
     "name": " "
    },
    "expect": "needs a name"
+  },
+  {
+   "name": "type: new",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: same English name again (code gets -2)",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: edit",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#112233",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    },
+    "code": "iron-mine",
+    "edit": true
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: edit unknown code",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    },
+    "code": "nope",
+    "edit": true
+   },
+   "expect": "unknown type"
+  },
+  {
+   "name": "type: line geometry not yet",
+   "via": "type",
+   "body": {
+    "geometry": "line",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "geometry must be"
+  },
+  {
+   "name": "type: no name",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "at least one name"
+  },
+  {
+   "name": "type: no English name",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "ru",
+      "name": "Рудник"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "name in English"
+  },
+  {
+   "name": "type: language outside the dictionary",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "zz",
+      "name": "X"
+     },
+     {
+      "lang": "en",
+      "name": "Y"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "not in the list"
+  },
+  {
+   "name": "type: bad colour",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "red",
+    "style": {
+     "symbol": "pickaxe",
+     "size": 9
+    }
+   },
+   "expect": "colour"
+  },
+  {
+   "name": "type: bad symbol",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "Bad Symbol",
+     "size": 8
+    }
+   },
+   "expect": "symbol"
+  },
+  {
+   "name": "type: size too big",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Iron mine"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "circle",
+     "size": 15
+    }
+   },
+   "expect": "size"
+  },
+  {
+   "name": "type: size missing means 8",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Plain"
+     }
+    ],
+    "color": "#a0522d",
+    "style": {
+     "symbol": "circle"
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: custom symbol",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M12 2 L22 22 H2 Z",
+     "box": 24
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: custom symbol, box 512",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M256 10 L500 500 H10 z",
+     "box": 512
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "type: custom symbol without path",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom path with markup",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M0 0 <script>"
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom path must start with M",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "L0 0 L5 5"
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom path too short",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M"
+    }
+   },
+   "expect": "SVG path"
+  },
+  {
+   "name": "type: custom box too small",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M0 0 L5 5",
+     "box": 2
+    }
+   },
+   "expect": "box"
+  },
+  {
+   "name": "type: custom box not a number",
+   "via": "type",
+   "body": {
+    "geometry": "point",
+    "names": [
+     {
+      "lang": "en",
+      "name": "Cedar forest"
+     }
+    ],
+    "color": "#2e7d32",
+    "style": {
+     "symbol": "custom",
+     "size": 9,
+     "path": "M0 0 L5 5",
+     "box": "24"
+    }
+   },
+   "expect": "box"
   }
  ]
 }

@@ -1,20 +1,5 @@
 // The place form: names, type, dates (or height for a mountain) and position.
 // Used twice: in the "new place" dialog and in the sidebar when an existing place is edited.
-const PLACE_TYPES = [
-  'city',
-  'town',
-  'village',
-  'settlement',
-  'fortress',
-  'temple',
-  'tomb',
-  'inscription_site',
-  'monument',
-  'mountain',
-  'lake',
-  'river',
-  'region',
-];
 const MAX_HEIGHT_M = 9000;
 
 /** <option>s of the language dictionary (sorted by name). A code that is not in the dictionary is kept visible, not lost. */
@@ -25,6 +10,58 @@ const langOptions = (cur) => {
     list.map((l) => `<option value="${esc(l.code)}"${l.code === cur ? ' selected' : ''}>${esc(l.name)} (${esc(l.code)})</option>`).join('')
   );
 };
+/** <option>s of the point types of the dictionary (sorted by name in language l). A type that is not in the dictionary is kept visible. */
+const typeOptions = (cur, l) => {
+  const list = types.filter((t) => t.geometry === 'point').map((t) => t.code);
+  if (cur && !list.includes(cur)) list.push(cur);
+  return list
+    .sort((a, b) => typeLabel(a, l).localeCompare(typeLabel(b, l)))
+    .map((t) => `<option value="${esc(t)}"${t === cur ? ' selected' : ''}>${esc(typeLabel(t, l))}</option>`)
+    .join('');
+};
+/**
+ * Turns the text of an SVG file into one path and the size of its box: the paths, rectangles, circles, ellipses and
+ * polygons of the file are joined (colours and everything else are ignored). `path` is '' when there is nothing to draw or the
+ * file cannot be used; `why` is then 'transform' or 'origin'.
+ */
+function svgToPath(text) {
+  const attr = (tag, n) => {
+    const m = new RegExp('(?:^|\\s)' + n + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\')', 'i').exec(tag);
+    return m ? (m[1] !== undefined ? m[1] : m[2]) : null;
+  };
+  const num = (tag, n) => {
+    const v = parseFloat(attr(tag, n));
+    return Number.isFinite(v) ? v : 0;
+  };
+  const f = (x) => String(Math.round(x * 1000) / 1000);
+  const parts = [];
+  let box = 0;
+  // Not supported, so refused instead of drawn wrong: a viewBox that does not start at 0 0, and any transform.
+  if (/\stransform\s*=/i.test(text)) return { path: '', box: 24, why: 'transform' };
+  for (const tag of String(text).match(/<(?:svg|path|rect|circle|ellipse|polygon)\b[^>]*>/gi) || []) {
+    const name = /^<(\w+)/.exec(tag)[1].toLowerCase();
+    if (name === 'svg') {
+      const vb = /([-\d.]+)[\s,]+([-\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(attr(tag, 'viewBox') || '');
+      if (vb && (Number(vb[1]) !== 0 || Number(vb[2]) !== 0)) return { path: '', box: 24, why: 'origin' };
+      box = vb ? Math.max(Number(vb[3]), Number(vb[4])) : Math.max(num(tag, 'width'), num(tag, 'height'));
+    } else if (name === 'path') {
+      if (attr(tag, 'd')) parts.push(attr(tag, 'd').trim());
+    } else if (name === 'rect') {
+      const x = num(tag, 'x'), y = num(tag, 'y'), w = num(tag, 'width'), h = num(tag, 'height');
+      if (w > 0 && h > 0) parts.push(`M${f(x)} ${f(y)}H${f(x + w)}V${f(y + h)}H${f(x)}Z`);
+    } else if (name === 'circle' || name === 'ellipse') {
+      const cx = num(tag, 'cx'), cy = num(tag, 'cy'), rx = name === 'circle' ? num(tag, 'r') : num(tag, 'rx'), ry = name === 'circle' ? rx : num(tag, 'ry');
+      if (rx > 0 && ry > 0) parts.push(`M${f(cx - rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx + rx)} ${f(cy)}A${f(rx)} ${f(ry)} 0 1 0 ${f(cx - rx)} ${f(cy)}Z`);
+    } else if (name === 'polygon') {
+      const n = (attr(tag, 'points') || '').trim().split(/[\s,]+/).map(Number);
+      if (n.length >= 6 && n.length % 2 === 0 && n.every(Number.isFinite)) {
+        parts.push('M' + n.map((v, i) => (i && i % 2 === 0 ? 'L' : i ? ' ' : '') + f(v)).join('') + 'Z');
+      }
+    }
+  }
+  return { path: parts.join(' '), box: box >= 8 && box <= 2048 ? box : 24 };
+}
+const TYPE_HINT = 'Type missing? Ask an administrator to add it (More tab, Place types).';
 const LANG_HINT = 'Language missing? Ask an administrator to add it (Languages tab).';
 const pfRow = (n) =>
   `<div class="row pf-name"><select class="nl" aria-label="Language" title="${LANG_HINT}">${langOptions(n.lang)}</select>` +
@@ -40,9 +77,7 @@ function placeFormHTML(p) {
     `<div class="pf"><div class="label">Names</div><div class="pf-names">${names.map((n) => pfRow(n)).join('')}</div>` +
     `<button type="button" class="pf-add">+ Add another name</button>` +
     `<div class="sn">A place can have several names, even in one language (Ararat and Masis). The first name of each language is shown on the map. ${LANG_HINT}</div>` +
-    `<div class="label">Type</div><select class="pf-type">${PLACE_TYPES.map(
-      (t) => `<option value="${t}"${t === p.type ? ' selected' : ''}>${typeLabel(t)}</option>`
-    ).join('')}</select>` +
+    `<div class="label">Type</div><select class="pf-type" title="${TYPE_HINT}">${typeOptions(p.type, typeof document !== 'undefined' && document.getElementById ? (document.getElementById('lang') || {}).value : 'en')}</select>` +
     `<div class="pf-when"${mountain ? ' hidden' : ''}><div class="label">Dates (optional)</div>` +
     `<div class="sn">Leave “Unknown” when you do not know a date. Choose “Approximate” or “Range” when you only know roughly.</div>` +
     `<div class="pf-sub">Began / founded</div>${dfHTML('pf-from', p.date_from)}` +

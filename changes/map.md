@@ -18,4 +18,28 @@
 - **How to verify:** `node tests/js/run.js --no-browser`. By hand: select a place (its symbol grows with a white outline, no orange ring); hover a place (it lightens, tooltip above it); double click a place (sidebar opens its focus, map does not zoom twice); zoom out on a dense area (round bubbles with counts); click a bubble (map zooms to where it splits).
 - **Follow-ups:** `todo/map.md` not ticked in this change; the sidebar half of double click is task 012.
 
+## 2026-11-12 — Place types are a dictionary (T-025, I-8)
+
+- **What:** `AHM.map.setTypes(types)` rebuilds `TYPE_STYLE` from the dictionary and redraws; `AHM.map.getSymbols()`; new symbols `pentagon`, `tree`, `sword`, `pickaxe`, `flag`; images of a changed type are replaced; `typeIcon` also accepts a draft `{ symbol, color, size }` (preview).
+- **Why:** administrators must be able to add markers (iron mine, cedar forest, sword artefact) without a code change.
+- **Files:** `app/js/map/typeicons.js`, `app/js/map/map.js`, `tests/js/map.test.js`
+- **How to verify:** `node tests/js/run.js`. By hand: add a type in More → Place types, give it to a place: the marker changes on the map without a reload.
+- **Follow-ups:** none.
+
+## 2026-11-14 — Custom symbols for place types (T-025)
+
+- **What:** A type with a custom symbol is drawn from its path (`Path2D`, scaled to the marker size and centred); the same for the editor preview, the list and the hover look. Bad path or box = circle.
+- **Why:** the list of 15 symbols is too small (iron mine, cedar forest, sword artefact, ...).
+- **Files:** `app/js/map/typeicons.js`, `tests/js/map.test.js`, `tests/js/lint.test.js`, `app/dist/`
+- **How to verify:** `node tests/js/run.js`.
+- **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
+
+## 2026-11-14 — More tests for the place types dictionary (T-025)
+
+- **What:** Tests: custom symbol drawn as one scaled and centred `Path2D` (stroke twice, fill once); circle without `Path2D`; no path for a non-custom type; `typeIcon` cache and draft; `registerTypeIcons` replaces existing images; `setTypes` before and after the map is ready; `loadTypes` without a file.
+- **Why:** the dictionary and custom symbols had tests for the main paths only; no code changed.
+- **Files:** `tests/js/map.test.js`, `tests/js/data.test.js`
+- **How to verify:** `node tests/js/run.js`.
+- **Follow-ups:** the type editor of the sidebar (`ui.js`) and `dev/save-handler.js` have no new tests: the editor needs a browser run, the dev server was left out on purpose.
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the map domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

@@ -47,6 +47,8 @@ const loadLayerNotes = () =>
   );
 const loadCategories = () => loadOpt(AHM_CONFIG.url.categories, (j) => j.categories);
 const loadLanguages = () => getJSON(AHM_CONFIG.url.languages).then((j) => j.languages);
+// The dictionary of place types (like languages and categories). A store without types.json still works: no types, codes are shown as text.
+const loadTypes = () => loadOpt(AHM_CONFIG.url.types, (j) => j.types);
 const loadNoteBody = (n) =>
   fetch(AHM_CONFIG.url.note(n.place, n.id), { cache: 'no-cache' })
     .then((r) => {
@@ -60,11 +62,18 @@ let places = [],
   layers = [],
   layerNotes = [],
   categories = [],
-  languages = []; // the dictionary of languages: [{ code, name, native }]; only administrators add to it
+  languages = [], // the dictionary of languages: [{ code, name, native }]; only administrators add to it
+  types = []; // the dictionary of types: [{ code, geometry, names, color, style }]; only administrators add to it
 const label = (p, l) => (p.names.find((n) => n.lang === l) || p.names.find((n) => n.lang === 'en') || p.names[0]).name;
 const langName = (code) => {
   const l = languages.find((x) => x.code === code);
   return l ? l.name : code;
+};
+// Name of a type in language `lang` (else English, else the first name, else the code with spaces) for lists, chips and forms.
+const typeLabel = (code, lang) => {
+  const t = types.find((x) => x.code === code),
+    n = t && t.names.length ? t.names.find((x) => x.lang === lang) || t.names.find((x) => x.lang === 'en') || t.names[0] : null;
+  return n ? n.name : String(code).replace(/_/g, ' ');
 };
 // What a place shows instead of dates: a mountain its height, everything else its dates ('' when nothing is known).
 const placeWhen = (p) =>

@@ -35,10 +35,6 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
 
 ## Next (builder)
 
-- [ ] T-006 CI rebuilds `app/dist/` like `graph/` (so a PR does not need to, and two open PRs do not conflict on it)
-  Done when: a PR that changes `app/js` or `app/css` gets its `app/dist/` rebuilt and committed by the job `ci` (Bun installed in the job), and the `build` test still passes. Needs `Approved:` (protected: `tools/ci.sh`, `.github/workflows/ci.yml`).
-  Approved: 2026-11-14 owner, in the chat: yes.
-  Contract: no.
 - [ ] T-024 Harden the `app/dist` check
   Done when: `node tools/build.js --check` also fails when `app.min.js` or `app.min.css` differ in size from the manifest (a hand-edited bundle with a matching manifest); the name test in `tests/js/build.test.js` finds each top-level name as a declaration in the bundle, not anywhere in the text; a test shows each failure. Needs `Approved:` (protected: `tests/js/build.test.js`).
   Contract: no.
@@ -65,8 +61,14 @@ Item format: `- [ ] T-NNN Title` then indented lines: `Done when:` (what can be 
   Done when: a data test shows the list in the page data; the forum setting is documented in `docs/10-*.md`.
   Contract: yes (I-1).
 
+- [ ] T-028 Update the text that still tells agents to run `bun tools/build.js` before a PR (`AGENTS.md` section 4 and line 43, `.claude/agents/builder.md` step 4, `DOMAINS.md`): CI now rebuilds `app/dist/` (T-006)
+  Done when: the texts say a PR need not commit `app/dist/` (a local build is still allowed); `tests/js/build.test.js` stays unchanged. Needs `Approved:` (protected: `AGENTS.md`, `.claude/`, `DOMAINS.md`).
+  Contract: no.
+
 ## Done
 
+- [x] T-006 CI rebuilds `app/dist/` like `graph/` (2026-11-14, branch `chore/ci-dist`)
+  Approved: 2026-11-14 owner, in the chat: yes. In a PR the job `ci` runs `bun tools/build.js` (Bun 1.4.4) only when `node tools/build.js --check` finds `app/dist/` stale, and commits `graph/` and `app/dist/` together.
 - [x] T-027 Notes for borders and routes (2026-11-14, branch `feat/shape-notes`)
   Owner, in the chat: "let's add notes for routes and boards" (borders). No protected file changed. Notes are layer notes whose owner id is a shape id.
 - [x] T-023 The page controller serves the bundle only when its files exist (2026-11-12, PR from branch `fix/dist-guard`)

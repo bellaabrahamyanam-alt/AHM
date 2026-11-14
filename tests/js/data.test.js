@@ -90,3 +90,11 @@ test('types: typeLabel gives the name in the language, else English, else the fi
   eq('Рудник', p.X('typeLabel("iron-mine", "en")'), 'no English name: the first one');
   eq('inscription site', p.X('typeLabel("inscription_site", "en")'), 'not in the dictionary: the code as words');
 });
+
+test('data: loadTypes: a store without types.json (404) means "no types", and a list comes back as it is', async () => {
+  const p = page();
+  p.X('AHM_CONFIG.url.types = "x";');
+  eq([], J(await p.X('loadTypes()')));
+  p.ctx.fetch = async () => ({ ok: true, status: 200, json: async () => ({ version: 1, types: [{ code: 'city' }] }) });
+  eq([{ code: 'city' }], J(await p.X('loadTypes()')));
+});

@@ -197,3 +197,59 @@ test('types: a types.json that cannot be read is never replaced by the seed, and
         $s->types();
     }, 'valid JSON without types');
 });
+
+test('place_update: a place can change to a type an administrator added, and to nothing that is not in the dictionary', function () {
+    $s = fresh_store($dir);
+    $s->save_type(iron());
+    $id = $s->save(['place' => BASE]);
+    $s->save(['place_update' => array_merge(BASE, ['id' => $id, 'type' => 'iron-mine'])]);
+    same('iron-mine', place($dir, $id)['properties']['type']);
+    $before = file_get_contents("$dir/places.geojson");
+    throws('/bad type/', function () use ($s, $id) {
+        $s->save(['place_update' => array_merge(BASE, ['id' => $id, 'type' => 'salt-mine'])]);
+    });
+    same($before, file_get_contents("$dir/places.geojson"), 'a refused edit changes nothing');
+});
+
+test('delete_type: after the last place changed its type, the type can be removed, and then no place can use it', function () {
+    $s = fresh_store($dir);
+    $s->save_type(iron());
+    $id = $s->save(['place' => array_merge(BASE, ['type' => 'iron-mine'])]);
+    throws('/1 place use/', function () use ($s) {
+        $s->delete_type('iron-mine');
+    });
+    $s->save(['place_update' => array_merge(BASE, ['id' => $id, 'type' => 'town'])]);
+    ok($s->delete_type('iron-mine'));
+    throws('/bad type/', function () use ($s) {
+        $s->save(['place' => array_merge(BASE, ['type' => 'iron-mine'])]);
+    });
+});
+
+test('save_type: a place can use every type of the dictionary, the seed and the added ones', function () {
+    $s = fresh_store($dir);
+    $s->save_type(iron(['style' => ['symbol' => 'custom', 'size' => 9, 'path' => 'M0 0 L5 5 Z']]));
+    foreach (array_column($s->types()['types'], 'code') as $code) {
+        if ($code === 'mountain') {
+            continue; // a mountain has a height instead of dates; covered in PlaceTest
+        }
+        $id = $s->save(['place' => array_merge(BASE, ['type' => $code])]);
+        same($code, place($dir, $id)['properties']['type'], $code);
+    }
+});
+
+test('types: the dictionary is read from the file on every call (a change made by another process is seen)', function () {
+    $s = fresh_store($dir);
+    $other = new store($dir);
+    $other->save_type(iron());
+    ok(find_by($s->types()['types'], 'code', 'iron-mine') !== null);
+    $other->delete_type('iron-mine');
+    ok(find_by($s->types()['types'], 'code', 'iron-mine') === null);
+});
+
+test('save_type: the names of a type may be in several languages (non-Latin text included)', function () {
+    $s = fresh_store($dir);
+    $s->save_type(iron(['names' => [['lang' => 'en', 'name' => 'Iron mine'], ['lang' => 'ru', 'name' => 'Рудник'], ['lang' => 'hy', 'name' => 'Երկաթի հանք']]]));
+    same(3, count(find_by($s->types()['types'], 'code', 'iron-mine')['names']));
+    $t = find_by($s->types()['types'], 'code', 'iron-mine');
+    same('Երկաթի հանք', $t['names'][2]['name'], 'non-Latin text is kept as it is');
+});

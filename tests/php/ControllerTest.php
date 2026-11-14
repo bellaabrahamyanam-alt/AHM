@@ -223,7 +223,7 @@ namespace ahm\map\tests {
     // ---- reading ----
     test('data: guests can read every list as JSON', function () {
         $c = visitor(forum_root(), 'members', ANONYMOUS, false);
-        foreach (['places', 'notes-index', 'overlays', 'languages', 'layers', 'layer-notes-index', 'categories'] as $f) {
+        foreach (['places', 'notes-index', 'overlays', 'languages', 'layers', 'layer-notes-index', 'categories', 'types'] as $f) {
             $r = $c->data($f);
             same(200, status($r), $f);
             ok(is_array(json_decode($r->content, true)), "$f is JSON");

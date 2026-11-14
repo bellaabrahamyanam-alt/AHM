@@ -989,3 +989,125 @@ test('types: a custom symbol keeps its SVG path and box; a bad path or box falls
   ok(!('path' in st.evil) && st.evil.shape === 'circle', 'markup in a path is never used');
   ok(!('path' in st.plain), 'a path of a type that is not custom is ignored');
 });
+
+// ---- the drawing of types: a canvas, Path2D and DOMMatrix of the page are stood in for ----
+function iconPage(withPath2D = true) {
+  const p = load(['typeicons.js']),
+    log = [];
+  p.ctx.document = {
+    createElement() {
+      const c = {
+        width: 0,
+        height: 0,
+        toDataURL: () => 'data:image/png;base64,FAKE' + log.length,
+        getContext: () =>
+          new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => log.push([k, ...a])), set: (t, k, v) => ((t[k] = v), true) }),
+      };
+      log.push(['canvas']);
+      return c;
+    },
+  };
+  if (withPath2D) {
+    p.ctx.Path2D = class {
+      constructor(d) {
+        this.d = d;
+        this.added = [];
+      }
+      addPath(path, m) {
+        this.added.push([path, m]);
+      }
+    };
+    p.ctx.DOMMatrix = class {
+      constructor(a) {
+        this.a = a;
+      }
+    };
+  }
+  return { p, log };
+}
+const CEDAR = { code: 'cedar', geometry: 'point', names: [{ lang: 'en', name: 'Cedar' }], color: '#2e7d32', style: { symbol: 'custom', size: 9, path: 'M256 10 L500 500 H10 z', box: 512 } };
+
+test('types: a custom symbol is stroked and filled as one Path2D of its path, scaled from its box and centred', () => {
+  const { p, log } = iconPage();
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  p.X('iconCanvas("cedar", 28, 2)');
+  const drawn = log.filter((l) => (l[0] === 'stroke' || l[0] === 'fill') && l[1]);
+  ok(drawn.length >= 3, 'stroke twice and fill once with a path: ' + drawn.length);
+  const path = drawn[0][1];
+  eq('object', typeof path);
+  const [inner, m] = path.added[0];
+  eq('M256 10 L500 500 H10 z', inner.d, 'the path of the type');
+  const k = (9 * 1 * 2.3) / 512; // r 9, f = px / 28 = 1
+  eq([k, 0, 0, k, -256 * k, -256 * k], m.a, 'scaled so the box fills about 2.3 radii, centred on 0,0');
+  ok(drawn.every((l) => l[1] === path), 'every stroke and the fill use the same path');
+});
+
+test('types: without Path2D a custom symbol is a circle (stroke and fill without a path)', () => {
+  const { p, log } = iconPage(false);
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  p.X('iconCanvas("cedar", 28, 2)');
+  ok(log.some((l) => l[0] === 'arc'), 'a circle is drawn');
+  ok(log.filter((l) => l[0] === 'stroke' || l[0] === 'fill').every((l) => l.length === 1), 'no path argument');
+});
+
+test('types: a type that is not custom is drawn from its shape, never from a path', () => {
+  const { p, log } = iconPage();
+  p.X('setTypeStyles(__0)', [{ ...CEDAR, style: { symbol: 'star', size: 9, path: 'M0 0 L1 1' } }]);
+  p.X('iconCanvas("cedar", 28, 2)');
+  ok(log.filter((l) => l[0] === 'stroke' || l[0] === 'fill').every((l) => l.length === 1), 'no path argument');
+});
+
+test('types: typeIcon gives an <img> with a data URL; it is made once per type, again after the dictionary changed; a draft is never cached', () => {
+  const { p, log } = iconPage();
+  const canvases = () => log.filter((l) => l[0] === 'canvas').length;
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  const a = p.X('typeIcon("cedar")');
+  ok(/^<img class="ti" alt="" src="data:image\/png;base64,FAKE\d+">$/.test(a), a);
+  p.X('typeIcon("cedar")');
+  eq(1, canvases(), 'second call: from the cache');
+  p.X('setTypeStyles(__0)', [CEDAR]);
+  p.X('typeIcon("cedar")');
+  eq(2, canvases(), 'the dictionary changed: drawn again');
+  const d1 = p.X('typeIcon(__0)', { symbol: 'star', color: '#112233', size: 7 });
+  p.X('typeIcon(__0)', { symbol: 'star', color: '#112233', size: 7 });
+  eq(4, canvases(), 'a draft is drawn each time');
+  ok(d1.startsWith('<img'));
+  ok(/^<img/.test(p.X('typeIcon("nobody")')), 'an unknown type is drawn like settlement');
+});
+
+test('types: registerTypeIcons adds a normal and a highlighted image per type, and replaces the ones that exist', () => {
+  const { p } = iconPage();
+  p.X('setTypeStyles(__0)', [CEDAR, { ...CEDAR, code: 'tower', style: { symbol: 'flag', size: 8 } }]);
+  const calls = [],
+    have = new Set(['ahm-type-tower']);
+  const map = {
+    hasImage: (n) => have.has(n),
+    removeImage: (n) => (calls.push(['remove', n]), have.delete(n)),
+    addImage: (n) => (calls.push(['add', n]), have.add(n)),
+  };
+  p.X('registerTypeIcons(__0)', map);
+  eq(['add:ahm-type-cedar', 'add:ahm-type-cedar-hl', 'remove:ahm-type-tower', 'add:ahm-type-tower', 'add:ahm-type-tower-hl', 'add:ahm-type-settlement', 'add:ahm-type-settlement-hl'].sort(), calls.map((c) => c.join(':')).sort(), 'settlement is always there as the fallback');
+  // a map that cannot say which images it has (older stand-ins) still works
+  p.X('registerTypeIcons(__0)', { addImage() {} });
+});
+
+test('map: AHM.map.setTypes after the map is ready makes the images of every type again and keeps the places drawn', () => {
+  const calls = [];
+  const { p, errors } = boot({ before: (pg) => (pg.ctx.registerTypeIcons = (m) => calls.push(m)) });
+  eq(1, calls.length, 'once on load');
+  setFeatures(p, fc(P1, P2));
+  p.X('AHM.map.setTypes(__0)', [CEDAR]);
+  eq(2, calls.length, 'again for the new dictionary');
+  ok(p.X('"cedar" in TYPE_STYLE') && !p.X('"city" in TYPE_STYLE'), 'the table follows the dictionary');
+  eq([], errors);
+});
+
+test('map: AHM.map.setTypes before the map is ready only updates the table; the images are made on load', () => {
+  const calls = [];
+  const { p, ml } = boot({ ready: false, before: (pg) => (pg.ctx.registerTypeIcons = (m) => calls.push(m)) });
+  p.X('AHM.map.setTypes(__0)', [CEDAR]);
+  eq(0, calls.length, 'nothing yet');
+  ok(p.X('"cedar" in TYPE_STYLE'));
+  ml.fire('load');
+  eq(1, calls.length, 'on load, from the new table');
+});

@@ -85,6 +85,78 @@ function defects()
                 return $j;
             });
         }, 'place-coordinates'],
+        ['types.json is broken JSON', function ($d) {
+            file_put_contents("$d/types.json", '{oops');
+        }, 'json-invalid'],
+        ['type code with capitals', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['code'] = 'Bad Code';
+                return $j;
+            });
+        }, 'type-code'],
+        ['two types with the same code', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][1]['code'] = $j['types'][0]['code'];
+                return $j;
+            });
+        }, 'type-duplicate'],
+        ['type with a geometry that does not exist', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['geometry'] = 'volume';
+                return $j;
+            });
+        }, 'type-geometry'],
+        ['type colour not #rrggbb', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['color'] = 'red';
+                return $j;
+            });
+        }, 'type-color'],
+        ['type symbol not a slug', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['style']['symbol'] = 'Not A Slug';
+                return $j;
+            });
+        }, 'type-symbol'],
+        ['type name in a language outside the dictionary', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['names'][0]['lang'] = 'zz';
+                return $j;
+            });
+        }, 'type-language'],
+        ['type without names', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['names'] = [];
+                return $j;
+            });
+        }, 'type-names'],
+        ['custom symbol without a path', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['style'] = ['symbol' => 'custom', 'size' => 8, 'box' => 24];
+                return $j;
+            });
+        }, 'type-path'],
+        ['custom symbol path with markup', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['style'] = ['symbol' => 'custom', 'size' => 8, 'box' => 24, 'path' => 'M0 0 <script>'];
+                return $j;
+            });
+        }, 'type-path'],
+        ['custom symbol box out of range', function ($d) {
+            edit_json($d, 'types.json', function ($j) {
+                $j['types'][0]['style'] = ['symbol' => 'custom', 'size' => 8, 'box' => 5000, 'path' => 'M0 0 L5 5'];
+                return $j;
+            });
+        }, 'type-box'],
+        ['place uses a type that was taken out of the dictionary', function ($d) {
+            edit_json($d, 'types.json', function ($j) use ($d) {
+                $t = json_decode(file_get_contents("$d/places.geojson"), true)['features'][0]['properties']['type'];
+                $j['types'] = array_values(array_filter($j['types'], function ($x) use ($t) {
+                    return $x['code'] !== $t;
+                }));
+                return $j;
+            });
+        }, 'place-type'],
         ['place type not in the list', function ($d) {
             edit_json($d, 'places.geojson', function ($j) {
                 $j['features'][0]['properties']['type'] = 'spaceport';

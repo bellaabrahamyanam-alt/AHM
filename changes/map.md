@@ -34,4 +34,12 @@
 - **How to verify:** `node tests/js/run.js`.
 - **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
 
+## 2026-11-14 — More tests for the place types dictionary (T-025)
+
+- **What:** Tests: custom symbol drawn as one scaled and centred `Path2D` (stroke twice, fill once); circle without `Path2D`; no path for a non-custom type; `typeIcon` cache and draft; `registerTypeIcons` replaces existing images; `setTypes` before and after the map is ready; `loadTypes` without a file.
+- **Why:** the dictionary and custom symbols had tests for the main paths only; no code changed.
+- **Files:** `tests/js/map.test.js`, `tests/js/data.test.js`
+- **How to verify:** `node tests/js/run.js`.
+- **Follow-ups:** the type editor of the sidebar (`ui.js`) and `dev/save-handler.js` have no new tests: the editor needs a browser run, the dev server was left out on purpose.
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the map domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

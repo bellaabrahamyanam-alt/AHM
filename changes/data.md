@@ -41,4 +41,12 @@
 - **How to verify:** `php tests/php/run.php`, `node tests/js/run.js`.
 - **Follow-ups:** `style.path` and `style.box` are an addition to `interfaces/I-8` (see `TODO.md` T-026).
 
+## 2026-11-14 — More tests for the place types dictionary (T-025)
+
+- **What:** Tests: place edits to and from added types, removing a type after its last place moved, every type usable by a place, several languages, the `types` data route; `DataCheck` also checks a custom symbol (`type-path`, `type-box`) and 12 defects of `types.json` are reported.
+- **Why:** the dictionary and custom symbols had tests for the main paths only; no code changed.
+- **Files:** `tests/php/TypeTest.php`, `tests/php/ControllerTest.php`, `tests/data/DataCheck.php`, `tests/data/DataTest.php`
+- **How to verify:** `php tests/php/run.php`, `php tests/data/run.php`.
+- **Follow-ups:** the type editor of the sidebar (`ui.js`) and `dev/save-handler.js` have no new tests: the editor needs a browser run, the dev server was left out on purpose.
+
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the data domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.

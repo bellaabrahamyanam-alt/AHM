@@ -134,6 +134,16 @@ class DataCheck
             if (($t['geometry'] ?? '') === 'point' && !preg_match(store::SYMBOL, (string) ($t['style']['symbol'] ?? ''))) {
                 $this->bad('type-symbol', "$w: bad symbol");
             }
+            if (($t['geometry'] ?? '') === 'point' && ($t['style']['symbol'] ?? '') === 'custom') {
+                $path = $t['style']['path'] ?? null;
+                if (!is_string($path) || !preg_match(store::PATH, $path) || !preg_match('/^[Mm]/', $path)) {
+                    $this->bad('type-path', "$w: a custom symbol needs an SVG path");
+                }
+                $box = $t['style']['box'] ?? null;
+                if (!(is_int($box) || is_float($box)) || $box < 8 || $box > 2048) {
+                    $this->bad('type-box', "$w: the box of a custom symbol must be 8 to 2048");
+                }
+            }
             $this->names($t['names'] ?? [], $codes, $w, 'type');
             if (($t['geometry'] ?? '') === 'point') {
                 $seen[$c] = true;

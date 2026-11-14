@@ -871,6 +871,36 @@
    "expect": "unknown layer"
   },
   {
+   "name": "shape note: a note of a border",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "5d1b6a52-0a3e-4c1d-9a77-6b0b9c1d2e01",
+     "note": {
+      "lang": "en",
+      "title": "Borders in 400 BCE",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "ok"
+  },
+  {
+   "name": "shape note: a note of an owner that is neither a layer nor a border",
+   "via": "layer",
+   "body": {
+    "layer_note": {
+     "layer_id": "22222222-2222-4222-8222-222222222222",
+     "note": {
+      "lang": "en",
+      "title": "t",
+      "text": "x"
+     }
+    }
+   },
+   "expect": "unknown layer or border"
+  },
+  {
    "name": "layer_save: empty body",
    "via": "layer",
    "body": {},

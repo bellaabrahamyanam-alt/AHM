@@ -50,3 +50,9 @@
 - **Follow-ups:** the type editor of the sidebar (`ui.js`) and `dev/save-handler.js` have no new tests: the editor needs a browser run, the dev server was left out on purpose.
 
 One entry per change, newest last: date, what, why, files, how to verify, open follow-ups. Only the data domain appends here (DOMAINS.md, rule 7). The history before 2026-11-06 is in the legacy `AGENT_CHANGES.md` (entries #1-#26), which is now read-only.
+
+## 2026-11-14 — #5 T-027: notes for borders and routes
+**What:** `service/store.php` and `dev/save-handler.js`: `save_layer_note` / `saveLayerNote` accept a shape id as the owner (a layer or a border or route; error "unknown layer or border"); new `archive_layer_notes` / `archiveLayerNotes` (moves an owner's notes to the archive and rebuilds the index) is used by `delete_layer` and now also by `delete_shape`. `tests/data/DataCheck.php`: a note folder of an existing shape is no orphan. Tests: `tests/php/LayerTest.php` (2), a case in `tests/fixtures/rules.json`.
+**Why:** the owner asked for notes on routes and borders. No new endpoint, config key or contract change: the notes use `layer-save` with `layer_note` and the `layer-notes/` folders, the owner id is a shape id. The store is the only code that touches these files, so a later move to MySQL replaces `save_layer_note`, the index and `archive_layer_notes` only.
+**Verify:** `php tests/php/run.php | tail -15`, `php tests/data/run.php | tail -15`, `node tests/js/run.js parity`.
+**Follow-ups:** none.

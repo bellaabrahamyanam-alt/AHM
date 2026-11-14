@@ -61,7 +61,7 @@ class DataCheck
         $catIds = $cats ? $this->categories($cats, $codes) : [];
         $layerIds = $layers ? $this->layers($layers, $codes, $catIds, $placeIds, $shapeIds) : [];
         $this->tags($notes, $layerIds, $layers);
-        $this->layerNotes($layerIds, $codes);
+        $this->layerNotes($layerIds, $codes, $shapeIds);
         if ($over) {
             $this->overlays($over);
         }
@@ -409,7 +409,7 @@ class DataCheck
         }
     }
 
-    private function layerNotes($layerIds, $codes)
+    private function layerNotes($layerIds, $codes, $shapeIds = [])
     {
         $root = "$this->dir/layer-notes";
         if (!is_dir($root)) {
@@ -419,8 +419,8 @@ class DataCheck
             if ($lid[0] === '.' || !is_dir("$root/$lid")) {
                 continue;
             }
-            if (!isset($layerIds[$lid])) {
-                $this->bad('layer-note-orphan', "layer-notes/$lid: folder of a layer that does not exist");
+            if (!isset($layerIds[$lid]) && !isset($shapeIds[$lid])) {
+                $this->bad('layer-note-orphan', "layer-notes/$lid: folder of a layer or border that does not exist");
             }
             foreach (scandir("$root/$lid") as $fn) {
                 if (substr($fn, -3) !== '.md') {

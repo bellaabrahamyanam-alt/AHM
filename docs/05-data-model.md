@@ -124,6 +124,8 @@ Generated from the note files after every save. It holds `id`, `place`, `lang`, 
 
 Layer notes are `layer-notes/<layer-id>/<note-id>.md`, same header as place notes (`id`, `lang`, `title`, `date`); `layer-notes/index.json` is generated (`id`, `layer`, `lang`, `title`, `date`, `text`).
 
+The same folders and index also hold the notes of a **border or route** (a shape): the folder is named with the shape id and the `layer` field of its index entries holds that id (UUIDs never clash). Deleting the shape moves its notes to `archive/` (`layer-note-<shape-id>-<note-id>.md`) and out of the index.
+
 A **place note** may carry an extra header line `layers: <id>,<id>` and its `notes/index.json` entry has `layers: []`. A note can only be tied to layers the place belongs to. Taking a place out of a layer, or deleting a layer, removes the tags from the notes (the changed notes are archived first). Every change archives the old file.
 
 ### Languages

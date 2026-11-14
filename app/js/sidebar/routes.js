@@ -277,6 +277,7 @@ function rtRenderView() {
     (inLy.length ? inLy.map((ly) => `<button class="chip ly-chip" data-rtact="layer" data-lid="${ly.id}"${ly.color ? ` style="--a:${esc(ly.color)}"` : ''}>${esc(lyName(ly, l))}</button>`).join('') : '<span class="sn">None yet.</span>') +
     `</div>` +
     (can && free.length ? `<select id="rtAddLayer" aria-label="Add to a layer"><option value="">Add to a layer…</option>${free.map((ly) => `<option value="${ly.id}">${esc(lyName(ly, l))}</option>`).join('')}</select>` : '') +
+    lyOwnerNotesHTML(s.id, l, 'rtact') +
     (/^osrm:/.test(s.source || '') ? `<div class="sn">The path follows modern roads: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL), via OSRM. Edit the path to match the historical one.</div>` : '') +
     (rts.note ? `<div class="sn">${esc(rts.note)}</div>` : '') +
     `<div class="err-line" id="rtErr"></div></div><div class="dock-foot">` +
@@ -357,6 +358,8 @@ $('#rtDetail').addEventListener('click', async (e) => {
   if (!s) return;
   if (act === 'fit') AHM.map.fitTo(bboxCorners(shBox(s)));
   else if (act === 'layer') lyOpen(b.dataset.lid);
+  else if (act === 'addnote') lyOpenNoteDlg(s, null, 'route');
+  else if (act === 'editnote') lyOpenNoteDlg(s, layerNotes.find((n) => n.id === b.dataset.id), 'route');
   else if (act === 'edit') rtOpenForm({ ...s });
   else if (act === 'editpath') rtStartDraw({ mode: 'edit', id: s.id });
   else if (act === 'reverse') {

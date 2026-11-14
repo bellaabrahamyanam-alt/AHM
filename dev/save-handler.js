@@ -711,7 +711,8 @@ function saveMembers(inp) {
 function saveLayerNote(inp) {
   const codes = langLoad().map((l) => l.code),
     lid = String(inp.layer_id || '');
-  if (!UUID.test(lid) || layerIndex(layersData(), lid) < 0) throw bad('unknown layer');
+  // the owner of a layer note is a layer or a shape (a border or a route); both ids are UUIDs, so they never clash
+  if (!UUID.test(lid) || (layerIndex(layersData(), lid) < 0 && !shapeIds().has(lid))) throw bad('unknown layer or border');
   const n = inp.note;
   if (!n || typeof n !== 'object') throw bad('a note is required');
   const { lang, title, text, date } = cleanNote(n, codes),
@@ -750,6 +751,15 @@ function rebuildLayerNotesIndex() {
   }
   writeAtomic(path.join(LNOTES, 'index.json'), JSON.stringify({ version: 1, notes: out }, null, 1));
 }
+// Moves every note of an owner (a layer or a shape) to the archive and rebuilds the index. Nothing happens when it has no notes.
+function archiveLayerNotes(id) {
+  const dir = path.join(LNOTES, id);
+  if (!fs.existsSync(dir)) return;
+  for (const fn of fs.readdirSync(dir))
+    if (fn.endsWith('.md')) fs.renameSync(path.join(dir, fn), archivePath(`layer-note-${id}-${fn.slice(0, -3)}`, 'md'));
+  fs.rmdirSync(dir);
+  rebuildLayerNotesIndex();
+}
 // Administrators only. Removes a layer; its places and their notes stay in the general layer. Returns true.
 function deleteLayer(id) {
   const d = layersData(),
@@ -757,13 +767,7 @@ function deleteLayer(id) {
   if (i < 0) throw bad('unknown layer');
   d.layers.splice(i, 1);
   putList(LAYERS_FILE, 'layers', d); // the copy in the archive still has the layer and its members
-  const dir = path.join(LNOTES, id);
-  if (fs.existsSync(dir)) {
-    for (const fn of fs.readdirSync(dir))
-      if (fn.endsWith('.md')) fs.renameSync(path.join(dir, fn), archivePath(`layer-note-${id}-${fn.slice(0, -3)}`, 'md'));
-    fs.rmdirSync(dir);
-    rebuildLayerNotesIndex();
-  }
+  archiveLayerNotes(id);
   untagNotes(id);
   rebuildIndex();
   return true;
@@ -894,6 +898,7 @@ function deleteShape(id) {
     }
   });
   if (changed) putList(LAYERS_FILE, 'layers', ls);
+  archiveLayerNotes(id); // the notes of the shape go to the archive with it
   return true;
 }
 // ---------------- historical map images (overlays): same rules as service/store.php ----------------

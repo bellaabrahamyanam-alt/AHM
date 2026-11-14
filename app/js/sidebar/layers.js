@@ -367,14 +367,32 @@ const lyReadNames = (root) =>
     .filter((n) => n.name);
 
 // ---- a note of a layer (uses the note dialog of ui.js) ----
-function lyOpenNoteDlg(ly, note) {
+/** The notes of a border or a route, as a block of its card. `attr` = the data attribute of its buttons (`shact` or `rtact`). */
+function lyOwnerNotesHTML(id, l, attr) {
+  const can = AHM_CONFIG.canEdit,
+    ns = layerNotes
+      .filter((n) => n.layer === id && (!l || n.lang === l))
+      .sort((a, b) => dateKey(a.date) - dateKey(b.date) || a.title.localeCompare(b.title));
+  return (
+    '<div class="label">Notes</div>' +
+    (ns
+      .map(
+        (n) =>
+          `<div class="ly-note"><div class="note-head"><div class="note-meta"><b>${esc(n.title)}</b> <span class="sn">${n.date ? esc(dateText(n.date)) + ' · ' : ''}${esc(langName(n.lang))}</span></div>${can ? `<button type="button" class="icon-btn sm" data-${attr}="editnote" data-id="${n.id}" title="Edit note" aria-label="Edit note">${AHM.icons.svg('pencil', 16)}</button>` : ''}</div>${lyPara(n.text)}</div>`
+      )
+      .join('') || '<p class="sn">No notes yet.</p>') +
+    (can ? `<button type="button" data-${attr}="addnote">Add note</button>` : '')
+  );
+}
+/** Opens the note dialog for a layer, or for a border or route (`what` = 'layer' | 'border' | 'route'; the owner is any object with `id` and `names`). */
+function lyOpenNoteDlg(ly, note, what = 'layer') {
   dlg = { mode: 'lnote', p: null, note, layer: ly };
   $('#dErr').textContent = '';
   $('#dPlace').style.display = 'none';
   $('#dLayersPlace').innerHTML = '';
   $('#dLayersNote').innerHTML = '';
   $('#dTitle').textContent = (note ? 'Edit note' : 'New note') + ' · ' + lyName(ly, $('#lang').value);
-  $('#dNoteHead').textContent = 'Note about the layer';
+  $('#dNoteHead').textContent = 'Note about the ' + what;
   $('#nLang').innerHTML = langOptions(note ? note.lang : $('#lang').value || 'en');
   $('#nDate').innerHTML = dfHTML('n-date', note ? note.date : null);
   $('#nTitle').value = note ? note.title : '';
@@ -395,6 +413,8 @@ async function lyDlgSave() {
       },
     });
     await lyReload();
+    if (typeof shRenderView === 'function') shRenderView(); // the card of a border or a route shows its notes
+    if (typeof rtRenderView === 'function') rtRenderView();
     $('#dlg').close();
   } catch (e) {
     $('#dErr').textContent = e.message;

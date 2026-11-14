@@ -323,3 +323,41 @@ test('layers.json is archived before every change, under unique names', function
     ok(count($names) >= 5, 'one copy per change even within a second: ' . count($names));
     same(count($names), count(array_unique($names)));
 });
+
+// ---- notes of a border or a route (stored with the layer notes, owner = the shape id) ----
+function new_shape($s, $type = 'trade')
+{
+    return $s->save_shape([
+        'names' => [['lang' => 'en', 'name' => 'Silk Road']], 'type' => $type, 'color' => '#aa3344', 'opacity' => 1, 'label' => true,
+        'source' => '', 'date_from' => null, 'date_to' => null,
+        'geometry' => ['type' => 'LineString', 'coordinates' => [[44.5, 40.2], [45.0, 40.5]]]
+    ]);
+}
+
+test('shape notes: a route or border can have notes; they are indexed under the shape id', function () {
+    $s = fresh_store($dir);
+    $sid = new_shape($s);
+    $nid = $s->save_layer_note(['layer_id' => $sid, 'note' => ['lang' => 'en', 'title' => 'Goods', 'text' => 'Silk and salt']]);
+    $ix = $s->layer_notes_index()['notes'];
+    same(1, count($ix));
+    same($sid, $ix[0]['layer']);
+    $s->save_layer_note(['layer_id' => $sid, 'note' => ['id' => $nid, 'lang' => 'en', 'title' => 'Goods 2', 'text' => 'edited']]);
+    same('Goods 2', $s->layer_notes_index()['notes'][0]['title']);
+    throws('/unknown layer or border/', function () use ($s) {
+        $s->save_layer_note(['layer_id' => NOPE, 'note' => ['lang' => 'en', 'title' => 't', 'text' => 'x']]);
+    });
+});
+
+test('shape notes: deleting the shape moves its notes to archive/ and out of the index; other notes stay', function () {
+    $s = fresh_store($dir);
+    $sid = new_shape($s);
+    $lid = new_layer($s);
+    $s->save_layer_note(['layer_id' => $sid, 'note' => ['lang' => 'en', 'title' => 'Goods', 'text' => 'x']]);
+    $s->save_layer_note(['layer_id' => $lid, 'note' => ['lang' => 'en', 'title' => 'Kept', 'text' => 'x']]);
+    $s->delete_shape($sid);
+    $ix = $s->layer_notes_index()['notes'];
+    same(1, count($ix));
+    same('Kept', $ix[0]['title']);
+    same([], glob("$dir/layer-notes/$sid"));
+    ok(count(glob("$dir/archive/layer-note-$sid-*.md")) === 1, 'archived');
+});

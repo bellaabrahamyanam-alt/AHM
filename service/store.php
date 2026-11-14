@@ -1169,8 +1169,9 @@ class store
         return $this->locked(function () use ($in) {
             $codes = array_column($this->lang_load(), 'code');
             $lid = (string) ($in['layer_id'] ?? '');
-            if (!preg_match(self::UUID, $lid) || $this->layer_index($this->layers_data(), $lid) === null) {
-                throw self::bad('unknown layer');
+            // the owner of a layer note is a layer or a shape (a border or a route); both ids are UUIDs, so they never clash
+            if (!preg_match(self::UUID, $lid) || ($this->layer_index($this->layers_data(), $lid) === null && !isset($this->shape_ids()[$lid]))) {
+                throw self::bad('unknown layer or border');
             }
             $n = $in['note'] ?? null;
             if (!is_array($n)) {
@@ -1192,6 +1193,22 @@ class store
             $this->rebuild_layer_notes_index();
             return $nid;
         });
+    }
+
+    /** Moves every note of an owner (a layer or a shape) to archive/ and rebuilds the index. Nothing happens when it has no notes. */
+    private function archive_layer_notes($id)
+    {
+        $dir = $this->base . 'layer-notes/' . $id;
+        if (!is_dir($dir)) {
+            return;
+        }
+        foreach (scandir($dir) as $fn) {
+            if (substr($fn, -3) === '.md') {
+                rename("$dir/$fn", $this->archive_path('layer-note-' . $id . '-' . substr($fn, 0, -3), 'md'));
+            }
+        }
+        @rmdir($dir);
+        $this->rebuild_layer_notes_index();
     }
 
     /** layer-notes/index.json: generated from the note files, used for showing and searching. */
@@ -1237,16 +1254,7 @@ class store
             }
             array_splice($d['layers'], $i, 1);
             $this->put_list('layers.json', 'layers', $d); // the copy in archive/ still has the layer and its members
-            $dir = $this->base . 'layer-notes/' . $id;
-            if (is_dir($dir)) {
-                foreach (scandir($dir) as $fn) {
-                    if (substr($fn, -3) === '.md') {
-                        rename("$dir/$fn", $this->archive_path('layer-note-' . $id . '-' . substr($fn, 0, -3), 'md'));
-                    }
-                }
-                @rmdir($dir);
-                $this->rebuild_layer_notes_index();
-            }
+            $this->archive_layer_notes($id);
             $this->untag_notes($id);
             $this->rebuild_index();
             return true;
@@ -1525,6 +1533,7 @@ class store
             if ($changed) {
                 $this->put_list('layers.json', 'layers', $ls);
             }
+            $this->archive_layer_notes($id); // the notes of the shape go to archive/ with it
             return true;
         });
     }

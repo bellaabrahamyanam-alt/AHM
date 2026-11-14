@@ -45,7 +45,7 @@ Read routes answer with `Cache-Control: private, no-cache` and an `ETag`, so bro
 
 `/map/save` also accepts `layer_ids: [...]` (or `layer_id`) next to a new `place` (the place joins those layers) and `note.layers: [...]` (omit on edit to keep the tags).
 
-**`/map/layer-save` accepts one of:** `{ "layer": { "id"?, "names", "descriptions", "category", "date_from", "date_to", "color" } }`, `{ "layer_members": { "id", "add": [...], "remove": [...] } }`, `{ "layer_note": { "layer_id", "note": { "id"?, "lang", "title", "date", "text" } } }`.
+**`/map/layer-save` accepts one of:** `{ "layer": { "id"?, "names", "descriptions", "category", "date_from", "date_to", "color" } }`, `{ "layer_members": { "id", "add": [...], "remove": [...] } }`, `{ "layer_note": { "layer_id", "note": { "id"?, "lang", "title", "date", "text" } } }`. `layer_note.layer_id` may also be the id of a border or route; an id that is neither is 400 "unknown layer or border".
 
 Answers are JSON: `{ "ok": true, "id": "<place id>" }` or `{ "error": "<readable message>" }` with status 400 (bad input), 401 (not logged in), 403 (not allowed), 415 (wrong content type) or 500.
 

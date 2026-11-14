@@ -356,3 +356,31 @@ gated(publishesLayers, 'sidebar publishes: choosing places (start, toggle, stop)
   ok(p.X('__lay.length') >= 1, 'stop announced');
   eq(null, lastLay(p).staged);
 });
+
+// ---- notes of a border or a route: stored with the layer notes, the owner is the shape id ----
+test('shape notes: the card block lists the notes of one shape, escaped, in the current language; buttons only for editors', () => {
+  const p = page();
+  p.X('layerNotes = __0', [
+    { id: 'n1', layer: 'S1', lang: 'en', title: 'Goods <i>', text: 'Silk', date: null },
+    { id: 'n2', layer: 'S1', lang: 'ru', title: 'Russian only', text: 'x', date: null },
+    { id: 'n3', layer: 'A', lang: 'en', title: 'Other owner', text: 'x', date: null },
+  ]);
+  p.X('AHM_CONFIG.canEdit = true');
+  const h = p.X('lyOwnerNotesHTML("S1", "en", "shact")');
+  ok(h.includes('Goods &lt;i&gt;') && !h.includes('Goods <i>'), 'title escaped');
+  ok(!h.includes('Russian only') && !h.includes('Other owner'), 'other language and other owner left out');
+  ok(h.includes('data-shact="editnote" data-id="n1"') && h.includes('data-shact="addnote"'), 'edit and add buttons for editors');
+  p.X('AHM_CONFIG.canEdit = false');
+  const r = p.X('lyOwnerNotesHTML("S1", "en", "rtact")');
+  ok(r.includes('Goods &lt;i&gt;') && !/data-rtact/.test(r), 'readers see the notes, no buttons');
+  ok(p.X('lyOwnerNotesHTML("S2", "en", "shact")').includes('No notes yet.'));
+});
+
+test('shape notes: the note dialog opens for a border or a route and names what the note is about', () => {
+  const p = page();
+  p.X('lyOpenNoteDlg(__0, null, "route")', { id: 'S1', names: [{ lang: 'en', name: 'Silk Road' }] });
+  eq('Note about the route', p.X('$("#dNoteHead").textContent'));
+  eq('S1', p.X('dlg.layer.id'));
+  p.X('lyOpenNoteDlg(__0, null)', { id: 'A', names: [{ lang: 'en', name: 'Alpha' }] });
+  eq('Note about the layer', p.X('$("#dNoteHead").textContent'));
+});
